@@ -5,8 +5,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const DEFAULT_SUPABASE_URL = 'https://qpjfcsrbxpzxapoakegq.supabase.co'
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwamZjc3JieHB6eGFwb2FrZWdxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzNzg0MjQsImV4cCI6MjA5MTk1NDQyNH0.s4V5y6whU7eduykAxKEGgEe4pYScn85uFYEUFZM8y2k'
+const DEFAULT_SUPABASE_URL = 'https://mkgkqihzoxdszzkbetjr.supabase.co'
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rZ2txaWh6b3hkc3p6a2JldGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MTU0MzYsImV4cCI6MjEwMzQ5MTQzNn0.EuYih5ilKf1YNUu2vpoUpaBMt0mQGdgvkvRaTO_KHYM'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY
