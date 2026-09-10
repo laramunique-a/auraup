@@ -1,20 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../services/storage'
 import { useDecks } from '../hooks/useDecks'
 import { Button } from '../components/ui/Button'
-import { Card } from '../components/ui/Card'
-import { EmptyState } from '../components/ui/EmptyState'
 import { Modal } from '../components/ui/Modal'
 import { Toast, useToast } from '../components/ui/Toast'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
-import { deckService } from '../services/deck.service'
-import { cardService } from '../services/card.service'
 import { 
   Plus, FileUp, LayoutGrid, List, 
-  ArrowUpDown, Sparkles, Clock, Calendar, Coins, 
-  Trophy, Volume2, Zap
+  Sparkles, Calendar, Trophy, Volume2, 
+  Flame, Target, ArrowRight
 } from 'lucide-react'
 import { StudyHeatmap } from '../components/dashboard/StudyHeatmap'
 import { reviewService } from '../services/review.service'
@@ -31,8 +27,16 @@ const AVATARS: Record<string, string> = {
 
 export function DashboardPage() {
   const { user } = useAuth()
-  const { xp: liveXP, coins: liveCoins, level } = useEconomy()
-  const { decks, loading, statsMap, createDeck, deleteDeck, reload } = useDecks()
+  const { 
+    xp: liveXP, 
+    coins: liveCoins, 
+    streak: liveStreak,
+    level, 
+    xpForNextLevel, 
+    progressToNextLevel 
+  } = useEconomy()
+
+  const { decks, loading, statsMap, createDeck, deleteDeck, reload, refreshStats } = useDecks()
   const [showCreate, setShowCreate] = useState(false)
   const [deckName, setDeckName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -41,30 +45,28 @@ export function DashboardPage() {
   const [rankingLoading, setRankingLoading] = useState(true)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
 
-  // Selecionar Palavra do Dia baseada na data local (troca a meia-noite 00:00)
+  // Palavra do Dia
   const [wordOfTheDay, setWordOfTheDay] = useState<WordOfTheDay>(INITIAL_WORDS_OF_THE_DAY[0])
 
   useEffect(() => {
     wordsOfTheDayService.getTodayWord().then(setWordOfTheDay)
   }, [])
   
-  // Import State
+  // Import Anki State
   const [importing, setImporting] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [importDeckName, setImportDeckName] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
-  // View Mode
+  // View Mode & Sort Mode
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
     return (localStorage.getItem('uply_dashboard_view') as 'grid' | 'list') || 'grid'
   })
-
-  // Sort Mode
   const [sortBy, setSortBy] = useState<string>(() => {
     return localStorage.getItem('uply_dashboard_sort') || 'newest'
   })
-  const [isSortOpen, setIsSortOpen] = useState(false)
-  const sortRef = useRef<HTMLDivElement>(null)
 
-  // Aprendizado Semanal e Histórico Único
+  // Aprendizado Semanal e Histórico
   const [weeklyLearned, setWeeklyLearned] = useState(0)
   const [totalLearned, setTotalLearned] = useState(0)
 
@@ -73,12 +75,9 @@ export function DashboardPage() {
       if (!user) return
       try {
         const allReviews = await reviewService.getReviewsForDeck('all', user.id)
-        
-        // Total histórico de cards únicos aprendidos (apenas 1 por card_id)
         const lifetimeUniqueCards = new Set(allReviews.map((r: any) => r.card_id))
         setTotalLearned(lifetimeUniqueCards.size)
 
-        // Inicio da semana atual (Segunda-feira 00:00:00)
         const now = new Date()
         const day = now.getDay()
         const diffToMonday = day === 0 ? -6 : 1 - day
@@ -88,7 +87,6 @@ export function DashboardPage() {
         const mondayIso = monday.toISOString()
         const mondayDayKey = getStudyDayKey(monday)
 
-        // Cards aprendidos/estudados nesta semana (Segunda a Domingo)
         const weeklyReviews = allReviews.filter((r: any) => {
           if (r.last_reviewed && r.last_reviewed >= mondayIso) return true
           if (r.due_date && r.due_date >= mondayDayKey) return true
@@ -111,16 +109,6 @@ export function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (sortRef.current && !sortRef.current.contains(event.target as Node)) {
-        setIsSortOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
-  useEffect(() => {
     localStorage.setItem('uply_dashboard_view', viewMode)
   }, [viewMode])
 
@@ -134,12 +122,10 @@ export function DashboardPage() {
       setActivity(data)
     })
     
-    // Fetch Mini Ranking
     if (supabase) {
       supabase
         .from('profiles')
         .select('id, name, nickname, xp, avatar_id')
-        .eq('role', 'user')
         .order('xp', { ascending: false })
         .limit(5)
         .then(({ data }: any) => {
@@ -152,9 +138,6 @@ export function DashboardPage() {
       setRankingLoading(false)
     }
   }, [user?.id])
-
-  const [importDeckName, setImportDeckName] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
   function speakWord(word: string) {
     if ('speechSynthesis' in window) {
@@ -171,16 +154,14 @@ export function DashboardPage() {
     }
   }
 
-  function handleQuickChallenge() {
-    alert('⚡ Desafio Rápido de 1 Minuto iniciando em breve! O minijogo de recompensa bônus está em desenvolvimento.')
-  }
-
   async function handleCreate() {
+    if (!deckName.trim()) return
+    setCreating(true)
     try {
       const newDeck = await createDeck(deckName.trim())
       if (newDeck) {
         navigate(`/deck/${newDeck.id}`)
-        show('Baralho criado com sucesso!', 'success')
+        show('Baralho criado com sucesso! ✨', 'success')
       }
     } catch (err: any) {
       show(err.message || 'Erro ao criar baralho.', 'error')
@@ -199,36 +180,28 @@ export function DashboardPage() {
     const file = e.target.files?.[0]
     if (!file) return
     setSelectedFile(file)
-    const baseName = file.name.replace(/\.apkg(\.zip)?$/i, '')
-    setImportDeckName(baseName)
+    setImportDeckName(file.name.replace(/\.apkg(\.zip)?$/i, ''))
     setShowImportModal(true)
-    e.target.value = ''
   }
 
   async function handleImportConfirm() {
-    if (!selectedFile || !importDeckName.trim()) return
+    if (!selectedFile) return
     setImporting(true)
-    show('Processando importação...', 'info')
     try {
-      const result = await ankiService.importFromApkg(selectedFile, importDeckName.trim())
-      if (result.cards && result.cards.length > 0) {
-        const userId = user?.id || 'local-user'
-        const newDeck = await deckService.createDeck(userId, result.deck_name || importDeckName.trim())
-        for (const cardData of result.cards) {
-          await cardService.createCard(newDeck.id, cardData.front || '', cardData.back || '', {
-            front_image: cardData.front_image,
-            back_image: cardData.back_image,
-            front_lang: cardData.front_lang || 'en-US',
-            back_lang: cardData.back_lang || 'pt-BR',
-            front_audio: cardData.front_audio !== false,
-            back_audio: cardData.back_audio !== false,
-          })
-        }
-      }
-      show(result.message || 'Importação realizada com sucesso!', 'success')
+      const result = await ankiService.importFromApkg(
+        selectedFile,
+        importDeckName.trim(),
+        user?.id || 'local_user_default'
+      )
+      if (!result.success) throw new Error(result.message)
+
+      show(result.message || 'Importação realizada com sucesso! ✨', 'success')
       setShowImportModal(false)
       setSelectedFile(null)
+      const fileInput = document.getElementById('anki-dashboard-import') as HTMLInputElement | null
+      if (fileInput) fileInput.value = ''
       await reload()
+      await refreshStats()
     } catch (err: any) {
       show(err.message || 'Erro na importação.', 'error')
     } finally {
@@ -252,270 +225,374 @@ export function DashboardPage() {
     }
   })
 
-  const sortOptions = [
-    { value: 'newest', label: 'Mais Recentes' },
-    { value: 'due', label: 'Pendentes Primeiro' },
-    { value: 'alpha', label: 'A-Z' },
-    { value: 'cards', label: 'Tamanho' },
-  ]
-
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 min-h-screen">
-      {/* Welcome & User Progress Bar */}
-      <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-heading text-slate-900 dark:text-slate-100 tracking-tight flex items-center gap-3 flex-wrap">
-            Olá, <span className="text-[#2563eb]">{user?.nickname || user?.name?.split(' ')[0] || 'estudante'}</span>! 👋
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen space-y-8">
+      
+      {/* -------------------------------------------------------------------------- */}
+      {/* 1. HERO DE AVENTURA GAMIFICADO                                            */}
+      {/* -------------------------------------------------------------------------- */}
+      <section className="card-3d p-6 sm:p-7 bg-white relative overflow-hidden">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+          {/* Avatar e Boas-vindas */}
+          <div className="flex items-center gap-4 sm:gap-5">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-blue-50 dark:bg-slate-800 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center text-4xl sm:text-5xl shadow-xs shrink-0">
+              {AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'}
+            </div>
             
-            {/* Gamification Badges */}
-            <div className="flex items-center gap-2 font-label">
-              <span className="badge-gold">
-                <Sparkles size={14} className="fill-amber-500 text-amber-500" />
-                {liveXP} XP
-              </span>
-              <span className="badge-blue">
-                <Coins size={14} />
-                {liveCoins}
-              </span>
-              <span className="badge-green">
-                {user?.role === 'admin' ? '👑 Admin' : `Nível ${level}`}
-              </span>
-            </div>
-          </h1>
-          <p className="text-slate-600 dark:text-slate-400 font-label text-xs sm:text-sm mt-1.5">
-            {totalDue > 0 
-              ? `Você tem ${totalDue} cards esperando por você hoje.` 
-              : 'Você está em dia com seus estudos! Arrasou. ✨'}
-          </p>
-        </div>
-
-        <div className="flex gap-2 w-full sm:w-auto font-label">
-          <Button variant="secondary" size="md" onClick={() => document.getElementById('anki-dashboard-import')?.click()} disabled={importing} className="btn-secondary-glass rounded-xl">
-            <FileUp size={16} /> <span className="hidden sm:inline-block">Importar</span>
-          </Button>
-          <Button variant="primary" size="md" onClick={() => setShowCreate(true)} className="btn-primary-glass rounded-xl">
-            <Plus size={16} /> Novo Baralho
-          </Button>
-          <input type="file" id="anki-dashboard-import" accept=".apkg,.zip" className="hidden" onChange={handleFileSelect} />
-        </div>
-      </header>
-
-      {/* Quick Challenge Banner (Minimalist Glassmorphism) */}
-      <div className="mb-6">
-        <div 
-          onClick={handleQuickChallenge} 
-          className="glass-panel-interactive p-6 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer bg-gradient-to-r from-blue-50/80 via-white/80 to-indigo-50/80 border border-blue-200/60"
-        >
-          <div className="flex items-center gap-4 text-center sm:text-left">
-            <div className="w-12 h-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-glow-primary">
-              <Zap size={24} className="fill-white" />
-            </div>
             <div>
-              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1 font-label">
-                <span className="bg-blue-100 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                  ⚡ DESAFIO EXPRESSO
+              <div className="flex items-center gap-2 mb-1">
+                <span className="badge-level text-xs">
+                  🛡️ Nível {level}
                 </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  +50 XP • +10 MOEDAS
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                  {user?.role === 'admin' ? 'Comandante Admin' : 'Explorador(a)'}
                 </span>
               </div>
-              <h2 className="text-lg sm:text-xl font-heading text-slate-900">
-                Desafio Rápido de 1 Minuto
-              </h2>
-              <p className="text-slate-600 text-xs sm:text-sm font-label mt-0.5">
-                Responda o máximo de cards em 60s e conquiste seus bônus diários.
+              <h1 className="text-3xl sm:text-4xl font-heading font-bold text-slate-900 dark:text-white tracking-tight">
+                Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
+              </h1>
+              <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1">
+                {totalDue > 0 ? (
+                  <span>
+                    Você tem <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{totalDue} cards</strong> esperando por você hoje. Pronto para <strong className="text-slate-800 dark:text-white font-extrabold">subir de nível</strong>?
+                  </span>
+                ) : (
+                  <span>
+                    Parabéns! Todas as suas revisões estão <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">100% em dia</strong>. Arrasou! ✨
+                  </span>
+                )}
               </p>
             </div>
           </div>
 
-          <Button variant="primary" size="md" className="btn-primary-glass shrink-0 text-xs font-label">
-            Iniciar Desafio ✨
-          </Button>
-        </div>
-      </div>
-
-      {/* Word of the Day Section (Thesaurus Style) */}
-      <div className="mb-8 animate-pop">
-        <Card variant="base" className="border-2 border-primary-300 dark:border-primary-800 bg-gradient-to-br from-primary-50/60 via-white to-sky-50/40 dark:from-slate-800 dark:to-slate-850 p-6">
-          <div className="flex items-center justify-between border-b border-primary-200 dark:border-slate-700 pb-3 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="w-8 h-8 rounded-xl bg-primary-500 text-white flex items-center justify-center font-black text-xs">
-                📖
-              </span>
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider text-primary-600 dark:text-primary-400">
-                  PALAVRA DO DIA
-                </span>
-              </div>
+          {/* Badges de Economia Virtual (XP, Streak, Moedas) */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+            {/* Streak */}
+            <div className="badge-streak font-heading text-sm px-3.5 py-1.5">
+              <Flame size={17} className="animate-flame" />
+              <span><strong>{liveStreak}</strong> dias</span>
             </div>
-            <span className="text-xs font-bold text-slate-400">
-              {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+
+            {/* XP */}
+            <div className="badge-xp font-heading text-sm px-3.5 py-1.5">
+              <Sparkles size={17} className="fill-amber-500" />
+              <span><strong>{liveXP}</strong> XP</span>
+            </div>
+
+            {/* Moedas */}
+            <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-heading font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs text-sm">
+              <span>🟡</span>
+              <span><strong>{liveCoins}</strong> moedas</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Barra de Progresso Físico de Nível */}
+        <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex justify-between items-center text-xs font-bold mb-2">
+            <span className="text-blue-600 dark:text-blue-400 font-heading">
+              Progresso do <strong>Nível {level}</strong>
+            </span>
+            <span className="text-amber-600 dark:text-amber-400 font-heading">
+              Faltam <strong className="font-extrabold">{xpForNextLevel} XP</strong> para o <strong className="font-extrabold">Nível {level + 1}</strong> ⭐
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-            {/* Word & Pronunciation */}
-            <div className="md:col-span-1 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-700 pb-4 md:pb-0 md:pr-6">
-              <div className="flex items-center gap-3 mb-1">
-                <h3 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                  {wordOfTheDay.word}
-                </h3>
-                <button
-                  onClick={() => speakWord(wordOfTheDay.word)}
-                  disabled={isPlayingAudio}
-                  aria-label="Ouvir pronúncia"
-                  className="w-10 h-10 rounded-xl bg-primary-100 dark:bg-primary-950 text-primary-600 dark:text-primary-400 flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer"
-                >
-                  <Volume2 size={20} className={isPlayingAudio ? 'animate-pulse' : ''} />
-                </button>
-              </div>
+          <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
+            <div 
+              className="h-full bg-blue-500 rounded-full transition-all duration-500"
+              style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
+            />
+          </div>
+        </div>
+      </section>
 
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold px-2.5 py-1 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 uppercase">
-                  {wordOfTheDay.type}
+      {/* -------------------------------------------------------------------------- */}
+      {/* 2. MISSÃO DO DIA (Daily Goal Card)                                        */}
+      {/* -------------------------------------------------------------------------- */}
+      <section className="card-3d p-6 border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/30 dark:bg-amber-950/20 relative overflow-hidden">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              {totalDue > 0 ? <Target size={24} /> : <Trophy size={24} />}
+            </div>
+            <div>
+              <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
+                <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-heading font-bold px-2.5 py-0.5 rounded-full">
+                  {totalDue > 0 ? '🎯 Missão de Hoje' : '🏆 Missão Cumprida'}
+                </span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  <strong>+10 XP</strong> por acerto
                 </span>
               </div>
-
-              <div className="text-base font-extrabold text-primary-600 dark:text-primary-400">
-                🇧🇷 {wordOfTheDay.translation}
-              </div>
-            </div>
-
-            {/* Definition & Example */}
-            <div className="md:col-span-2 space-y-3">
-              <div>
-                <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-1">
-                  Definição
-                </h4>
-                <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                  {wordOfTheDay.definition}
-                </p>
-              </div>
-
-              <div className="bg-white/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700">
-                <h4 className="text-xs font-black uppercase tracking-wider text-primary-600 dark:text-primary-400 mb-1">
-                  Exemplo de Uso
-                </h4>
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 italic">
-                  "{wordOfTheDay.example}"
-                </p>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">
-                  {wordOfTheDay.exampleTranslation}
-                </p>
-              </div>
+              <h2 className="text-xl sm:text-2xl font-heading font-bold text-slate-900 dark:text-white">
+                {totalDue > 0 ? (
+                  <span>
+                    <strong className="text-amber-600 dark:text-amber-400">{totalDue} cards</strong> precisam de revisão agora
+                  </span>
+                ) : (
+                  <span>Nenhum card pendente por hoje!</span>
+                )}
+              </h2>
+              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-medium mt-0.5">
+                {totalDue > 0 ? (
+                  <span>
+                    Complete sua meta diária de <strong className="text-slate-800 dark:text-white">repetição espaçada</strong> e mantenha seu <strong className="text-amber-600 dark:text-amber-400">streak ativo</strong>! 🔥
+                  </span>
+                ) : (
+                  <span>
+                    Você está invicto(a)! Aproveite para adicionar <strong className="text-slate-800 dark:text-white">novos baralhos</strong> ou praticar vocabulário.
+                  </span>
+                )}
+              </p>
             </div>
           </div>
-        </Card>
-      </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-        <StatCard 
-          icon={<Clock className="text-amber-500" size={28} />} 
-          label="Para Revisar" 
-          value={totalDue} 
-          highlight={totalDue > 0}
-          onClick={() => totalDue > 0 && navigate('/study/all')}
-        />
-        <StatCard 
-          icon={<Calendar className="text-sky-500" size={28} />} 
-          label="Aprendido na Semana" 
-          value={weeklyLearned} 
-        />
-        <StatCard 
-          icon={<Trophy className="text-emerald-500" size={28} />} 
-          label="Total Aprendido" 
-          value={totalLearned} 
-        />
-      </div>
+          {totalDue > 0 ? (
+            <Button 
+              variant="orange" 
+              size="md" 
+              onClick={() => navigate('/study/all')}
+              className="shrink-0 w-full sm:w-auto"
+            >
+              Começar Missão Diária 🔥
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => navigate('/store')}
+              className="shrink-0 w-full sm:w-auto"
+            >
+              Explorar Loja de Decks ✨
+            </Button>
+          )}
+        </div>
+      </section>
 
-      {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        
-        {/* Deck List Section (2 cols) */}
-        <section className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <h2 className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-                Meus Baralhos
-              </h2>
-              <span className="text-xs font-black uppercase tracking-wider text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-950 px-3 py-1 rounded-xl border border-primary-300 dark:border-primary-800">
-                {decks.length} ativos
+      {/* -------------------------------------------------------------------------- */}
+      {/* 3. PALAVRA DO DIA & MÉTRICAS                                              */}
+      {/* -------------------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* Palavra do Dia (Card Estilizado e Harmonioso) */}
+        <section className="lg:col-span-2 card-3d p-6 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 flex flex-col justify-between">
+          <div>
+            {/* Header da Palavra do Dia */}
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3 mb-5">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-heading font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1 rounded-full border border-blue-200/80 dark:border-blue-800 flex items-center gap-1.5 shadow-xs">
+                  <span>📖</span> Palavra do Dia
+                </span>
+              </div>
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 capitalize flex items-center gap-1.5">
+                <Calendar size={13} className="text-slate-400" />
+                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex gap-1 border border-slate-200 dark:border-slate-700">
-                <button 
-                  onClick={() => setViewMode('grid')}
-                  aria-label="Modo Grade"
-                  className={`p-1.5 rounded-lg border-none flex cursor-pointer transition-all ${
-                    viewMode === 'grid' ? 'bg-white dark:bg-slate-700 text-primary-500 shadow-sm' : 'text-slate-400'
-                  }`}
-                >
-                  <LayoutGrid size={18} />
-                </button>
-                <button 
-                  onClick={() => setViewMode('list')}
-                  aria-label="Modo Lista"
-                  className={`p-1.5 rounded-lg border-none flex cursor-pointer transition-all ${
-                    viewMode === 'list' ? 'bg-white dark:bg-slate-700 text-primary-500 shadow-sm' : 'text-slate-400'
-                  }`}
-                >
-                  <List size={18} />
-                </button>
+            {/* Conteúdo Principal */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              {/* Coluna Esquerda: Palavra, Pronúncia, Tipo e Tradução */}
+              <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700/80 pb-5 md:pb-0 md:pr-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <h3 className="text-3xl sm:text-4xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
+                    {wordOfTheDay.word}
+                  </h3>
+                  <button
+                    onClick={() => speakWord(wordOfTheDay.word)}
+                    disabled={isPlayingAudio}
+                    aria-label="Ouvir pronúncia"
+                    title="Ouvir Pronúncia"
+                    className="w-10 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
+                  >
+                    <Volume2 size={19} className={isPlayingAudio ? 'animate-pulse' : ''} />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-heading font-bold px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60 inline-block">
+                    {wordOfTheDay.type}
+                  </span>
+                  <div className="text-sm font-heading font-bold text-blue-600 dark:text-blue-400">
+                    🇧🇷 {wordOfTheDay.translation}
+                  </div>
+                </div>
               </div>
 
-              <div className="relative" ref={sortRef}>
-                <button 
-                  onClick={() => setIsSortOpen(!isSortOpen)}
-                  className="bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-extrabold text-slate-700 dark:text-slate-200 flex items-center gap-2 shadow-3d-slate cursor-pointer"
-                >
-                  <ArrowUpDown size={14} /> {sortOptions.find(o => o.value === sortBy)?.label}
-                </button>
-                {isSortOpen && (
-                  <div className="absolute top-full right-0 mt-2 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-10 min-w-[180px] p-1.5">
-                    {sortOptions.map(opt => (
-                      <div 
-                        key={opt.value}
-                        onClick={() => { setSortBy(opt.value); setIsSortOpen(false) }}
-                        className={`p-2.5 rounded-xl cursor-pointer text-xs font-bold transition-colors ${
-                          sortBy === opt.value ? 'bg-primary-50 text-primary-600 dark:bg-slate-700 dark:text-primary-400' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
-                        }`}
-                      >
-                        {opt.label}
-                      </div>
-                    ))}
+              {/* Coluna Direita: Definição e Exemplo em Contexto */}
+              <div className="md:col-span-7 space-y-3">
+                <div>
+                  <h4 className="text-[11px] font-heading font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                    Definição
+                  </h4>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug">
+                    {wordOfTheDay.definition}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] font-heading font-bold text-amber-600 dark:text-amber-400">
+                    <Sparkles size={12} />
+                    <span>Exemplo no Dia a Dia</span>
                   </div>
-                )}
+                  <p className="text-sm font-bold text-slate-900 dark:text-white italic">
+                    "{wordOfTheDay.example}"
+                  </p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+                    {wordOfTheDay.exampleTranslation}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Cards de Métricas Rápidas */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="card-3d p-5 flex flex-col justify-between">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
+              <Calendar size={20} />
+            </div>
+            <div>
+              <div className="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">{weeklyLearned}</div>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Aprendidos na <strong className="text-slate-700 dark:text-slate-300">Semana</strong></div>
+            </div>
+          </div>
+
+          <div className="card-3d p-5 flex flex-col justify-between">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+              <Trophy size={20} />
+            </div>
+            <div>
+              <div className="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">{totalLearned}</div>
+              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Total <strong className="text-slate-700 dark:text-slate-300">Dominado</strong></div>
+            </div>
+          </div>
+
+          <div className="col-span-2 card-3d p-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-between shadow-xs">
+            <div>
+              <div className="text-xs font-bold opacity-90">Pronto para praticar?</div>
+              <div className="text-lg font-heading font-bold">Revisão Rápida Geral</div>
+            </div>
+            <Button 
+              variant="orange" 
+              size="sm" 
+              onClick={() => navigate('/study/all')}
+            >
+              Iniciar <ArrowRight size={14} />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* -------------------------------------------------------------------------- */}
+      {/* 4. MEUS BARALHOS & CAMINHO DE APRENDIZADO                                  */}
+      {/* -------------------------------------------------------------------------- */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <section className="lg:col-span-2 space-y-4">
+          {/* Header da Coleção (Estruturado em 2 níveis limpos) */}
+          <div className="space-y-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+            {/* Nível 1: Título e Ações Primárias */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  Meus Baralhos
+                </h2>
+                <span className="text-xs font-heading font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-xs">
+                  <strong>{decks.length}</strong> {decks.length === 1 ? 'baralho' : 'baralhos'}
+                </span>
+              </div>
+
+              {/* Botões de Ação Principais (Importar e Novo Baralho) */}
+              <div className="flex items-center gap-2.5">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => document.getElementById('anki-dashboard-import')?.click()} 
+                  disabled={importing}
+                >
+                  <FileUp size={15} /> Importar
+                </Button>
+                <input type="file" id="anki-dashboard-import" accept=".apkg,.zip" className="hidden" onChange={handleFileSelect} />
+
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={() => setShowCreate(true)}
+                >
+                  <Plus size={16} /> Novo Baralho
+                </Button>
+              </div>
+            </div>
+
+            {/* Nível 2: Barra de Filtros e Visualização */}
+            <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                Organizar por:
+              </span>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                  className="h-9 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 px-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer shadow-xs"
+                  title="Ordenar Baralhos"
+                >
+                  <option value="newest">Mais Recentes</option>
+                  <option value="due">Pendentes Primeiro</option>
+                  <option value="alpha">A-Z</option>
+                  <option value="cards">Mais Cards</option>
+                </select>
+
+                <div className="h-9 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-xs">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 shadow-xs text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                    title="Modo Grade"
+                  >
+                    <LayoutGrid size={15} />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-xs text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                    title="Modo Lista"
+                  >
+                    <List size={15} />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
+          {/* Grid de Baralhos Táteis */}
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="skeleton h-44 rounded-3xl" />
+                <div key={i} className="card-3d h-48 animate-pulse bg-slate-100/60" />
               ))}
             </div>
-          ) : sortedDecks.length === 0 ? (
-            <EmptyState
-              icon="✨"
-              title="Comece sua jornada"
-              description="Crie seu primeiro baralho de estudos e veja seu progresso decolar!"
-              action={<Button variant="primary" size="md" onClick={() => setShowCreate(true)}><Plus size={20} /> Criar Baralho</Button>}
-            />
+          ) : decks.length === 0 ? (
+            <div className="card-3d p-12 text-center space-y-4">
+              <div className="w-16 h-16 mx-auto rounded-3xl bg-aura-soft-blue text-aura-blue flex items-center justify-center text-3xl shadow-sm">
+                📚
+              </div>
+              <h3 className="text-xl font-heading font-black text-aura-text-primary">
+                Nenhum baralho criado ainda
+              </h3>
+              <p className="text-sm font-bold text-aura-text-secondary max-w-md mx-auto">
+                Crie seu primeiro baralho de flashcards ou importe um arquivo .apkg do Anki para começar a memorização acelerada!
+              </p>
+              <Button variant="orange" size="md" onClick={() => setShowCreate(true)}>
+                <Plus size={16} /> Criar Meu Primeiro Baralho
+              </Button>
+            </div>
           ) : (
-            <div className={
-              viewMode === 'grid' 
-                ? 'grid grid-cols-1 sm:grid-cols-2 gap-4'
-                : 'flex flex-col gap-3'
-            }>
-              {sortedDecks.map((deck) => (
-                <DeckCard 
-                  key={deck.id} 
-                  deck={deck} 
-                  stats={statsMap[deck.id]} 
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 gap-5' : 'space-y-4'}>
+              {sortedDecks.map(deck => (
+                <DeckCard
+                  key={deck.id}
+                  deck={deck}
+                  stats={statsMap[deck.id]}
                   viewMode={viewMode}
                   onDelete={() => handleDelete(deck.id, deck.name)}
                   onClick={() => navigate(statsMap[deck.id]?.due > 0 ? `/study/${deck.id}` : `/deck/${deck.id}`)}
@@ -525,107 +602,105 @@ export function DashboardPage() {
           )}
         </section>
 
-        {/* Sidebar Section (1 col) */}
+        {/* -------------------------------------------------------------------------- */}
+        {/* 5. SIDEBAR: HEATMAP & RANKING GLOBAL                                      */}
+        {/* -------------------------------------------------------------------------- */}
         <aside className="space-y-6">
-          {/* Dica de Estudo */}
-          <Card variant="base" className="bg-primary-500 text-white border-primary-600 shadow-3d-primary p-5">
-            <div className="flex items-center gap-2 mb-2 font-black text-sm uppercase tracking-wider">
-              <Sparkles size={18} /> Dica de Aprendizado
-            </div>
-            <p className="text-xs font-bold leading-relaxed opacity-95">
-              Estudar pequenos blocos todos os dias é 10x mais eficiente do que estudar horas em um único dia. Mantenha sua ofensiva!
-            </p>
-          </Card>
-
           {/* Dias Estudados Heatmap */}
-          <Card variant="base" className="p-5">
-            <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 mb-4 flex items-center gap-2">
-              <Calendar size={18} className="text-primary-500" /> Dias Estudados
+          <div className="card-3d p-5">
+            <h2 className="text-sm font-heading font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+              <Calendar size={18} className="text-blue-600 dark:text-blue-400" /> Constância Diária
             </h2>
             <StudyHeatmap activity={activity} />
-          </Card>
+          </div>
 
-          {/* Mini Ranking Sidebar */}
-          <Card variant="base" className="p-5">
+          {/* Mini Ranking dos Campeões */}
+          <div className="card-3d p-5">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Trophy size={18} className="text-amber-500" /> Top 5 Global
+              <h2 className="text-sm font-heading font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                <Trophy size={18} className="text-amber-500" /> Liga dos Campeões
               </h2>
               <button 
                 onClick={() => navigate('/ranking')} 
-                className="text-xs font-extrabold text-primary-500 hover:underline border-none bg-transparent cursor-pointer"
+                className="text-xs font-heading font-bold text-blue-600 dark:text-blue-400 hover:underline border-none bg-transparent cursor-pointer"
               >
-                Ver Todos
+                Ver Ranking →
               </button>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {rankingLoading ? (
-                [1, 2, 3].map(i => <div key={i} className="skeleton h-10 rounded-xl" />)
+                [1, 2, 3].map(i => <div key={i} className="h-10 rounded-xl bg-slate-100 dark:bg-slate-700 animate-pulse" />)
               ) : (
                 ranking.map((u, idx) => (
-                  <div key={idx} className="flex items-center gap-3">
-                    <span className={`w-5 text-center font-black text-xs ${idx === 0 ? 'text-amber-500' : 'text-slate-400'}`}>
+                  <div key={idx} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                    <span className={`w-5 text-center font-heading font-extrabold text-xs ${
+                      idx === 0 ? 'text-amber-500' : 
+                      idx === 1 ? 'text-slate-400' : 
+                      idx === 2 ? 'text-amber-700' : 'text-slate-400'
+                    }`}>
                       {idx + 1}º
                     </span>
-                    <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center text-sm border border-slate-200 dark:border-slate-600">
+                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-sm shadow-xs">
                       {AVATARS[u.avatar_id] || '👤'}
                     </div>
-                    <span className="flex-1 font-extrabold text-xs text-slate-800 dark:text-slate-200 truncate">
+                    <span className="flex-1 font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
                       {u.nickname || u.name}
                     </span>
-                    <span className="font-black text-xs text-slate-900 dark:text-slate-100">
-                      {u.xp} XP
+                    <span className="font-heading font-bold text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200/60 dark:border-blue-800">
+                      <strong>{u.xp}</strong> XP
                     </span>
                   </div>
                 ))
               )}
             </div>
-          </Card>
+          </div>
         </aside>
       </div>
 
-      {/* Modals */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="✨ Novo Baralho">
+      {/* -------------------------------------------------------------------------- */}
+      {/* MODALS                                                                     */}
+      {/* -------------------------------------------------------------------------- */}
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="✨ Novo Baralho de Estudo">
         <div className="space-y-4 py-2">
           <div>
-            <label className="block text-xs font-black uppercase text-slate-500 mb-2">
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
               Nome do Baralho
             </label>
             <input
-              placeholder="Ex: Inglês — Verbos Irregulares"
+              placeholder="Ex: Inglês — Vocabulário Essencial"
               value={deckName}
               onChange={e => setDeckName(e.target.value)}
               autoFocus
-              className="input-gamified"
+              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all"
               onKeyDown={e => { if (e.key === 'Enter') handleCreate() }}
             />
           </div>
-          <div className="flex gap-3 justify-end pt-2">
+          <div className="flex gap-2.5 justify-end pt-2">
             <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button variant="primary" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
-              Criar Agora
+            <Button variant="orange" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
+              Criar Baralho 🚀
             </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={showImportModal} onClose={() => !importing && setShowImportModal(false)} title="📥 Importar do Anki">
+      <Modal open={showImportModal} onClose={() => !importing && setShowImportModal(false)} title="📥 Importar do Anki (.apkg)">
         <div className="space-y-4">
-          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">
-            O Aura English App vai converter seus cards do Anki automaticamente. Como deseja chamar este novo baralho?
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            O AuraUP vai converter seus cards, imagens e áudios do Anki automaticamente. Como deseja chamar este novo baralho?
           </p>
           <input
             value={importDeckName}
             onChange={e => setImportDeckName(e.target.value)}
             placeholder="Nome do baralho importado"
             disabled={importing}
-            className="input-gamified"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all"
           />
-          <div className="flex gap-3 justify-end pt-2">
+          <div className="flex gap-2.5 justify-end pt-2">
             <Button variant="ghost" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
             <Button variant="primary" loading={importing} onClick={handleImportConfirm}>
-              Começar Importação
+              Começar Importação ⚡
             </Button>
           </div>
         </div>
@@ -633,23 +708,5 @@ export function DashboardPage() {
 
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
-  )
-}
-
-function StatCard({ icon, label, value, highlight, onClick }: any) {
-  return (
-    <Card 
-      onClick={onClick}
-      variant={highlight ? 'active' : 'interactive'}
-      className="flex items-center gap-4 p-5"
-    >
-      <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-700/60 flex items-center justify-center shrink-0 border border-slate-200 dark:border-slate-600">
-        {icon}
-      </div>
-      <div>
-        <div className="text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">{value}</div>
-        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</div>
-      </div>
-    </Card>
   )
 }

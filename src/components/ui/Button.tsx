@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'gold' | 'purple' | 'ghost' | 'vibrant'
+  variant?: 'primary' | 'secondary' | 'danger' | 'success' | 'warning' | 'orange' | 'reward' | 'gold' | 'ghost' | 'vibrant' | 'icon'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
   loading?: boolean
@@ -18,24 +18,26 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseClasses = 'font-label font-semibold tracking-wide transition-all duration-200 select-none cursor-pointer inline-flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none disabled:transform-none'
+  const baseClasses = 'font-heading font-bold select-none cursor-pointer inline-flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:pointer-events-none disabled:transform-none shrink-0'
 
   const sizeClasses = {
-    sm: 'text-xs px-3.5 py-1.5 rounded-xl',
-    md: 'text-sm px-5 py-2.5 rounded-xl',
-    lg: 'text-base px-7 py-3.5 rounded-xl',
+    sm: 'h-10 px-4 text-xs sm:text-sm rounded-xl',
+    md: 'h-11 px-5 text-sm rounded-xl',
+    lg: 'h-12 px-6 text-base rounded-xl',
   }[size]
 
   const variantClasses = {
-    primary: 'btn-primary-glass',
-    secondary: 'btn-secondary-glass',
-    danger: 'bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100/80 hover:scale-[1.02] active:scale-95',
-    success: 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-[1.02] active:scale-95 shadow-sm',
-    warning: 'bg-orange-500 text-white hover:bg-orange-600 hover:scale-[1.02] active:scale-95 shadow-sm',
-    gold: 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100/80 hover:scale-[1.02] active:scale-95',
-    purple: 'btn-primary-glass',
-    vibrant: 'btn-primary-glass',
-    ghost: 'bg-transparent text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 border-none active:scale-95',
+    primary: 'btn-3d-blue',
+    vibrant: 'btn-3d-blue',
+    secondary: 'btn-3d-white',
+    orange: 'btn-3d-orange',
+    reward: 'btn-3d-orange',
+    warning: 'btn-3d-orange',
+    gold: 'btn-3d-orange',
+    success: 'btn-3d-green',
+    danger: 'btn-3d-red',
+    icon: 'btn-3d-icon !p-0 w-10 h-10 !rounded-xl',
+    ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50/80 dark:hover:bg-slate-800 border-none active:scale-95 transition-all',
   }[variant]
 
   const widthClass = fullWidth ? 'w-full' : 'w-auto'

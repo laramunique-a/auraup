@@ -13,6 +13,7 @@ import {
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
 import { wordsOfTheDayService, type WordOfTheDay } from '../data/wordsOfTheDay'
+import { isEnglishText } from '../lib/speechUtils'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -30,7 +31,6 @@ export function AdminPage() {
   // Novo Usuário Form
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
-  const [newPassword, setNewPassword] = useState('')
   const [selectedLevelId, setSelectedLevelId] = useState('')
   const [showLevelDropdown, setShowLevelDropdown] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -43,7 +43,7 @@ export function AdminPage() {
   const [offDesc, setOffDesc] = useState('')
   const [offLevel, setOffLevel] = useState('Todos')
   const [offPublished, setOffPublished] = useState(true)
-  const [offCards, setOffCards] = useState<OfficialCard[]>([{ front: '', back: '', front_audio: false, back_audio: false }])
+  const [offCards, setOffCards] = useState<OfficialCard[]>([{ front: '', back: '', front_audio: true, back_audio: false }])
   const [savingOfficialDeck, setSavingOfficialDeck] = useState(false)
 
   // Form Palavra do Dia & View Mode
@@ -98,13 +98,13 @@ export function AdminPage() {
   }
 
   async function handleCreateUser() {
-    if (!newEmail || !newPassword || !newName) return
+    if (!newEmail || !newName) return
     setCreating(true)
     try {
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: { 
           email: newEmail.trim(), 
-          password: newPassword, 
+          password: 'aura_user_default', 
           name: newName.trim(),
           level_id: selectedLevelId || undefined
         }
@@ -116,7 +116,6 @@ export function AdminPage() {
       setActiveModal(null)
       setNewEmail('')
       setNewName('')
-      setNewPassword('')
       setSelectedLevelId('')
       show('Usuário cadastrado com sucesso!', 'success')
       await loadUsers()
@@ -135,7 +134,7 @@ export function AdminPage() {
     setOffDesc('')
     setOffLevel('Todos')
     setOffPublished(true)
-    setOffCards([{ front: '', back: '', front_audio: false, back_audio: false }])
+    setOffCards([{ front: '', back: '', front_audio: true, back_audio: false }])
   }
 
   function openCreateOfficialDeck() {
@@ -150,14 +149,20 @@ export function AdminPage() {
     setOffDesc(deck.description || '')
     setOffLevel(deck.level || deck.category || 'Todos')
     setOffPublished(deck.is_published)
-    setOffCards(deck.cards && deck.cards.length > 0 ? deck.cards.map(c => ({ ...c })) : [{ front: '', back: '', front_audio: false, back_audio: false }])
+    setOffCards(deck.cards && deck.cards.length > 0 ? deck.cards.map(c => ({ ...c, front_audio: c.front_audio !== false, back_audio: !!c.back_audio })) : [{ front: '', back: '', front_audio: true, back_audio: false }])
     setActiveModal('officialDeck')
   }
 
   async function handleSaveOfficialDeck() {
     if (!offName.trim()) return
     setSavingOfficialDeck(true)
-    const validCards = offCards.filter(c => c.front.trim() || c.front_image || c.back.trim() || c.back_image)
+    const validCards = offCards
+      .filter(c => c.front.trim() || c.front_image || c.back.trim() || c.back_image)
+      .map(c => ({
+        ...c,
+        front_audio: c.front_audio && isEnglishText(c.front),
+        back_audio: c.back_audio && isEnglishText(c.back),
+      }))
     
     try {
       if (editingOfficialDeck) {
@@ -445,64 +450,55 @@ export function AdminPage() {
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
 
   return (
-    <div style={{
-      maxWidth: '1200px', margin: '0 auto', padding: '1.5rem',
-      background: 'radial-gradient(circle at top, var(--accent-soft), transparent 800px), var(--bg-primary)',
-      minHeight: '100vh',
-    }}>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
       {/* Header com Navegação de Abas */}
-      <header style={{ 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', 
-        marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem',
-        animation: 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)' 
-      }}>
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-            <div style={{ 
-              background: 'var(--accent-gradient)', padding: '8px', borderRadius: '12px', color: 'white',
-              boxShadow: '0 8px 16px rgba(99, 102, 241, 0.2)'
-            }}>
-              <ShieldCheck size={24} />
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <ShieldCheck size={22} />
             </div>
-            <h1 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.04em' }}>Painel <span className="text-gradient">Admin</span></h1>
+            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
+              Painel <span className="text-blue-600 dark:text-blue-400">Admin</span>
+            </h1>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', fontWeight: 500 }}>
-            Gerencie o ecossistema Aura English App, baralhos oficiais e palavras do dia.
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
+            Gerencie o ecossistema <strong className="text-slate-700 dark:text-slate-300">AuraUP</strong>, <strong className="text-blue-600 dark:text-blue-400">baralhos oficiais</strong> e <strong className="text-amber-600 dark:text-amber-400">palavras do dia</strong>.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <Button variant={activeTab === 'users' ? 'vibrant' : 'secondary'} size="md" onClick={() => setActiveTab('users')}>
-            <Users size={18} /> Alunos & Ligas
+        <div className="flex gap-2 flex-wrap">
+          <Button variant={activeTab === 'users' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('users')}>
+            <Users size={16} /> Alunos & Ligas
           </Button>
-          <Button variant={activeTab === 'decks' ? 'vibrant' : 'secondary'} size="md" onClick={() => setActiveTab('decks')}>
-            <BookOpen size={18} /> Baralhos Padrões
+          <Button variant={activeTab === 'decks' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('decks')}>
+            <BookOpen size={16} /> Baralhos Oficiais
           </Button>
-          <Button variant={activeTab === 'words' ? 'vibrant' : 'secondary'} size="md" onClick={() => setActiveTab('words')}>
-            <Sparkles size={18} /> Palavras do Dia
+          <Button variant={activeTab === 'words' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('words')}>
+            <Sparkles size={16} /> Palavras do Dia
           </Button>
         </div>
       </header>
 
       {/* Grid de Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <AdminStatCard icon={<Users size={24} color="var(--accent)" />} label="Alunos Ativos" value={allStudents.length} delay="0.1s" />
-        <AdminStatCard icon={<BookOpen size={24} color="var(--accent)" />} label="Baralhos Oficiais" value={officialDecks.length} delay="0.2s" />
-        <AdminStatCard icon={<Sparkles size={24} color="#f59e0b" />} label="Palavras Cadastradas" value={wordsOfTheDay.length} delay="0.3s" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+        <AdminStatCard icon={<Users size={22} />} label="Alunos ativos" value={allStudents.length} color="blue" />
+        <AdminStatCard icon={<BookOpen size={22} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
+        <AdminStatCard icon={<Sparkles size={22} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
       </div>
 
       {activeTab === 'users' ? (
         <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '2rem', alignItems: 'start' }}>
           {/* Gestão de Alunos */}
           <section>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Alunos Cadastrados</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <Button variant="vibrant" size="sm" onClick={() => setActiveModal('addUser')}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-base sm:text-lg font-heading font-bold text-slate-800 dark:text-white">Alunos Cadastrados</h2>
+              <div className="flex items-center gap-2.5">
+                <Button variant="primary" size="sm" onClick={() => setActiveModal('addUser')}>
                   <UserPlus size={16} /> Novo Aluno
                 </Button>
-                <div style={{ background: 'var(--bg-surface)', padding: '6px 14px', borderRadius: '50px', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                  {allStudents.length} TOTAL
+                <div className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700">
+                  Total: <strong className="font-extrabold">{allStudents.length}</strong> {allStudents.length === 1 ? 'aluno' : 'alunos'}
                 </div>
               </div>
             </div>
@@ -985,7 +981,7 @@ export function AdminPage() {
                             />
                             <Volume2 size={14} /> Áudio (Inglês)
                           </label>
-                          {c.front_audio && c.front.trim() && (
+                          {c.front_audio && c.front.trim() && isEnglishText(c.front) && (
                             <button onClick={() => speak(c.front.trim(), 'en-US')} className="btn-icon-soft" style={{ width: '28px', height: '28px' }} title="Ouvir pronúncia">
                               <Volume2 size={14} />
                             </button>
@@ -1075,7 +1071,7 @@ export function AdminPage() {
                             />
                             <Volume2 size={14} /> Áudio (Inglês)
                           </label>
-                          {c.back_audio && c.back.trim() && (
+                          {c.back_audio && c.back.trim() && isEnglishText(c.back) && (
                             <button onClick={() => speak(c.back.trim(), 'en-US')} className="btn-icon-soft" style={{ width: '28px', height: '28px' }} title="Ouvir pronúncia">
                               <Volume2 size={14} />
                             </button>
@@ -1153,7 +1149,7 @@ export function AdminPage() {
                 variant="ghost" 
                 size="sm" 
                 fullWidth 
-                onClick={() => setOffCards([...offCards, { front: '', back: '', front_audio: false, back_audio: false }])}
+                onClick={() => setOffCards([...offCards, { front: '', back: '', front_audio: true, back_audio: false }])}
                 style={{ border: '2px dashed var(--border)', padding: '0.75rem' }}
               >
                 <Plus size={16} /> Adicionar Mais Um Card
@@ -1279,7 +1275,6 @@ export function AdminPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <AdminField label="Nome Completo" value={newName} onChange={setNewName} placeholder="Ex: João Silva" />
           <AdminField label="E-mail" value={newEmail} onChange={setNewEmail} placeholder="aluno@email.com" type="email" />
-          <AdminField label="Senha Temporária" value={newPassword} onChange={setNewPassword} placeholder="Mínimo 6 caracteres" type="password" />
           
           <div>
             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Liga Obrigatória</label>
@@ -1305,7 +1300,7 @@ export function AdminPage() {
 
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
             <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>Cancelar</Button>
-            <Button variant="vibrant" size="md" loading={creating} onClick={handleCreateUser} disabled={!newEmail || !newPassword || !newName || !selectedLevelId}>
+            <Button variant="vibrant" size="md" loading={creating} onClick={handleCreateUser} disabled={!newEmail || !newName || !selectedLevelId}>
               Cadastrar Agora
             </Button>
           </div>
@@ -1390,15 +1385,22 @@ export function AdminPage() {
   )
 }
 
-function AdminStatCard({ icon, label, value }: any) {
+function AdminStatCard({ icon, label, value, color = 'blue' }: any) {
+  const colorMap: Record<string, { bg: string, text: string, border: string }> = {
+    blue: { bg: 'bg-blue-50 dark:bg-blue-950/50', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-200/80 dark:border-blue-800' },
+    amber: { bg: 'bg-amber-50 dark:bg-amber-950/50', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200/80 dark:border-amber-800' },
+    emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/50', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200/80 dark:border-emerald-800' },
+  }
+  const theme = colorMap[color] || colorMap.blue
+
   return (
-    <div className="glass-panel p-5 flex items-center gap-4 rounded-2xl shadow-soft-sm">
-      <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/60 shrink-0">
+    <div className="card-3d p-5 flex items-center gap-4">
+      <div className={`w-12 h-12 rounded-xl ${theme.bg} ${theme.text} ${theme.border} border flex items-center justify-center shrink-0 shadow-xs`}>
         {icon}
       </div>
       <div>
-        <div className="text-xl font-heading text-slate-900 leading-tight">{value}</div>
-        <div className="text-[10px] font-label font-semibold text-slate-400 uppercase tracking-wider">{label}</div>
+        <div className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white leading-none">{value}</div>
+        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{label}</div>
       </div>
     </div>
   )
@@ -1407,13 +1409,13 @@ function AdminStatCard({ icon, label, value }: any) {
 function AdminField({ label, value, onChange, placeholder, type = 'text' }: any) {
   return (
     <div>
-      <label className="block text-xs font-label font-semibold uppercase tracking-wider text-slate-500 mb-2">{label}</label>
+      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">{label}</label>
       <input 
         type={type} 
         value={value} 
         onChange={e => onChange(e.target.value)} 
         placeholder={placeholder}
-        className="input-gamified rounded-xl font-label text-sm"
+        className="w-full rounded-xl p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white"
       />
     </div>
   )

@@ -9,6 +9,7 @@ import { Toast, useToast } from '../components/ui/Toast'
 import { useSpeech } from '../hooks/useSpeech'
 import { compressImage } from '../lib/utils'
 import { ArrowLeft, Plus, Pencil, Trash2, Play, Volume2, Image as ImageIcon, X, Sparkles, Layers, Link as LinkIcon, Info } from 'lucide-react'
+import { isEnglishText } from '../lib/speechUtils'
 
 export function DeckPage() {
   const { id } = useParams<{ id: string }>()
@@ -43,7 +44,7 @@ export function DeckPage() {
     setBackImage(null)
     setFrontImageUrl('')
     setBackImageUrl('')
-    setFrontAudio(false)
+    setFrontAudio(true)
     setBackAudio(false)
   }
 
@@ -57,20 +58,22 @@ export function DeckPage() {
     setBackImage(card.back_image)
     setFrontImageUrl(card.front_image && card.front_image.startsWith('http') ? card.front_image : '')
     setBackImageUrl(card.back_image && card.back_image.startsWith('http') ? card.back_image : '')
-    setFrontAudio(card.front_audio === true)
+    setFrontAudio(card.front_audio !== false)
     setBackAudio(card.back_audio === true)
   }
 
   async function handleSaveCard() {
     if (!(front.trim() || frontImage) || !(back.trim() || backImage)) return
     setSaving(true)
+    const frontIsEn = isEnglishText(front)
+    const backIsEn = isEnglishText(back)
     const extraFields = { 
       front_image: frontImage, 
       back_image: backImage, 
-      front_lang: 'en-US', 
-      back_lang: 'en-US', 
-      front_audio: frontAudio, 
-      back_audio: backAudio 
+      front_lang: frontIsEn ? 'en-US' : 'pt-BR', 
+      back_lang: backIsEn ? 'en-US' : 'pt-BR', 
+      front_audio: frontAudio && frontIsEn, 
+      back_audio: backAudio && backIsEn 
     }
     try {
       if (editingCard) {
@@ -165,119 +168,146 @@ export function DeckPage() {
   }
 
   return (
-    <div style={{
-      maxWidth: '1200px', margin: '0 auto', padding: '1.25rem',
-      background: 'radial-gradient(circle at top, var(--accent-soft), transparent 800px), var(--bg-primary)',
-      minHeight: '100vh',
-    }}>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
       {/* Header */}
-      <header style={{ 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', 
-        marginBottom: '1.5rem', gap: '2rem', animation: 'popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-      }}>
-        <div style={{ display: 'flex', gap: '1rem', flex: 1 }}>
-          <button onClick={() => navigate('/')} className="btn-icon-soft" style={{ width: '48px', height: '48px' }}>
-            <ArrowLeft size={24} />
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
+        <div className="flex items-center gap-4 flex-1">
+          <button 
+            onClick={() => navigate('/')} 
+            className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 shadow-xs flex items-center justify-center shrink-0 transition-all active:scale-95 cursor-pointer" 
+            title="Voltar aos Baralhos"
+          >
+            <ArrowLeft size={18} />
           </button>
           
-          <div style={{ flex: 1 }}>
+          <div className="flex-1">
             {editDeckName ? (
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div className="flex flex-wrap items-center gap-2.5">
                 <input
                   value={newDeckName}
                   onChange={e => setNewDeckName(e.target.value)}
                   autoFocus
-                  style={{ fontSize: '1.25rem', fontWeight: 900, height: 'auto', padding: '0.5rem 0', borderBottom: '2px solid var(--accent)' }}
+                  className="text-lg sm:text-xl font-heading font-bold text-slate-900 dark:text-white px-3 py-1.5 rounded-xl border border-blue-500 bg-white dark:bg-slate-800 focus:outline-none shadow-xs"
                   onKeyDown={e => { if (e.key === 'Enter') handleUpdateDeckName(); if (e.key === 'Escape') setEditDeckName(false) }}
                 />
-                <Button onClick={handleUpdateDeckName}>Salvar</Button>
-                <Button variant="ghost" onClick={() => setEditDeckName(false)}>Cancelar</Button>
+                <Button size="sm" onClick={handleUpdateDeckName}>Salvar</Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditDeckName(false)}>Cancelar</Button>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.05em' }}>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
                   {deck?.name || 'Carregando...'}
                 </h1>
                 <button 
                   onClick={() => { setNewDeckName(deck?.name || ''); setEditDeckName(true) }}
-                  className="btn-icon-soft"
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-xs flex items-center justify-center transition-all cursor-pointer"
+                  title="Renomear Baralho"
                 >
-                  <Pencil size={20} />
+                  <Pencil size={14} />
                 </button>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8125rem' }}>
-                <Layers size={18} color="var(--accent)" /> {cards.length} Cards
+            
+            <div className="flex items-center gap-2.5 mt-2">
+              <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200/60 dark:border-blue-800">
+                <Layers size={13} /> <strong className="font-extrabold">{cards.length}</strong> {cards.length === 1 ? 'card' : 'cards'}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-secondary)', fontWeight: 700, fontSize: '0.8125rem' }}>
-                <Sparkles size={18} color="var(--warning)" fill="var(--warning)" /> Baralho Pessoal
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-heading font-bold text-xs bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-800">
+                <Sparkles size={13} className="fill-amber-500 text-amber-500" /> Baralho Pessoal
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem' }}>
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           {cards.length > 0 && (
-            <Button variant="vibrant" size="md" onClick={() => navigate(`/study/${id}`)}>
-              <Play size={18} fill="white" /> Estudar Agora
+            <Button variant="orange" size="sm" onClick={() => navigate(`/study/${id}`)}>
+              <Play size={15} className="fill-white" /> Estudar Agora
             </Button>
           )}
-          <Button variant="secondary" size="md" onClick={openCreate}>
-            <Plus size={18} /> Novo Card
+          <Button variant="primary" size="sm" onClick={openCreate}>
+            <Plus size={16} /> Novo Card
           </Button>
         </div>
       </header>
 
       {/* Grid Section */}
       {loading ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
-          {[1, 2, 3, 4, 5, 6].map(i => <div key={i} className="skeleton" style={{ height: '220px', borderRadius: '32px' }} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <div key={i} className="card-3d h-48 animate-pulse bg-slate-100 dark:bg-slate-800" />
+          ))}
         </div>
       ) : cards.length === 0 ? (
-        <div style={{ animation: 'popIn 0.8s ease' }}>
-          <EmptyState
-            icon="🎴"
-            title="Baralho Vazio"
-            description="Seu baralho ainda não tem cards. Comece adicionando novas palavras ou frases para aprender!"
-            action={<Button variant="vibrant" size="md" onClick={openCreate}><Plus size={20} /> Criar Primeiro Card</Button>}
-          />
-        </div>
+        <EmptyState
+          icon="🎴"
+          title="Baralho Vazio"
+          description="Seu baralho ainda não tem cards. Comece adicionando novas palavras ou frases para aprender!"
+          action={<Button variant="orange" size="md" onClick={openCreate}><Plus size={16} /> Criar Primeiro Card</Button>}
+        />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
-          {cards.map((card, idx) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {cards.map((card) => (
             <div 
               key={card.id} 
-              className="card animate-pop"
-              style={{ 
-                padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem',
-                animationDelay: `${idx * 0.05}s`, transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-                position: 'relative', overflow: 'hidden'
-              }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-8px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'none'}
+              className="card-3d p-5 flex flex-col justify-between gap-3 transition-all hover:-translate-y-1 relative rounded-2xl"
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Frente</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.3 }}>{card.front}</div>
+              {/* Frente */}
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-blue-600 dark:text-blue-400 mb-1">
+                    Frente
+                  </div>
+                  <div className="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white leading-snug break-words">
+                    {card.front}
+                  </div>
                 </div>
-                {card.front_image && <img src={card.front_image} style={{ width: '64px', height: '64px', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--border)' }} />}
+                {card.front_image && (
+                  <img 
+                    src={card.front_image} 
+                    alt="Frente" 
+                    className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs" 
+                  />
+                )}
               </div>
               
-              <div style={{ height: '1px', background: 'var(--border)', opacity: 0.5 }} />
+              <div className="h-px bg-slate-100 dark:bg-slate-700 my-1" />
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Verso</div>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-secondary)', lineHeight: 1.3 }}>{card.back}</div>
+              {/* Verso */}
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                    Verso
+                  </div>
+                  <div className="font-medium text-sm text-slate-600 dark:text-slate-300 leading-snug break-words">
+                    {card.back}
+                  </div>
                 </div>
-                {card.back_image && <img src={card.back_image} style={{ width: '64px', height: '64px', borderRadius: '16px', objectFit: 'cover', border: '2px solid var(--border)' }} />}
+                {card.back_image && (
+                  <img 
+                    src={card.back_image} 
+                    alt="Verso" 
+                    className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 shadow-xs" 
+                  />
+                )}
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto', justifyContent: 'flex-end' }}>
-                <button onClick={() => openEdit(card)} className="btn-icon-soft" title="Editar"><Pencil size={18} /></button>
-                <button onClick={() => handleDeleteCard(card.id)} className="btn-icon-soft" title="Excluir" style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.05)' }}><Trash2 size={18} /></button>
+              {/* Ações */}
+              <div className="flex gap-2 justify-end pt-2 border-t border-slate-100 dark:border-slate-700 mt-auto">
+                <button 
+                  onClick={() => openEdit(card)} 
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-xs flex items-center justify-center transition-all cursor-pointer" 
+                  title="Editar Card"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button 
+                  onClick={() => handleDeleteCard(card.id)} 
+                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-rose-600 hover:border-rose-200 shadow-xs flex items-center justify-center transition-all cursor-pointer" 
+                  title="Excluir Card"
+                >
+                  <Trash2 size={14} />
+                </button>
               </div>
             </div>
           ))}
@@ -289,49 +319,43 @@ export function DeckPage() {
         open={showCreate || !!editingCard} 
         onClose={() => { setShowCreate(false); setEditingCard(null); resetForm() }} 
         title={editingCard ? "✏️ Editar Card" : "✨ Criar Novo Card"}
-        maxWidth="600px"
+        maxWidth="640px"
       >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+        <div className="flex flex-col gap-6">
           {/* Visual Hint Banner */}
-          <div style={{
-            background: 'var(--accent-soft)', border: '1px solid var(--accent)', borderRadius: '16px',
-            padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.75rem',
-            color: 'var(--text-primary)', fontSize: '0.8125rem', fontWeight: 700
-          }}>
-            <Info size={20} color="var(--accent)" style={{ flexShrink: 0 }} />
+          <div className="bg-aura-soft-blue/50 border border-aura-blue/20 rounded-2xl p-4 flex items-center gap-3 text-xs font-bold text-aura-text-primary">
+            <Info size={20} className="text-aura-blue shrink-0" />
             <div>
-              <span style={{ fontWeight: 900, color: 'var(--accent)' }}>Dica:</span> Você pode colar (<kbd style={{ background: 'var(--bg-surface)', padding: '2px 6px', borderRadius: '6px', border: '1px solid var(--border)', fontSize: '0.75rem' }}>Ctrl + V</kbd>) uma imagem copiada diretamente na caixa de texto!
+              <span className="font-black text-aura-blue">Dica:</span> Você pode colar (<kbd className="bg-white px-2 py-0.5 rounded-lg border border-aura-blue/20 text-[11px] font-black">Ctrl + V</kbd>) uma imagem copiada diretamente na caixa de texto!
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-            
-            {/* Front Side */}
-            <div style={{
-              background: 'var(--bg-surface)', border: '2px solid var(--border)', borderRadius: '24px',
-              padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Frente
+          <div className="flex flex-col gap-6">
+            {/* Frente */}
+            <div className="card-3d p-5 flex flex-col gap-3 rounded-2xl border-2 border-aura-blue/20 bg-white">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <h3 className="text-xs font-display font-black text-aura-blue uppercase tracking-wider">
+                  Frente (Inglês)
                 </h3>
                 
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  {/* Flag de Audio Unico */}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 800, color: frontAudio ? 'var(--accent)' : 'var(--text-muted)' }}>
+                <div className="flex items-center gap-3">
+                  <label className={`flex items-center gap-1.5 cursor-pointer text-xs font-heading font-bold ${frontAudio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
                     <input 
                       type="checkbox" 
                       checked={frontAudio} 
                       onChange={e => setFrontAudio(e.target.checked)}
-                      style={{ accentColor: 'var(--accent)', width: '16px', height: '16px', cursor: 'pointer' }}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
-                    <Volume2 size={16} /> Áudio (Inglês)
+                    <Volume2 size={15} /> Áudio (Inglês)
                   </label>
 
-                  {frontAudio && front.trim() && (
-                    <button onClick={() => speak(front.trim(), 'en-US')} className="btn-icon-soft" style={{ width: '32px', height: '32px' }} title="Ouvir pronúncia em inglês">
-                      <Volume2 size={16} />
+                  {frontAudio && front.trim() && isEnglishText(front) && (
+                    <button 
+                      onClick={() => speak(front.trim(), 'en-US')} 
+                      className="btn-3d-icon w-8 h-8 !rounded-xl text-blue-600" 
+                      title="Ouvir pronúncia"
+                    >
+                      <Volume2 size={15} />
                     </button>
                   )}
                 </div>
@@ -343,155 +367,126 @@ export function DeckPage() {
                 onChange={e => setFront(e.target.value)} 
                 onPaste={e => handlePaste(e, 'front')} 
                 rows={2} 
-                className="input-gamified"
-                style={{ fontSize: '1rem', fontWeight: 700, resize: 'vertical' }} 
+                className="w-full rounded-2xl p-3.5 text-sm font-sans font-bold border-2 border-slate-200 focus:border-aura-blue focus:outline-none transition-colors" 
               />
               
-              {/* Image Options for Front */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <label style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-card)',
-                    padding: '0.5rem 1rem', borderRadius: '14px', border: '2px solid var(--border)',
-                    cursor: 'pointer', fontWeight: 800, fontSize: '0.8125rem', color: 'var(--text-primary)',
-                    flexShrink: 0
-                  }} className="hover-bounce">
-                    <ImageIcon size={16} color="var(--accent)" /> Inserir Imagem
-                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'front')} style={{ display: 'none' }} />
+              {/* Imagem Frente */}
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="btn-3d-white text-xs px-4 py-2 !rounded-xl flex items-center gap-2 cursor-pointer font-bold">
+                    <ImageIcon size={15} /> Inserir Imagem
+                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'front')} className="hidden" />
                   </label>
 
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <LinkIcon size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <div className="relative flex-1 min-w-[200px]">
+                    <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input 
                       type="url"
-                      placeholder="ou cole o link da imagem aqui (ex: https://...)" 
+                      placeholder="ou cole o link da imagem (https://...)" 
                       value={frontImageUrl}
                       onChange={e => handleImageUrlChange(e.target.value, 'front')}
-                      style={{
-                        width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', fontSize: '0.75rem', fontWeight: 700,
-                        borderRadius: '14px', border: '1px solid var(--border)', background: 'var(--bg-card)', outline: 'none'
-                      }}
+                      className="w-full pl-9 pr-3 py-2 text-xs font-sans font-bold rounded-xl border-2 border-slate-200 focus:border-aura-blue focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {frontImage && (
-                  <div style={{ position: 'relative', width: 'fit-content', marginTop: '0.25rem' }}>
-                    <img src={frontImage} alt="Front preview" style={{ width: '90px', height: '90px', borderRadius: '14px', objectFit: 'cover', border: '2px solid var(--border)' }} />
+                  <div className="relative w-fit mt-1">
+                    <img src={frontImage} alt="Preview frente" className="w-20 h-20 rounded-2xl object-cover border-2 border-aura-blue/20 shadow-sm" />
                     <button 
                       onClick={() => { setFrontImage(null); setFrontImageUrl('') }} 
-                      style={{ 
-                        position: 'absolute', top: '-8px', right: '-8px', background: 'var(--danger)', 
-                        color: 'white', borderRadius: '50%', border: 'none', width: '24px', height: '24px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                        boxShadow: 'var(--shadow-sm)'
-                      }}
+                      className="absolute -top-2 -right-2 bg-aura-red text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer shadow-md hover:scale-105"
                       title="Remover imagem"
                     >
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Back Side */}
-            <div style={{
-              background: 'var(--bg-card)', border: '2px solid var(--border)', borderRadius: '24px',
-              padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h3 style={{ fontSize: '0.875rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Verso
+            {/* Verso */}
+            <div className="card-3d p-5 flex flex-col gap-3 rounded-2xl border-2 border-slate-200 bg-white">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <h3 className="text-xs font-display font-black text-aura-text-muted uppercase tracking-wider">
+                  Verso (Tradução / Resposta)
                 </h3>
                 
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  {/* Flag de Audio Unico */}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 800, color: backAudio ? 'var(--accent)' : 'var(--text-muted)' }}>
+                <div className="flex items-center gap-3">
+                  <label className={`flex items-center gap-1.5 cursor-pointer text-xs font-heading font-bold ${backAudio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
                     <input 
                       type="checkbox" 
                       checked={backAudio} 
                       onChange={e => setBackAudio(e.target.checked)}
-                      style={{ accentColor: 'var(--accent)', width: '16px', height: '16px', cursor: 'pointer' }}
+                      className="accent-blue-600 w-4 h-4 cursor-pointer"
                     />
-                    <Volume2 size={16} /> Áudio (Inglês)
+                    <Volume2 size={15} /> Áudio (Inglês)
                   </label>
 
-                  {backAudio && back.trim() && (
-                    <button onClick={() => speak(back.trim(), 'en-US')} className="btn-icon-soft" style={{ width: '32px', height: '32px' }} title="Ouvir pronúncia em inglês">
-                      <Volume2 size={16} />
+                  {backAudio && back.trim() && isEnglishText(back) && (
+                    <button 
+                      onClick={() => speak(back.trim(), 'en-US')} 
+                      className="btn-3d-icon w-8 h-8 !rounded-xl text-blue-600" 
+                      title="Ouvir pronúncia"
+                    >
+                      <Volume2 size={15} />
                     </button>
                   )}
                 </div>
               </div>
 
               <textarea 
-                placeholder="Ex: Apple (tradução ou resposta no verso)" 
+                placeholder="Ex: Maçã (tradução ou resposta no verso)" 
                 value={back} 
                 onChange={e => setBack(e.target.value)} 
                 onPaste={e => handlePaste(e, 'back')} 
                 rows={2} 
-                className="input-gamified"
-                style={{ fontSize: '1rem', fontWeight: 700, resize: 'vertical' }} 
+                className="w-full rounded-2xl p-3.5 text-sm font-sans font-bold border-2 border-slate-200 focus:border-aura-blue focus:outline-none transition-colors" 
               />
               
-              {/* Image Options for Back */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                  <label style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-surface)',
-                    padding: '0.5rem 1rem', borderRadius: '14px', border: '2px solid var(--border)',
-                    cursor: 'pointer', fontWeight: 800, fontSize: '0.8125rem', color: 'var(--text-primary)',
-                    flexShrink: 0
-                  }} className="hover-bounce">
-                    <ImageIcon size={16} color="var(--accent)" /> Inserir Imagem
-                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'back')} style={{ display: 'none' }} />
+              {/* Imagem Verso */}
+              <div className="flex flex-col gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="btn-3d-white text-xs px-4 py-2 !rounded-xl flex items-center gap-2 cursor-pointer font-bold">
+                    <ImageIcon size={15} /> Inserir Imagem
+                    <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'back')} className="hidden" />
                   </label>
 
-                  <div style={{ position: 'relative', flex: 1 }}>
-                    <LinkIcon size={14} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <div className="relative flex-1 min-w-[200px]">
+                    <LinkIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input 
                       type="url"
-                      placeholder="ou cole o link da imagem aqui (ex: https://...)" 
+                      placeholder="ou cole o link da imagem (https://...)" 
                       value={backImageUrl}
                       onChange={e => handleImageUrlChange(e.target.value, 'back')}
-                      style={{
-                        width: '100%', padding: '0.5rem 0.75rem 0.5rem 2.25rem', fontSize: '0.75rem', fontWeight: 700,
-                        borderRadius: '14px', border: '1px solid var(--border)', background: 'var(--bg-surface)', outline: 'none'
-                      }}
+                      className="w-full pl-9 pr-3 py-2 text-xs font-sans font-bold rounded-xl border-2 border-slate-200 focus:border-aura-blue focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {backImage && (
-                  <div style={{ position: 'relative', width: 'fit-content', marginTop: '0.25rem' }}>
-                    <img src={backImage} alt="Back preview" style={{ width: '90px', height: '90px', borderRadius: '14px', objectFit: 'cover', border: '2px solid var(--border)' }} />
+                  <div className="relative w-fit mt-1">
+                    <img src={backImage} alt="Preview verso" className="w-20 h-20 rounded-2xl object-cover border-2 border-slate-200 shadow-sm" />
                     <button 
                       onClick={() => { setBackImage(null); setBackImageUrl('') }} 
-                      style={{ 
-                        position: 'absolute', top: '-8px', right: '-8px', background: 'var(--danger)', 
-                        color: 'white', borderRadius: '50%', border: 'none', width: '24px', height: '24px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                        boxShadow: 'var(--shadow-sm)'
-                      }}
+                      className="absolute -top-2 -right-2 bg-aura-red text-white rounded-full w-6 h-6 flex items-center justify-center cursor-pointer shadow-md hover:scale-105"
                       title="Remover imagem"
                     >
-                      <X size={14} />
+                      <X size={13} />
                     </button>
                   </div>
                 )}
               </div>
             </div>
-
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+          <div className="flex gap-3 justify-end pt-2">
             <Button variant="ghost" size="md" onClick={() => { setShowCreate(false); setEditingCard(null); resetForm() }}>
               Cancelar
             </Button>
             <Button 
-              variant="vibrant" 
+              variant="primary" 
               size="md" 
               loading={saving} 
               onClick={handleSaveCard} 

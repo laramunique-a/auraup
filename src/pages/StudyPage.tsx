@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { profileService } from '../services/profile.service'
 import { FlashCard } from '../components/study/FlashCard'
 import { Button } from '../components/ui/Button'
-import { ArrowLeft, CheckCircle, Zap, Trophy, Coins, Home, Clock, Target, RotateCcw, AlertCircle, Check, BookOpen } from 'lucide-react'
+import { ArrowLeft, Home, Clock, Target, BookOpen } from 'lucide-react'
 import type { Rating } from '../types'
 
 function formatDuration(seconds: number): string {
@@ -14,6 +14,43 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60)
   const secs = seconds % 60
   return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`
+}
+
+function playRewardSound(rating: Rating) {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    
+    if (rating === 3) {
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime) // C5
+      osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.08) // E5
+      osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.16) // G5
+      gain.gain.setValueAtTime(0.15, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.35)
+    } else if (rating === 2) {
+      osc.frequency.setValueAtTime(440, ctx.currentTime) // A4
+      osc.frequency.exponentialRampToValueAtTime(587.33, ctx.currentTime + 0.12) // D5
+      gain.gain.setValueAtTime(0.12, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.25)
+    } else if (rating === 1) {
+      osc.frequency.setValueAtTime(392, ctx.currentTime) // G4
+      gain.gain.setValueAtTime(0.10, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.20)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.20)
+    }
+  } catch {
+    // Ignore audio errors
+  }
 }
 
 export function StudyPage() {
@@ -25,8 +62,11 @@ export function StudyPage() {
 
   const [sessionXP, setSessionXP] = useState(0)
   const [sessionCoins, setSessionCoins] = useState(0)
+  const [floatingXP, setFloatingXP] = useState<{ text: string, id: number } | null>(null)
 
   const handleRating = async (rating: Rating) => {
+    playRewardSound(rating)
+
     if (current && user) {
       recordReviewLocally(current.deck_id, rating)
       let xp = 0; let coins = 0
@@ -38,6 +78,10 @@ export function StudyPage() {
         setSessionXP(prev => prev + xp)
         setSessionCoins(prev => prev + coins)
         profileService.addReward(user.id, xp, coins)
+        
+        // Efeito comemorativo de XP flutuante
+        setFloatingXP({ text: `+${xp} XP ⭐`, id: Date.now() })
+        setTimeout(() => setFloatingXP(null), 900)
       }
     }
     await submitRating(rating)
@@ -54,104 +98,131 @@ export function StudyPage() {
     return () => { if (window.speechSynthesis) window.speechSynthesis.cancel() }
   }, [])
 
-  const progress = total > 0 ? (reviewed / total) * 100 : 0
+  // Cálculo de progresso tátil estilo Duolingo (garante feedback visual imediato a cada card)
+  const progressPercent = total > 0 
+    ? total <= 50
+      ? Math.min(100, Math.max(reviewed > 0 ? (reviewed / total) * 100 : 4, 4))
+      : Math.min(100, Math.max(4, (Math.log10(reviewed + 1) / Math.log10(total + 1)) * 100 * 1.35))
+    : 0
 
   if (loading) return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-primary)' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ width: '64px', height: '64px', margin: '0 auto 1.5rem', border: '4px solid var(--border)', borderTopColor: 'var(--accent)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <p style={{ color: 'var(--text-secondary)', fontWeight: 600, fontSize: '1.125rem' }}>Preparando seus cards... ✨</p>
+    <div className="min-h-screen flex items-center justify-center bg-aura-bg">
+      <div className="text-center card-3d p-8 max-w-sm">
+        <div className="w-16 h-16 mx-auto mb-4 border-4 border-aura-blue/30 border-t-aura-blue rounded-full animate-spin" />
+        <p className="font-heading font-black text-aura-text-primary text-lg">Preparando seus cards... ✨</p>
       </div>
     </div>
   )
 
+  // --------------------------------------------------------------------------
+  // TELA DE CELEBRAÇÃO ÉPICA DE CONCLUSÃO
+  // --------------------------------------------------------------------------
   if (sessionDone) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'radial-gradient(circle at center, var(--accent-soft), transparent 70%), var(--bg-primary)',
-        padding: '2rem 1.5rem'
-      }}>
-        <div style={{
-          textAlign: 'center', maxWidth: '520px', width: '100%',
-          animation: 'popIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
-        }}>
-          {/* Header Icon */}
-          <div style={{ 
-            width: '72px', height: '72px', margin: '0 auto 1.25rem',
-            background: 'var(--success)', color: 'white', borderRadius: '20px',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 12px 24px rgba(16, 185, 129, 0.25)'
-          }} className="animate-float">
-            <CheckCircle size={40} strokeWidth={2.5} />
+      <div className="min-h-screen flex items-center justify-center bg-aura-bg p-4 sm:p-6 relative overflow-hidden">
+        {/* Confetes / Partículas decorativas no fundo */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-10 left-1/4 text-3xl animate-bounce">🎉</div>
+          <div className="absolute top-20 right-1/4 text-2xl animate-pulse">⭐</div>
+          <div className="absolute top-1/3 left-10 text-3xl animate-float-smooth">✨</div>
+          <div className="absolute bottom-20 right-10 text-4xl animate-bounce">🔥</div>
+          <div className="absolute top-12 right-12 text-2xl">🎊</div>
+        </div>
+
+        <div className="card-3d p-8 sm:p-10 max-w-lg w-full text-center relative z-10 animate-pop-in space-y-6">
+          {/* Troféu 3D comemorativo */}
+          <div className="w-24 h-24 mx-auto bg-gradient-to-tr from-amber-400 to-amber-200 rounded-3xl flex items-center justify-center text-5xl shadow-3d-orange animate-float-smooth border-2 border-white">
+            🏆
           </div>
           
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 900, letterSpacing: '-0.04em', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
-            Sessão Finalizada! 🎉
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9375rem', fontWeight: 600, marginBottom: '1.75rem' }}>
-            Parabéns! Você revisou <span style={{ fontWeight: 900, color: 'var(--accent)' }}>{reviewed}</span> cards nesta rodada.
-          </p>
+          <div>
+            <span className="badge-xp text-xs mb-2 inline-block">
+              SESSÃO FINALIZADA!
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-heading font-extrabold text-aura-text-primary tracking-tight">
+              Mandou Bem Demais! 🎉
+            </h2>
+            <p className="text-aura-text-secondary text-sm font-bold mt-1">
+              Você revisou com sucesso <strong className="text-aura-blue font-extrabold">{reviewed} cards</strong> nesta rodada.
+            </p>
+          </div>
 
           {/* Recompensas XP & Moedas */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-            <RewardCard icon={<Trophy size={24} color="#f59e0b" />} label="XP GANHO" value={`+${sessionXP}`} delay="0.1s" />
-            <RewardCard icon={<Coins size={24} color="var(--accent)" />} label="MOEDAS" value={`+${sessionCoins}`} delay="0.2s" />
-          </div>
-
-          {/* Estatísticas Detalhadas da Sessão */}
-          <div style={{
-            background: 'var(--bg-card)', border: '2px solid var(--border)', borderRadius: '24px',
-            padding: '1.5rem', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)', textAlign: 'left'
-          }}>
-            <h3 style={{ fontSize: '0.875rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              📊 Estatísticas da Sessão
-            </h3>
-
-            {/* Métrica de Tempo e Precisão */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ background: 'var(--bg-surface)', padding: '1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)' }}>
-                  <Clock size={20} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Tempo Total</div>
-                  <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'var(--text-primary)' }}>{formatDuration(sessionStats.durationSeconds)}</div>
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="card-3d p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 text-center">
+              <div className="w-10 h-10 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center text-xl mb-1 shadow-sm">
+                ⭐
               </div>
-
-              <div style={{ background: 'var(--bg-surface)', padding: '1rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                  <Target size={20} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Retenção / Acertos</div>
-                  <div style={{ fontSize: '1.125rem', fontWeight: 900, color: 'var(--text-primary)' }}>{sessionStats.accuracy}%</div>
-                </div>
-              </div>
+              <div className="text-2xl font-heading font-extrabold text-aura-orange">+{sessionXP} XP</div>
+              <div className="text-[11px] font-heading font-bold uppercase text-aura-text-muted">Experiência</div>
             </div>
 
-            {/* Distribuição dos Botoes Clicados */}
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>
-              Desempenho por Resposta
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
-              <StatPill icon={<RotateCcw size={14} />} count={sessionStats.ratingCounts[0]} label="De novo" color="#ef4444" />
-              <StatPill icon={<AlertCircle size={14} />} count={sessionStats.ratingCounts[1]} label="Difícil" color="#f59e0b" />
-              <StatPill icon={<Check size={14} />} count={sessionStats.ratingCounts[2]} label="Bom" color="#6366f1" />
-              <StatPill icon={<Zap size={14} />} count={sessionStats.ratingCounts[3]} label="Fácil" color="#10b981" />
+            <div className="card-3d p-4 bg-gradient-to-br from-blue-50 to-sky-50 border border-blue-200 text-center">
+              <div className="w-10 h-10 mx-auto rounded-2xl bg-blue-100 flex items-center justify-center text-xl mb-1 shadow-sm">
+                🟡
+              </div>
+              <div className="text-2xl font-heading font-extrabold text-aura-blue">+{sessionCoins}</div>
+              <div className="text-[11px] font-heading font-bold uppercase text-aura-text-muted">Moedas Ganhas</div>
             </div>
           </div>
 
-          {/* Botoes de Ação */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
-            <Button variant="vibrant" size="md" fullWidth onClick={() => navigate('/')}>
-              <Home size={20} /> Voltar ao Início
+          {/* Estatísticas da Sessão */}
+          <div className="card-3d p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 text-left space-y-4">
+            <div className="flex justify-between items-center text-xs font-heading font-bold uppercase tracking-wider text-aura-text-muted">
+              <span>📊 Métricas do Treino</span>
+              <span className="text-aura-green font-extrabold">Retenção: <strong>{sessionStats.accuracy}%</strong></span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs font-bold">
+              <div className="flex items-center gap-2">
+                <Clock size={16} className="text-aura-blue" />
+                <span>Tempo: {formatDuration(sessionStats.durationSeconds)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Target size={16} className="text-aura-green" />
+                <span>Cards Estudados: <strong className="font-extrabold">{reviewed}</strong></span>
+              </div>
+            </div>
+
+            {/* Pílulas de Respostas */}
+            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-200">
+              <div className="text-center p-2 rounded-xl bg-red-50 text-red-700">
+                <div className="font-black text-sm">{sessionStats.ratingCounts[0]}</div>
+                <div className="text-[10px] font-bold">De novo</div>
+              </div>
+              <div className="text-center p-2 rounded-xl bg-orange-50 text-orange-700">
+                <div className="font-black text-sm">{sessionStats.ratingCounts[1]}</div>
+                <div className="text-[10px] font-bold">Difícil</div>
+              </div>
+              <div className="text-center p-2 rounded-xl bg-blue-50 text-blue-700">
+                <div className="font-black text-sm">{sessionStats.ratingCounts[2]}</div>
+                <div className="text-[10px] font-bold">Bom</div>
+              </div>
+              <div className="text-center p-2 rounded-xl bg-emerald-50 text-emerald-700">
+                <div className="font-black text-sm">{sessionStats.ratingCounts[3]}</div>
+                <div className="text-[10px] font-bold">Fácil</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Ações */}
+          <div className="space-y-3 pt-2">
+            <Button 
+              variant="orange" 
+              size="lg" 
+              fullWidth 
+              onClick={() => navigate('/')}
+            >
+              <Home size={20} /> Continuar Jornada 🚀
             </Button>
             {id !== 'all' && (
-              <Button variant="secondary" size="md" fullWidth onClick={() => navigate(`/deck/${id}`)}>
-                <BookOpen size={20} /> Gerenciar Baralho
+              <Button 
+                variant="secondary" 
+                size="md" 
+                fullWidth 
+                onClick={() => navigate(`/deck/${id}`)}
+              >
+                <BookOpen size={18} /> Gerenciar Este Baralho
               </Button>
             )}
           </div>
@@ -160,73 +231,68 @@ export function StudyPage() {
     )
   }
 
+  // --------------------------------------------------------------------------
+  // TELA DE ESTUDO ATIVA
+  // --------------------------------------------------------------------------
   return (
-    <div style={{
-      minHeight: '100vh', background: 'var(--bg-primary)', display: 'flex', flexDirection: 'column',
-    }}>
-      {/* Header with Progress */}
-      <div style={{ 
-        padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '1.5rem',
-        background: 'var(--bg-secondary)', backdropFilter: 'blur(10px)',
-        borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, zIndex: 10
-      }}>
-        <button onClick={() => navigate('/')} className="btn-icon-soft" style={{ width: '44px', height: '44px' }}>
-          <ArrowLeft size={22} />
+    <div className="min-h-screen bg-aura-bg flex flex-col justify-between p-4 sm:p-6 relative">
+      
+      {/* XP Floating Toast (Animação de Recompensa) */}
+      {floatingXP && (
+        <div 
+          key={floatingXP.id}
+          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-xp-rise pointer-events-none"
+        >
+          <div className="badge-xp text-lg px-6 py-2.5 shadow-2xl">
+            {floatingXP.text}
+          </div>
+        </div>
+      )}
+
+      {/* Header com Barra de Progresso Tátil */}
+      <header className="max-w-xl mx-auto w-full flex items-center justify-between gap-4 py-2">
+        <button
+          onClick={() => navigate('/')}
+          className="w-10 h-10 rounded-2xl bg-white border-2 border-slate-200 text-aura-text-secondary hover:text-aura-blue flex items-center justify-center shadow-sm active:scale-95 cursor-pointer"
+          title="Sair do estudo"
+        >
+          <ArrowLeft size={20} />
         </button>
 
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Progresso</span>
-            <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--accent)' }}>{reviewed} de {total}</span>
-          </div>
-          <div style={{ height: '10px', background: 'var(--bg-surface)', borderRadius: '10px', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: 'var(--accent-gradient)', borderRadius: '10px', transition: 'width 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275)', boxShadow: '0 0 10px rgba(99, 102, 241, 0.3)' }} />
+        {/* Barra de Progresso Tátil Duolingo */}
+        <div className="flex-1 px-1">
+          <div className="w-full h-4 sm:h-5 bg-slate-200/90 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-300/80 dark:border-slate-600 shadow-inner relative flex items-center">
+            <div 
+              className="h-full bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500 rounded-full transition-all duration-500 ease-out relative shadow-[inset_0_2px_0_rgba(255,255,255,0.45)]"
+              style={{ width: `${progressPercent}%` }}
+            >
+              {/* Brilho Superior / Highlight */}
+              <div className="absolute inset-x-2 top-0.5 h-1 bg-white/40 rounded-full pointer-events-none" />
+            </div>
           </div>
         </div>
 
-        <div style={{ 
-          background: 'var(--bg-surface)', padding: '6px 12px', borderRadius: '50px',
-          display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, color: 'var(--text-primary)'
-        }}>
-          <Zap size={16} fill="var(--warning)" color="var(--warning)" /> {sessionXP} XP
-        </div>
-      </div>
+        {/* Contador */}
+        <span className="text-xs font-heading font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 shadow-xs shrink-0">
+          <strong>{Math.min(reviewed + 1, total)}</strong> / {total}
+        </span>
+      </header>
 
-      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem 1.5rem' }}>
-        {current && <FlashCard key={current.id} card={current} onRating={handleRating} />}
-      </div>
-    </div>
-  )
-}
+      {/* Flashcard 3D */}
+      <main className="flex-1 flex items-center justify-center my-6">
+        {current && (
+          <FlashCard
+            key={current.id}
+            card={current}
+            onRating={handleRating}
+          />
+        )}
+      </main>
 
-function RewardCard({ icon, label, value, delay }: any) {
-  return (
-    <div className="card animate-pop" style={{ 
-      padding: '1.25rem 1.0rem', display: 'flex', flexDirection: 'column', 
-      alignItems: 'center', gap: '0.35rem', animationDelay: delay 
-    }}>
-      <div style={{ 
-        width: '40px', height: '40px', borderRadius: '12px', background: 'var(--bg-surface)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center'
-      }}>
-        {icon}
-      </div>
-      <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{value}</div>
-      <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>{label}</div>
-    </div>
-  )
-}
-
-function StatPill({ icon, count, label, color }: { icon: any; count: number; label: string; color: string }) {
-  return (
-    <div style={{
-      background: 'var(--bg-surface)', borderRadius: '14px', padding: '0.6rem 0.4rem',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem'
-    }}>
-      <div style={{ color, display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 800 }}>
-        {icon} {count}
-      </div>
-      <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)' }}>{label}</span>
+      {/* Footer Dica */}
+      <footer className="max-w-xl mx-auto w-full text-center text-xs font-medium text-slate-500 dark:text-slate-400 py-2">
+        Repita em <strong className="text-slate-800 dark:text-slate-200 font-extrabold">voz alta</strong> para acelerar a <strong className="text-blue-600 dark:text-blue-400 font-extrabold">retenção neural</strong> 🎧
+      </footer>
     </div>
   )
 }

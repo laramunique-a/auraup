@@ -18,7 +18,7 @@ function getValidEnv(val: unknown, fallback: string): string {
 const supabaseUrl = getValidEnv(import.meta.env.VITE_SUPABASE_URL, DEFAULT_SUPABASE_URL)
 const supabaseAnonKey = getValidEnv(import.meta.env.VITE_SUPABASE_ANON_KEY, DEFAULT_SUPABASE_KEY)
 
-export const isLocalMode = false
+export const isLocalMode = true
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 

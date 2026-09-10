@@ -13,9 +13,9 @@ export function Card({
   ...props
 }: CardProps) {
   const variantClasses = {
-    base: 'glass-panel p-6',
-    interactive: 'glass-panel-interactive p-6 cursor-pointer',
-    active: 'glass-panel-interactive p-6 cursor-pointer border-blue-500/50 shadow-glass-hover',
+    base: 'card-3d p-6',
+    interactive: 'card-3d-interactive p-6 cursor-pointer',
+    active: 'card-3d-interactive p-6 cursor-pointer border-blue-500 shadow-sm',
   }[variant]
 
   return (

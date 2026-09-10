@@ -10,18 +10,14 @@ const LS_CARDS = 'uply_cards'
 
 // ── Local Mode (IndexedDB) ──────────────────────────────────────────────────
 
-let isMigrated = false;
-
 async function migrateIfNeeded() {
-  if (isMigrated) return;
   const oldCards = lsGet<Card>(LS_CARDS);
-  if (oldCards.length > 0) {
+  if (oldCards && oldCards.length > 0) {
     console.log(`📦 Migrando ${oldCards.length} cards para IndexedDB...`);
     await cardIDB.saveBulk(oldCards as any);
     lsRemove(LS_CARDS);
     console.log('✅ Migração concluída.');
   }
-  isMigrated = true;
 }
 
 async function localGetCards(deckId: string): Promise<Card[]> {
@@ -32,7 +28,7 @@ async function localGetCards(deckId: string): Promise<Card[]> {
 
 async function localGetAllUserCards(userId: string): Promise<Card[]> {
   await migrateIfNeeded();
-  const decks = lsGet<any>('uply_decks').filter(d => d.user_id === userId);
+  const decks = lsGet<any>('uply_decks').filter(d => d.user_id === userId || (userId === 'local_user_default' && (d.user_id === 'local' || !d.user_id)));
   const deckIds = decks.map(d => d.id);
   const allCards = await cardIDB.getAll();
   return allCards.filter(c => deckIds.includes(c.deck_id)) as any as Card[];
@@ -63,6 +59,10 @@ async function localUpdateCard(id: string, updates: Partial<Card>): Promise<Card
 
 async function localDeleteCard(id: string): Promise<void> {
   await cardIDB.delete(id);
+}
+
+async function localDeleteCardsByDeck(deckId: string): Promise<void> {
+  await cardIDB.deleteByDeck(deckId);
 }
 
 // ── Supabase Mode ─────────────────────────────────────────────────────────────
@@ -112,6 +112,13 @@ async function supabaseDeleteCard(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+async function supabaseDeleteCardsByDeck(deckId: string): Promise<void> {
+  if (supabase) {
+    const { error } = await supabase.from('cards').delete().eq('deck_id', deckId)
+    if (error) throw new Error(error.message)
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const cardService = {
@@ -120,4 +127,5 @@ export const cardService = {
   createCard: isLocalMode ? localCreateCard : supabaseCreateCard,
   updateCard: isLocalMode ? localUpdateCard : supabaseUpdateCard,
   deleteCard: isLocalMode ? localDeleteCard : supabaseDeleteCard,
+  deleteCardsByDeck: isLocalMode ? localDeleteCardsByDeck : supabaseDeleteCardsByDeck,
 }

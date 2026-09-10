@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auraup-dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app:z
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development

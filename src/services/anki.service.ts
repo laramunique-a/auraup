@@ -9,6 +9,7 @@ import type { Card, Deck } from '../types';
 import { unzipSync } from 'fflate';
 import initSqlJs from 'sql.js';
 import { decompress } from 'fzstd';
+import { cardIDB } from './idb.storage';
 
 // @ts-ignore
 import * as genanki from 'genanki-js';
@@ -28,7 +29,7 @@ function uint8ArrayToBase64(uint8Array: Uint8Array): string {
 /**
  * Ported logic from the backend to process .apkg archives locally.
  */
-export async function importAnkiApkg(file: File, name?: string): Promise<{ 
+export async function importAnkiApkg(file: File, name?: string, userId: string = 'local_user_default'): Promise<{ 
   success: boolean; 
   message: string; 
   deck_id?: string;
@@ -219,14 +220,39 @@ export async function importAnkiApkg(file: File, name?: string): Promise<{
     }
 
     // Local Persistence
+    const effectiveUserId = userId || 'local_user_default';
     const decks = lsGet<Deck>('uply_decks');
-    const newDeck: Deck = { id: crypto.randomUUID(), name: deckName, created_at: new Date().toISOString(), user_id: 'local' };
-    lsSetItem('uply_decks', [...decks, newDeck]);
-    const cards = lsGet<Card>('uply_cards');
-    const newCards: Card[] = parsedCards.map(c => ({ ...c, id: crypto.randomUUID(), deck_id: newDeck.id, created_at: new Date().toISOString() }));
-    lsSetItem('uply_cards', [...cards, ...newCards]);
+    let finalDeckName = deckName;
+    let counter = 1;
+    while (decks.some(d => (d.user_id === effectiveUserId || !d.user_id || d.user_id === 'local') && d.name.toLowerCase() === finalDeckName.toLowerCase())) {
+      finalDeckName = `${deckName} (${counter++})`;
+    }
 
-    return { success: true, message: `${parsedCards.length} cards locais!`, cards: newCards, deck_name: deckName };
+    const newDeck: Deck = { 
+      id: crypto.randomUUID(), 
+      name: finalDeckName, 
+      created_at: new Date().toISOString(), 
+      user_id: effectiveUserId 
+    };
+    lsSetItem('uply_decks', [...decks, newDeck]);
+
+    const newCards: Card[] = parsedCards.map(c => ({ 
+      ...c, 
+      id: crypto.randomUUID(), 
+      deck_id: newDeck.id, 
+      created_at: new Date().toISOString() 
+    }));
+
+    // Save directly to IndexedDB (cardIDB) to support 1000+ cards with images safely
+    await cardIDB.saveBulk(newCards as any);
+
+    return { 
+      success: true, 
+      message: `${parsedCards.length} cards importados com sucesso! ✨`, 
+      deck_id: newDeck.id, 
+      cards: newCards, 
+      deck_name: finalDeckName 
+    };
 
   } catch (err: any) {
     console.error('Anki Import Error:', err);

@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../services/storage'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toast'
-import { Save, Sparkles, ShieldCheck, Fingerprint, Lock } from 'lucide-react'
+import { Save, Sparkles, Fingerprint } from 'lucide-react'
 
 const AVATARS = [
   { id: 'avatar_1', emoji: '🦊', label: 'Raposa' },
@@ -15,47 +14,27 @@ const AVATARS = [
 ]
 
 export function ProfilePage() {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const { show } = useToast()
   
-  const [nickname, setNickname] = useState(user?.nickname || '')
+  const [nickname, setNickname] = useState(user?.nickname || user?.name || '')
   const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar_id || 'avatar_1')
   const [updating, setUpdating] = useState(false)
-  
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [changingPass, setChangingPass] = useState(false)
 
   async function handleUpdateProfile() {
-    if (!nickname.trim()) return
+    if (!nickname.trim()) {
+      show('Por favor, digite um apelido ou nome.', 'error')
+      return
+    }
     setUpdating(true)
     try {
-      if (supabase) {
-        const { error } = await supabase
-          .from('profiles')
-          .update({ 
-            nickname: nickname.trim(),
-            avatar_id: selectedAvatar,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', user?.id)
-        
-        if (error) {
-          if (error.code === '23505') throw new Error('Este apelido já está em uso.')
-          throw error
-        }
-      }
-
-      const rawUser = localStorage.getItem('uply_user')
-      if (rawUser) {
-        const u = JSON.parse(rawUser)
-        u.nickname = nickname.trim()
-        u.avatar_id = selectedAvatar
-        localStorage.setItem('uply_user', JSON.stringify(u))
-      }
+      updateUser({
+        nickname: nickname.trim(),
+        name: nickname.trim(),
+        avatar_id: selectedAvatar,
+      })
 
       show('Perfil atualizado com sucesso! ✨', 'success')
-      setTimeout(() => window.location.reload(), 1000)
     } catch (err: any) {
       show(err.message || 'Erro ao atualizar perfil.', 'error')
     } finally {
@@ -63,162 +42,80 @@ export function ProfilePage() {
     }
   }
 
-  async function handleChangePassword() {
-    if (!newPassword || newPassword.length < 6) {
-      show('A senha deve ter pelo menos 6 caracteres.', 'error')
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      show('As senhas não coincidem.', 'error')
-      return
-    }
-
-    setChangingPass(true)
-    try {
-      if (supabase) {
-        const { error } = await supabase.auth.updateUser({ password: newPassword })
-        if (error) throw error
-      }
-      show('Senha alterada com sucesso! 🔒', 'success')
-      setNewPassword('')
-      setConfirmPassword('')
-    } catch (err: any) {
-      show(err.message || 'Erro ao alterar senha.', 'error')
-    } finally {
-      setChangingPass(false)
-    }
-  }
-
-  const isAdmin = user?.role === 'admin'
-
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
-      <header className="mb-8">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-glow-primary">
+    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
+      <header className="mb-8 text-center sm:text-left">
+        <div className="flex items-center justify-center sm:justify-start gap-3 mb-1">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
             <Fingerprint size={20} />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-heading text-slate-900 dark:text-slate-100">
-            Meu <span className="text-[#2563eb]">Perfil</span>
+          <h1 className="text-2xl sm:text-3xl font-sans font-extrabold text-slate-900 dark:text-white">
+            Meu <span className="text-blue-600 dark:text-blue-400">Perfil</span>
           </h1>
         </div>
-        <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm font-label">
-          {isAdmin 
-            ? 'Gerencie sua segurança e preferências administrativas.' 
-            : 'Personalize sua jornada e gerencie sua identidade no Aura English App. ✨'}
+        <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
+          Personalize seu avatar e apelido no AuraUP. ✨
         </p>
       </header>
 
-      <div className={`grid ${isAdmin ? 'grid-cols-1 max-w-2xl mx-auto' : 'grid-cols-1 lg:grid-cols-2'} gap-8 items-start`}>
-        
-        {/* Identidade Aluno */}
-        {!isAdmin && (
-          <section className="glass-panel p-6 sm:p-8 flex flex-col gap-6 rounded-2xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/60 shrink-0">
-                <Sparkles size={20} />
-              </div>
-              <h2 className="text-lg font-heading text-slate-900">Identidade do Aluno</h2>
-            </div>
-
-            <div>
-              <label className="block text-xs font-label font-semibold uppercase tracking-wider text-slate-500 mb-3">
-                Escolha seu Avatar
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {AVATARS.map(av => (
-                  <button
-                    key={av.id}
-                    onClick={() => setSelectedAvatar(av.id)}
-                    className={`aspect-square text-3xl flex items-center justify-center rounded-2xl transition-all cursor-pointer ${
-                      selectedAvatar === av.id 
-                        ? 'bg-blue-50/80 border-2 border-blue-600 shadow-soft-sm scale-105' 
-                        : 'bg-slate-100/60 border border-slate-900/5 hover:bg-white hover:scale-102'
-                    }`}
-                  >
-                    {av.emoji}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-label font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                Seu Apelido Exclusivo
-              </label>
-              <input 
-                value={nickname}
-                onChange={e => setNickname(e.target.value.replace(/\s/g, '').toLowerCase())}
-                placeholder="Ex: mestre_ingles"
-                maxLength={15}
-                className="input-gamified rounded-xl text-sm font-label"
-              />
-              <p className="text-xs font-label text-slate-500 mt-2">
-                Seu nickname será visível no Ranking Global e das Ligas.
-              </p>
-            </div>
-
-            <Button
-              variant="primary"
-              size="md"
-              loading={updating}
-              onClick={handleUpdateProfile}
-              className="btn-primary-glass w-full font-label text-sm py-3 mt-2 rounded-xl"
-            >
-              <Save size={16} /> Salvar Perfil
-            </Button>
-          </section>
-        )}
-
-        {/* Segurança */}
-        <section className="glass-panel p-6 sm:p-8 flex flex-col gap-6 rounded-2xl">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/60 shrink-0">
-              <ShieldCheck size={20} />
-            </div>
-            <h2 className="text-lg font-heading text-slate-900">Segurança da Conta</h2>
+      <section className="card-3d p-6 sm:p-7 flex flex-col gap-6 rounded-2xl">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 flex items-center justify-center border border-blue-200/60 dark:border-blue-800 shrink-0 shadow-xs">
+            <Sparkles size={20} />
           </div>
-
-          <div className="flex flex-col gap-4 font-label">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                Nova Senha
-              </label>
-              <input 
-                type="password"
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                placeholder="No mínimo 6 caracteres"
-                className="input-gamified rounded-xl text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
-                Confirmar Nova Senha
-              </label>
-              <input 
-                type="password"
-                value={confirmPassword}
-                onChange={e => setConfirmPassword(e.target.value)}
-                placeholder="Repita a nova senha"
-                className="input-gamified rounded-xl text-sm"
-              />
-            </div>
-
-            <Button
-              variant="primary"
-              size="md"
-              loading={changingPass}
-              onClick={handleChangePassword}
-              className="btn-primary-glass w-full font-label text-sm py-3 mt-2 rounded-xl"
-            >
-              <Lock size={16} /> Alterar Senha
-            </Button>
+          <div>
+            <h2 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white">Identidade de Estudo</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Como você aparece no ranking e nos cards</p>
           </div>
-        </section>
+        </div>
 
-      </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2.5">
+            Escolha seu Avatar
+          </label>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            {AVATARS.map(av => (
+              <button
+                key={av.id}
+                type="button"
+                onClick={() => setSelectedAvatar(av.id)}
+                className={`aspect-square text-3xl flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  selectedAvatar === av.id 
+                    ? 'bg-blue-50 dark:bg-blue-950/60 border-2 border-blue-600 shadow-xs scale-105' 
+                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-blue-400 hover:scale-102 shadow-xs'
+                }`}
+                title={av.label}
+              >
+                {av.emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            Apelido no Ranking
+          </label>
+          <input 
+            type="text"
+            value={nickname}
+            onChange={e => setNickname(e.target.value)}
+            placeholder="Ex: Pedro, Sarah, Aluno Pro"
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400"
+          />
+        </div>
+
+        <Button
+          variant="primary"
+          size="md"
+          fullWidth
+          loading={updating}
+          onClick={handleUpdateProfile}
+          className="mt-1"
+        >
+          <Save size={18} /> Salvar Perfil
+        </Button>
+      </section>
     </div>
   )
 }

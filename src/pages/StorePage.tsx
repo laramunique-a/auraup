@@ -48,7 +48,7 @@ export function StorePage() {
 
   if (loading) return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 flex justify-center items-center min-h-[60vh]">
-      <div className="glass-panel w-full max-w-3xl h-96 rounded-2xl animate-pulse" />
+      <div className="card-3d w-full max-w-3xl h-96 rounded-3xl animate-pulse bg-slate-100/60" />
     </div>
   )
 
@@ -75,36 +75,36 @@ export function StorePage() {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-glow-primary">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
               <ShoppingCart size={20} />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-heading text-slate-900 dark:text-slate-100">
-              Loja de <span className="text-[#2563eb]">Decks Oficiais</span>
+            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
+              Loja de <span className="text-blue-600 dark:text-blue-400">Decks Oficiais</span>
             </h1>
           </div>
-          <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm font-label">
-            Adicione baralhos prontos e testados à sua conta com 1 clique. ✨
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
+            Adicione baralhos <strong className="text-slate-800 dark:text-white">prontos e testados</strong> à sua conta com <strong className="text-blue-600 dark:text-blue-400">1 clique</strong>. ✨
           </p>
         </div>
 
-        <div className="glass-panel px-5 py-3 flex items-center gap-3 rounded-2xl border border-slate-900/5">
-          <div className="w-9 h-9 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
+        <div className="card-3d px-4 py-2.5 flex items-center gap-3 rounded-xl">
+          <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-xs">
             <Coins size={18} className="fill-amber-500 text-amber-500" />
           </div>
           <div>
-            <div className="text-lg font-heading text-slate-900 leading-tight">
+            <div className="text-xl font-heading font-extrabold text-slate-900 dark:text-white leading-none">
               {user?.coins || 0}
             </div>
-            <div className="text-[10px] font-label font-semibold text-slate-400 uppercase tracking-wider">Suas Moedas</div>
+            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">Suas moedas</div>
           </div>
         </div>
       </header>
 
       {visibleOfficialDecks.length === 0 ? (
-        <div className="glass-panel p-12 text-center flex flex-col items-center justify-center gap-3 rounded-2xl border-dashed">
-          <BookOpen size={48} className="text-slate-400 mb-2 opacity-60" />
-          <h2 className="text-xl font-heading text-slate-900">Nenhum baralho disponível no seu nível</h2>
-          <p className="text-sm font-label text-slate-500 max-w-md">
+        <div className="card-3d p-12 text-center flex flex-col items-center justify-center gap-3 rounded-2xl border-dashed">
+          <BookOpen size={44} className="text-slate-400 mb-2 opacity-60" />
+          <h2 className="text-lg font-heading font-bold text-slate-900 dark:text-white">Nenhum baralho disponível no seu nível</h2>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-md">
             Nossos professores estão criando novos baralhos padrões para seu nível. Volte em breve!
           </p>
         </div>
@@ -115,55 +115,49 @@ export function StorePage() {
             return (
               <div 
                 key={deck.id} 
-                className="glass-panel-interactive p-6 flex flex-col justify-between gap-5 rounded-2xl"
+                className="card-3d-interactive p-5 sm:p-6 flex flex-col justify-between gap-4 rounded-2xl"
               >
                 {/* Banner / Category */}
-                <div className="w-full h-32 rounded-xl bg-gradient-to-br from-slate-100/80 via-white to-blue-50/50 flex items-center justify-center relative overflow-hidden border border-slate-900/5">
-                  <Sparkles size={50} className="text-blue-500 opacity-10 absolute" />
-                  <div className="absolute top-3 right-3 bg-blue-600 text-white px-3 py-1 rounded-full text-[10px] font-label font-bold uppercase tracking-wider flex items-center gap-1 shadow-sm">
-                    <Star size={10} className="fill-white" /> OFICIAL AURA ENGLISH
+                <div className="w-full h-28 rounded-xl bg-gradient-to-br from-blue-50/60 to-amber-50/50 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative overflow-hidden border border-slate-100 dark:border-slate-700">
+                  <Sparkles size={44} className="text-blue-500 opacity-10 absolute" />
+                  <div className="absolute top-2.5 right-2.5 bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-xs font-heading font-bold flex items-center gap-1 shadow-xs">
+                    <Star size={11} className="fill-white" /> Oficial Aura
                   </div>
-                  <div className="text-5xl">📚</div>
+                  <div className="text-4xl">📚</div>
                 </div>
                 
                 <div className="flex-1">
-                  <div className="flex justify-between items-center mb-2 font-label">
-                    <span className="text-[10px] font-semibold uppercase px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200/60">
-                      NÍVEL: {deck.level || 'Todos'}
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-heading font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                      Nível: <strong>{deck.level || 'Todos'}</strong>
                     </span>
-                    <span className="text-xs text-slate-500 font-medium flex items-center gap-1">
-                      <Layers size={13} className="text-blue-600" /> {deck.cards?.length || 0} Cards
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">
+                      <Layers size={13} className="text-blue-600 dark:text-blue-400" /> <strong className="text-slate-800 dark:text-slate-200">{deck.cards?.length || 0}</strong> cards
                     </span>
                   </div>
 
-                  <h3 className="font-heading text-lg text-slate-900 mb-1 leading-snug">
+                  <h3 className="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-1 leading-snug">
                     {deck.name}
                   </h3>
-                  
-                  <p className="text-xs font-label text-slate-500 leading-relaxed">
-                    {deck.description || 'Baralho padronizado pela equipe Aura English.'}
+                  <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 line-clamp-2">
+                    {deck.description || 'Baralho oficial preparado para impulsionar sua fluência e retenção.'}
                   </p>
                 </div>
 
-                {/* Footer Action */}
-                <div className="pt-3 border-t border-slate-900/5 flex items-center justify-between gap-2 font-label">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-600 font-semibold">
-                    <Coins size={14} className="text-amber-500 fill-amber-500" /> Grátis
-                  </div>
-
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                   {isClaimed ? (
-                    <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5">
-                      <Check size={14} /> Na sua conta
-                    </span>
+                    <div className="w-full py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 text-xs font-heading font-bold flex items-center justify-center gap-1.5 border border-emerald-200 dark:border-emerald-800">
+                      <Check size={16} /> Já Adicionado aos Seus Decks
+                    </div>
                   ) : (
                     <Button 
-                      variant="primary" 
-                      size="sm"
+                      variant="orange" 
+                      size="sm" 
+                      fullWidth 
                       loading={claiming === deck.id}
                       onClick={() => handleClaimDeck(deck)}
-                      className="btn-primary-glass text-xs font-semibold px-4 py-2 rounded-xl"
                     >
-                      <Plus size={14} /> Adicionar
+                      <Plus size={16} /> Adicionar à Minha Coleção (Grátis)
                     </Button>
                   )}
                 </div>

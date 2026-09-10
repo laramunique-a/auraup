@@ -13,14 +13,27 @@ const LS_DECKS = 'uply_decks'
 // ── Local Mode ────────────────────────────────────────────────────────────────
 
 async function localGetDecks(userId: string): Promise<Deck[]> {
-  return lsGet<Deck>(LS_DECKS).filter(d => d.user_id === userId)
+  const decks = lsGet<Deck>(LS_DECKS)
+  let updated = false
+  const normalized = decks.map(d => {
+    // Se o deck estiver com user_id 'local' ou vazio, normaliza para o usuário atual
+    if (!d.user_id || d.user_id === 'local' || (userId === 'local_user_default' && d.user_id === 'local')) {
+      updated = true
+      return { ...d, user_id: userId }
+    }
+    return d
+  })
+  if (updated) {
+    lsSet(LS_DECKS, normalized)
+  }
+  return normalized.filter(d => d.user_id === userId)
 }
 
 async function localCreateDeck(userId: string, name: string, description?: string): Promise<Deck> {
   const decks = lsGet<Deck>(LS_DECKS)
   
   // Check for duplicate name
-  const exists = decks.some(d => d.user_id === userId && d.name.toLowerCase() === name.trim().toLowerCase())
+  const exists = decks.some(d => (d.user_id === userId || d.user_id === 'local' || !d.user_id) && d.name.toLowerCase() === name.trim().toLowerCase())
   if (exists) throw new Error('Já existe um baralho com este nome.')
 
   const deck: Deck = {
@@ -55,6 +68,11 @@ async function localUpdateDeck(id: string, updates: Partial<Pick<Deck, 'name' | 
 async function localDeleteDeck(id: string): Promise<void> {
   const decks = lsGet<Deck>(LS_DECKS).filter(d => d.id !== id)
   lsSet(LS_DECKS, decks)
+  try {
+    await cardService.deleteCardsByDeck(id)
+  } catch (e) {
+    console.error('Erro ao deletar cards do deck:', e)
+  }
 }
 
 // ── Supabase Mode ─────────────────────────────────────────────────────────────

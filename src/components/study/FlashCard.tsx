@@ -3,6 +3,7 @@ import type { StudyCard, Rating } from '../../types'
 import { RotateCcw, Volume2, Sparkles, AlertCircle, Check, Zap } from 'lucide-react'
 import { useSpeech } from '../../hooks/useSpeech'
 import { predictNextIntervals } from '../../lib/sm2'
+import { shouldAutoPlaySpeech, canPlaySpeech } from '../../lib/speechUtils'
 
 interface FlashCardProps {
   card: StudyCard
@@ -22,25 +23,27 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
     setAnimating(false)
   }, [card.id])
 
-  // Auto-play áudio da Frente (Pergunta em Inglês) automaticamente ao exibir o card
+  // Auto-play áudio da Frente: SOMENTE quando configurado (front_audio === true)
+  // E SOMENTE palavras/frases em inglês (nunca em português)
   useEffect(() => {
-    if (!flipped && card.front && card.front.trim()) {
+    if (!flipped && shouldAutoPlaySpeech(card.front, card.front_audio, card.front_lang)) {
       const timer = setTimeout(() => {
         speak(card.front.trim(), 'en-US')
       }, 150)
       return () => clearTimeout(timer)
     }
-  }, [card.id, flipped, card.front])
+  }, [card.id, flipped, card.front, card.front_audio, card.front_lang])
 
-  // Auto-play áudio do Verso (Resposta) automaticamente ao virar o card
+  // Auto-play áudio do Verso: SOMENTE quando configurado (back_audio === true)
+  // E SOMENTE palavras/frases em inglês (nunca em português)
   useEffect(() => {
-    if (flipped && card.back && card.back.trim()) {
+    if (flipped && shouldAutoPlaySpeech(card.back, card.back_audio, card.back_lang)) {
       const timer = setTimeout(() => {
         speak(card.back.trim(), 'en-US')
       }, 150)
       return () => clearTimeout(timer)
     }
-  }, [card.id, flipped, card.back])
+  }, [card.id, flipped, card.back, card.back_audio, card.back_lang])
 
   function handleFlip() {
     if (animating) return
@@ -54,38 +57,42 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
     setTimeout(() => {
       setFlipped(false)
       setAnimating(false)
-    }, 350)
+    }, 320)
   }
 
-  const ratingOptions: { value: Rating; label: string; sub: string; color: string; icon: any }[] = [
-    { value: 0, label: 'De novo', sub: estimates[0], color: '#ef4444', icon: <RotateCcw size={16} /> },
-    { value: 1, label: 'Difícil', sub: estimates[1], color: '#ea580c', icon: <AlertCircle size={16} /> },
-    { value: 2, label: 'Bom', sub: estimates[2], color: '#2563eb', icon: <Check size={16} /> },
-    { value: 3, label: 'Fácil', sub: estimates[3], color: '#059669', icon: <Zap size={16} className="fill-[#059669]" /> },
+  const ratingOptions: { value: Rating; label: string; sub: string; btnClass: string; icon: any }[] = [
+    { value: 0, label: 'De novo', sub: estimates[0], btnClass: 'btn-3d-red', icon: <RotateCcw size={16} /> },
+    { value: 1, label: 'Difícil', sub: estimates[1], btnClass: 'btn-3d-orange', icon: <AlertCircle size={16} /> },
+    { value: 2, label: 'Bom', sub: estimates[2], btnClass: 'btn-3d-blue', icon: <Check size={16} /> },
+    { value: 3, label: 'Fácil', sub: estimates[3], btnClass: 'btn-3d-green', icon: <Zap size={16} className="fill-white" /> },
   ]
 
   const hasFrontText = Boolean(card.front && card.front.trim())
   const hasBackText = Boolean(card.back && card.back.trim())
+  const canPlayFront = Boolean(card.front && canPlaySpeech(card.front, card.front_lang))
+  const canPlayBack = Boolean(card.back && canPlaySpeech(card.back, card.back_lang))
 
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col items-center">
-      {/* Cena 3D do Card */}
+      {/* Cena 3D do Flashcard */}
       <div className="card-scene min-h-[380px] sm:min-h-[420px] relative w-full">
         <div className={`card-wrapper ${flipped ? 'flipped' : ''} min-h-[380px] sm:min-h-[420px]`}>
           
           {/* Frente do Card */}
           <div
             onClick={handleFlip}
-            className={`card-face card-front glass-panel p-8 flex flex-col justify-between items-center cursor-pointer select-none rounded-[2.5rem] shadow-glass border border-slate-900/10 transition-opacity ${
+            className={`card-face card-front card-3d p-8 flex flex-col justify-between items-center cursor-pointer select-none border-2 border-aura-blue/20 bg-gradient-to-b from-white via-white to-aura-soft-blue/30 transition-opacity duration-200 ${
               flipped ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}
           >
             {/* Top Label */}
-            <div className="w-full flex items-center justify-between font-label text-xs uppercase tracking-wider text-slate-400 font-semibold">
-              <span className="flex items-center gap-1.5 text-blue-600">
-                <Sparkles size={14} /> Pergunta
+            <div className="w-full flex items-center justify-between text-xs font-bold text-slate-500">
+              <span className="flex items-center gap-1.5 text-blue-600 font-heading font-bold">
+                <Sparkles size={16} /> Frente
               </span>
-              <span>Toque para virar</span>
+              <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full text-xs font-heading font-bold border border-blue-200/60 dark:border-blue-800">
+                Toque para virar 👆
+              </span>
             </div>
             
             {/* Body Content */}
@@ -94,46 +101,46 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                 <img 
                   src={card.front_image} 
                   alt="Ilustração frente"
-                  className="max-w-full max-h-40 object-contain rounded-2xl shadow-soft-sm" 
+                  className="max-w-full max-h-40 object-contain rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700" 
                 />
               )}
               
               {hasFrontText && (
-                <h2 className="font-heading text-2xl sm:text-4xl text-slate-900 dark:text-slate-100 leading-tight">
+                <h2 className="font-heading font-extrabold text-3xl sm:text-5xl text-slate-900 dark:text-white leading-tight tracking-tight">
                   {card.front}
                 </h2>
               )}
 
-              {hasFrontText && (
+              {canPlayFront && (
                 <button 
                   onClick={(e) => { 
                     e.stopPropagation()
                     speak(card.front.trim(), 'en-US') 
                   }}
-                  className="btn-secondary-glass rounded-full text-xs font-label px-4 py-2 text-blue-600 border-blue-200/60 mt-2"
-                  title="Ouvir novamente"
+                  className="rounded-xl text-xs font-heading font-bold px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="Ouvir pronúncia em inglês"
                 >
-                  <Volume2 size={16} /> Ouvir Áudio 🔊
+                  <Volume2 size={16} /> Ouvir Pronúncia 🔊
                 </button>
               )}
             </div>
 
             {/* Bottom Indicator */}
-            <div className="text-slate-400 text-xs font-label flex items-center gap-1.5 pt-2">
-              <RotateCcw size={14} /> Clique em qualquer lugar para ver a resposta
+            <div className="text-slate-400 text-xs font-medium flex items-center gap-1.5 pt-2">
+              <RotateCcw size={14} /> Toque em qualquer lugar para ver a resposta
             </div>
           </div>
 
           {/* Verso do Card */}
           <div
-            className={`card-face card-back glass-panel p-8 flex flex-col justify-between items-center rounded-[2.5rem] shadow-glass border-2 border-blue-600/80 transition-opacity ${
+            className={`card-face card-back card-3d p-8 flex flex-col justify-between items-center border border-amber-300 dark:border-amber-800 bg-white dark:bg-slate-800 transition-opacity duration-200 ${
               !flipped ? 'opacity-0 pointer-events-none' : 'opacity-100'
             }`}
           >
             {/* Top Label */}
-            <div className="w-full flex items-center justify-between font-label text-xs uppercase tracking-wider text-blue-600 font-semibold">
-              <span>Resposta 💡</span>
-              <span className="text-slate-400 font-medium">Classifique abaixo</span>
+            <div className="w-full flex items-center justify-between text-xs font-heading font-bold text-amber-600 dark:text-amber-400">
+              <span>💡 Resposta</span>
+              <span className="text-slate-400 font-medium text-xs font-sans">Classifique como foi</span>
             </div>
 
             {/* Body Content */}
@@ -142,26 +149,26 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                 <img 
                   src={card.back_image} 
                   alt="Ilustração verso"
-                  className="max-w-full max-h-40 object-contain rounded-2xl shadow-soft-sm" 
+                  className="max-w-full max-h-40 object-contain rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700" 
                 />
               )}
 
               {hasBackText && (
-                <h2 className="font-heading text-2xl sm:text-4xl text-slate-900 dark:text-slate-100 leading-tight">
+                <h2 className="font-heading font-extrabold text-3xl sm:text-5xl text-slate-900 dark:text-white leading-tight tracking-tight">
                   {card.back}
                 </h2>
               )}
 
-              {hasBackText && (
+              {canPlayBack && (
                 <button 
                   onClick={(e) => { 
                     e.stopPropagation()
                     speak(card.back.trim(), 'en-US') 
                   }}
-                  className="btn-secondary-glass rounded-full text-xs font-label px-4 py-2 text-blue-600 border-blue-200/60 mt-2"
-                  title="Ouvir novamente"
+                  className="rounded-xl text-xs font-heading font-bold px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  title="Ouvir pronúncia em inglês"
                 >
-                  <Volume2 size={16} /> Ouvir Áudio 🔊
+                  <Volume2 size={16} /> Ouvir Pronúncia 🔊
                 </button>
               )}
             </div>
@@ -172,26 +179,27 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
         </div>
       </div>
 
-      {/* Classificação SM-2 (Disponível quando virado) */}
-      <div className="w-full mt-6 min-h-[90px] font-label">
+      {/* Botões Táteis de Classificação SM-2 */}
+      <div className="w-full mt-6 min-h-[90px]">
         {flipped ? (
-          <div className="grid grid-cols-4 gap-2 sm:gap-3 animate-fade-in">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 animate-pop-in">
             {ratingOptions.map(opt => (
               <button
                 key={opt.value}
                 onClick={() => handleRating(opt.value)}
-                style={{ borderColor: `${opt.color}40` }}
-                className="glass-panel p-3.5 flex flex-col items-center justify-center text-center gap-1 rounded-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer shadow-soft-sm"
+                className={`${opt.btnClass} p-3 flex flex-col items-center justify-center text-center gap-0.5 rounded-xl shadow-xs active:scale-95 transition-all`}
               >
-                <div style={{ color: opt.color }}>{opt.icon}</div>
-                <span className="text-xs font-semibold text-slate-900 dark:text-slate-100">{opt.label}</span>
-                <span className="text-[10px] font-medium text-slate-400">{opt.sub}</span>
+                <div className="flex items-center gap-1.5">
+                  {opt.icon}
+                  <span className="text-sm font-heading font-bold">{opt.label}</span>
+                </div>
+                <span className="text-xs font-medium opacity-90">{opt.sub}</span>
               </button>
             ))}
           </div>
         ) : (
-          <div className="text-center text-slate-400 text-xs font-label flex items-center justify-center gap-2 py-4">
-            <Sparkles size={15} className="text-blue-600" /> Clique no card para revelar a resposta e classificar
+          <div className="text-center text-slate-500 text-xs font-semibold flex items-center justify-center gap-2 py-4">
+            <Sparkles size={16} className="text-amber-500" /> Clique no card para revelar a resposta e classificar
           </div>
         )}
       </div>

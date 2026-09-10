@@ -31,60 +31,41 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
   const prevMonth = () => setViewDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
 
   const getColor = (count: number) => {
-    if (count === 0) return 'var(--bg-surface)'
-    if (count <= 3) return 'rgba(var(--accent-rgb), 0.25)'
-    if (count <= 10) return 'rgba(var(--accent-rgb), 0.55)'
-    return 'var(--accent)'
+    if (count === 0) return '#FFFFFF'
+    if (count <= 3) return 'rgba(23, 105, 213, 0.25)'
+    if (count <= 10) return 'rgba(23, 105, 213, 0.60)'
+    return '#1769D5'
   }
 
   const monthName = viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
 
   return (
-    <div style={{
-      background: 'transparent',
-      padding: '0',
-      width: '100%',
-      animation: 'fadeIn 0.5s ease',
-    }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '1rem' 
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+    <div className="w-full animate-fade-in">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-1.5">
           <button 
             onClick={prevMonth} 
-            style={{ 
-              background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-              borderRadius: '8px', padding: '4px 6px', cursor: 'pointer', color: 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center'
-            }}
+            className="btn-3d-icon w-7 h-7 !rounded-lg"
+            title="Mês anterior"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={15} />
           </button>
           <button 
             onClick={nextMonth} 
-            style={{ 
-              background: 'var(--bg-surface)', border: '1px solid var(--border)', 
-              borderRadius: '8px', padding: '4px 6px', cursor: 'pointer', color: 'var(--text-secondary)',
-              display: 'flex', alignItems: 'center'
-            }}
+            className="btn-3d-icon w-7 h-7 !rounded-lg"
+            title="Próximo mês"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={15} />
           </button>
         </div>
-        <span style={{ 
-          fontSize: '0.8125rem', fontWeight: 800, color: 'var(--text-primary)', 
-          textTransform: 'capitalize', textAlign: 'right'
-        }}>
+        <span className="text-xs font-heading font-black text-aura-text-primary capitalize text-right">
           {monthName}
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '1rem' }}>
+      <div className="grid grid-cols-7 gap-1.5 mb-4">
         {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((d, idx) => (
-          <div key={`${d}-${idx}`} style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textAlign: 'center', marginBottom: '4px' }}>{d}</div>
+          <div key={`${d}-${idx}`} className="text-[11px] font-display font-black text-aura-text-muted text-center mb-1">{d}</div>
         ))}
         {calendarData.map((day, i) => {
           const isFinished = day && day.count > 0
@@ -93,24 +74,15 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
               key={day ? day.date : `empty-${i}`}
               title={day ? `${day.date}: ${day.count} cards estudados` : ''}
               style={{
-                aspectRatio: '1/1',
-                width: '100%',
-                borderRadius: '8px',
                 background: day ? getColor(day.count) : 'transparent',
-                border: day ? '1px solid var(--border)' : 'none',
-                opacity: day ? 1 : 0,
-                transition: 'all 0.2s ease',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '0.6875rem',
-                fontWeight: 800,
-                color: isFinished 
-                  ? (day.count > 10 ? '#ffffff' : 'var(--text-primary)') 
-                  : 'rgba(71, 85, 105, 0.65)',
-                userSelect: 'none',
-                boxShadow: isFinished ? '0 2px 4px rgba(0, 0, 0, 0.05)' : 'none'
               }}
+              className={`aspect-square w-full rounded-xl border border-aura-blue/10 flex items-center justify-center text-[11px] font-display font-black transition-all select-none ${
+                day ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              } ${
+                isFinished 
+                  ? (day.count > 10 ? 'text-white shadow-sm' : 'text-aura-text-primary shadow-xs') 
+                  : 'text-slate-400'
+              }`}
             >
               {day ? day.dayNumber : ''}
             </div>
@@ -118,29 +90,18 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
         })}
       </div>
 
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        paddingTop: '0.75rem',
-        borderTop: '1px solid var(--border)'
-      }}>
-        <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)' }}>Menos</span>
-        <div style={{ display: 'flex', gap: '4px' }}>
+      <div className="flex justify-between items-center pt-3 border-t border-aura-blue/10 text-[11px] font-bold text-aura-text-muted">
+        <span>Menos</span>
+        <div className="flex gap-1.5">
           {[0, 3, 10, 20].map(n => (
             <div 
               key={n} 
-              style={{ 
-                width: '12px', 
-                height: '12px', 
-                borderRadius: '3px', 
-                background: getColor(n),
-                border: '1px solid var(--border)'
-              }} 
+              style={{ background: getColor(n) }} 
+              className="w-3.5 h-3.5 rounded-md border border-aura-blue/15"
             />
           ))}
         </div>
-        <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: 'var(--text-muted)' }}>Mais</span>
+        <span>Mais</span>
       </div>
     </div>
   )

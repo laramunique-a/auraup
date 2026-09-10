@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Rocket, UserCheck, Compass, Sparkles, Settings, Trash2, Layers } from 'lucide-react'
+import { Rocket, UserCheck, Compass, Sparkles, Settings, Trash2, Layers, CheckCircle2, Play } from 'lucide-react'
 import { Button } from './Button'
 import type { Deck, DeckStats } from '../../types'
 
@@ -11,56 +11,49 @@ export interface DeckCardProps {
   onClick?: () => void
 }
 
-/**
- * Retorna as propriedades temáticas de exploração espacial com base no nível/categoria do baralho.
- * - Nível 1: Hello (Rocket / Vibrant Orange #ea580c)
- * - Nível 2: Connections (Astronaut / Neon Green #059669)
- * - Nível 3: Discovery (Satellite / Electric Blue #2563eb)
- * - Nível 4/Todos: Cosmos (Galaxy / Electric Blue #2563eb)
- */
 export function getSpaceThemeLevel(levelName?: string) {
   const normalized = (levelName || '').toLowerCase()
 
   if (normalized.includes('iniciante') || normalized.includes('hello') || normalized.includes('nível 1') || normalized.includes('nivel 1')) {
     return {
-      label: 'Nível 1: Hello',
+      label: 'Nível 1 • Hello',
       icon: Rocket,
-      badgeBg: 'bg-orange-50/80 dark:bg-orange-950/40',
-      badgeText: 'text-[#ea580c]',
-      badgeBorder: 'border-orange-200/60 dark:border-orange-900/60',
-      iconColor: '#ea580c',
+      badgeBg: 'bg-orange-50 dark:bg-orange-950/40',
+      badgeText: 'text-aura-orange',
+      badgeBorder: 'border-orange-200 dark:border-orange-800',
+      iconColor: '#FF9800',
     }
   }
 
   if (normalized.includes('intermediário') || normalized.includes('intermediario') || normalized.includes('connections') || normalized.includes('nível 2') || normalized.includes('nivel 2')) {
     return {
-      label: 'Nível 2: Connections',
+      label: 'Nível 2 • Connections',
       icon: UserCheck,
-      badgeBg: 'bg-emerald-50/80 dark:bg-emerald-950/40',
-      badgeText: 'text-[#059669]',
-      badgeBorder: 'border-emerald-200/60 dark:border-emerald-900/60',
-      iconColor: '#059669',
+      badgeBg: 'bg-emerald-50 dark:bg-emerald-950/40',
+      badgeText: 'text-aura-green',
+      badgeBorder: 'border-emerald-200 dark:border-emerald-800',
+      iconColor: '#32C875',
     }
   }
 
   if (normalized.includes('avançado') || normalized.includes('avancado') || normalized.includes('discovery') || normalized.includes('nível 3') || normalized.includes('nivel 3')) {
     return {
-      label: 'Nível 3: Discovery',
+      label: 'Nível 3 • Discovery',
       icon: Compass,
-      badgeBg: 'bg-blue-50/80 dark:bg-blue-950/40',
-      badgeText: 'text-[#2563eb]',
-      badgeBorder: 'border-blue-200/60 dark:border-blue-900/60',
-      iconColor: '#2563eb',
+      badgeBg: 'bg-blue-50 dark:bg-blue-950/40',
+      badgeText: 'text-aura-blue',
+      badgeBorder: 'border-blue-200 dark:border-blue-800',
+      iconColor: '#1769D5',
     }
   }
 
   return {
-    label: 'Missão Espacial',
+    label: 'Aura Aventura',
     icon: Sparkles,
-    badgeBg: 'bg-blue-50/80 dark:bg-blue-950/40',
-    badgeText: 'text-[#2563eb]',
-    badgeBorder: 'border-blue-200/60 dark:border-blue-900/60',
-    iconColor: '#2563eb',
+    badgeBg: 'bg-blue-50 dark:bg-blue-950/40',
+    badgeText: 'text-aura-blue',
+    badgeBorder: 'border-blue-200 dark:border-blue-800',
+    iconColor: '#1769D5',
   }
 }
 
@@ -75,26 +68,30 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
     return (
       <div 
         onClick={onClick}
-        className="glass-panel-interactive flex items-center justify-between p-4 gap-4 cursor-pointer"
+        className="card-3d-interactive flex items-center justify-between p-4 sm:p-5 gap-4 cursor-pointer"
       >
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className={`w-11 h-11 rounded-2xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0`}>
-            <LevelIcon size={20} color={theme.iconColor} />
+          <div className={`w-12 h-12 rounded-2xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0 shadow-sm`}>
+            <LevelIcon size={22} color={theme.iconColor} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 mb-0.5">
-              <span className={`text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full border font-label ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`text-[11px] font-heading font-extrabold tracking-wider uppercase px-2.5 py-0.5 rounded-full border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
                 {theme.label}
               </span>
             </div>
-            <h3 className="font-heading text-slate-900 dark:text-slate-100 text-base truncate">{deck.name}</h3>
-            <div className="text-xs font-label text-slate-500 flex items-center gap-3 mt-0.5">
+            <h3 className="font-heading font-extrabold text-aura-text-primary text-base sm:text-lg truncate">{deck.name}</h3>
+            <div className="text-xs font-bold text-aura-text-muted flex items-center gap-3 mt-1">
               <span className="flex items-center gap-1">
-                <Layers size={13} /> {stats?.total || 0} cards
+                <Layers size={14} /> <strong>{stats?.total || 0}</strong> cards
               </span>
-              {hasDue && (
-                <span className="text-[#ea580c] font-semibold flex items-center gap-1">
-                  • {stats.due} revisões
+              {hasDue ? (
+                <span className="text-aura-orange font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md">
+                  🔥 <strong>{stats?.due}</strong> para revisar
+                </span>
+              ) : (
+                <span className="text-aura-green font-bold flex items-center gap-1">
+                  <CheckCircle2 size={13} /> Tudo em dia
                 </span>
               )}
             </div>
@@ -103,34 +100,37 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
 
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
           <button 
-            className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100/80 transition-colors cursor-pointer" 
+            className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-blue" 
             onClick={() => navigate(`/deck/${deck.id}`)}
             title="Configurações do Baralho"
           >
-            <Settings size={16} />
+            <Settings size={15} />
           </button>
           {onDelete && (
             <button 
-              className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50/80 transition-colors cursor-pointer" 
+              className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-red hover:border-red-200" 
               onClick={onDelete}
               title="Excluir Baralho"
             >
-              <Trash2 size={16} />
+              <Trash2 size={15} />
             </button>
           )}
           {hasDue ? (
             <Button 
-              variant="primary" 
+              variant="orange" 
               size="sm" 
               onClick={() => navigate(`/study/${deck.id}`)}
-              className="btn-primary-glass text-xs font-label px-4 py-2"
             >
-              Estudar
+              <Play size={14} className="fill-white" /> Estudar
             </Button>
           ) : (
-            <span className="text-xs font-label text-slate-400 bg-slate-100/80 px-3.5 py-1.5 rounded-full">
-              Em dia ✨
-            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => navigate(`/study/${deck.id}`)}
+            >
+              Praticar
+            </Button>
           )}
         </div>
       </div>
@@ -140,71 +140,86 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
   return (
     <div 
       onClick={onClick}
-      className="glass-panel-interactive p-6 flex flex-col justify-between gap-4 min-h-[220px] cursor-pointer group"
+      className="card-3d-interactive p-6 flex flex-col justify-between gap-4 min-h-[240px] cursor-pointer group relative overflow-hidden"
     >
+      {/* Top Header */}
       <div className="flex justify-between items-start">
-        <div className={`w-12 h-12 rounded-2xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200`}>
-          <LevelIcon size={22} color={theme.iconColor} />
+        <div className={`w-14 h-14 rounded-2xl ${theme.badgeBg} ${theme.badgeBorder} border-2 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-sm`}>
+          <LevelIcon size={26} color={theme.iconColor} />
         </div>
 
-        <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+        <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
           <button 
-            className="p-2 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100/80 transition-colors cursor-pointer" 
+            className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-blue" 
             onClick={() => navigate(`/deck/${deck.id}`)}
             title="Configurações do Baralho"
           >
-            <Settings size={16} />
+            <Settings size={15} />
           </button>
           {onDelete && (
             <button 
-              className="p-2 rounded-full text-slate-400 hover:text-rose-600 hover:bg-rose-50/80 transition-colors cursor-pointer" 
+              className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-red hover:border-red-200" 
               onClick={onDelete}
               title="Excluir Baralho"
             >
-              <Trash2 size={16} />
+              <Trash2 size={15} />
             </button>
           )}
         </div>
       </div>
       
-      <div>
+      {/* Deck Info */}
+      <div className="my-auto">
         <div className="mb-2">
-          <span className={`text-[10px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full border font-label ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
+          <span className={`text-[11px] font-heading font-extrabold tracking-wider uppercase px-3 py-1 rounded-full border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
             {theme.label}
           </span>
         </div>
 
-        <h3 className="font-heading text-slate-900 dark:text-slate-100 text-xl mb-1.5 leading-snug group-hover:text-blue-600 transition-colors">
+        <h3 className="font-heading font-extrabold text-aura-text-primary text-xl mb-2 leading-snug group-hover:text-aura-blue transition-colors">
           {deck.name}
         </h3>
 
-        <div className="flex items-center gap-3 text-xs font-label text-slate-500">
-          <span className="flex items-center gap-1">
-            <Layers size={13} /> {stats?.total || 0} cards
+        <div className="flex items-center gap-3 text-xs font-bold text-aura-text-muted">
+          <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+            <Layers size={14} className="text-aura-blue" /> <strong className="text-slate-800 dark:text-slate-200 font-extrabold">{stats?.total || 0}</strong> cards
           </span>
-          {hasDue && (
-            <span className="text-[#ea580c] font-semibold flex items-center gap-1">
-              • {stats.due} revisões pendentes
+          {hasDue ? (
+            <span className="text-aura-orange font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2.5 py-1 rounded-lg">
+              🔥 <strong className="font-extrabold">{stats?.due}</strong> pendentes
+            </span>
+          ) : (
+            <span className="text-aura-green font-extrabold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg">
+              ✓ Em dia
             </span>
           )}
         </div>
       </div>
 
-      {hasDue ? (
-        <Button 
-          size="sm" 
-          variant="primary" 
-          fullWidth 
-          onClick={(e) => { e.stopPropagation(); navigate(`/study/${deck.id}`) }}
-          className="btn-primary-glass font-label w-full py-3"
-        >
-          Iniciar Sessão <Rocket size={15} className="ml-1" />
-        </Button>
-      ) : (
-        <div className="bg-slate-100/80 p-3 rounded-2xl text-center text-xs font-label text-slate-400 uppercase tracking-wider">
-          Tudo em dia ✨
-        </div>
-      )}
+      {/* Action Button */}
+      <div>
+        {hasDue ? (
+          <Button 
+            size="md" 
+            variant="orange" 
+            fullWidth 
+            onClick={(e) => { e.stopPropagation(); navigate(`/study/${deck.id}`) }}
+            className="w-full"
+          >
+            <Play size={16} className="fill-white" /> Estudar Agora ({stats?.due})
+          </Button>
+        ) : (
+          <Button
+            size="md"
+            variant="secondary"
+            fullWidth
+            onClick={(e) => { e.stopPropagation(); navigate(`/study/${deck.id}`) }}
+            className="w-full"
+          >
+            Revisar Baralho ✨
+          </Button>
+        )}
+      </div>
     </div>
   )
 }
