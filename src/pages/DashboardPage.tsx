@@ -269,31 +269,33 @@ export function DashboardPage() {
       <div className="block md:hidden space-y-4 pb-8">
         {/* Card de Missão Diária (Limpo, Moderno e Direto ao Ponto) */}
         <section className="card-3d p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs space-y-3.5">
-          {/* Top: Status da Meta Diária */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border ${
-                totalDue > 0 
-                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200/80 dark:border-amber-800/80' 
-                  : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/80'
-              }`}>
-                {totalDue > 0 ? '🎯' : '🏆'}
-              </div>
-              
-              <div className="min-w-0">
-                <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block leading-tight">
-                  {totalDue > 0 ? 'Meta de Hoje' : 'Status dos Estudos'}
-                </span>
-                <h2 className="text-sm font-heading font-extrabold text-slate-800 dark:text-white truncate">
-                  {totalDue > 0 ? `${totalDue} ${totalDue === 1 ? 'card pendente' : 'cards pendentes'}` : 'Tudo em dia por aqui! ✨'}
-                </h2>
-              </div>
-            </div>
+          {/* Top: Saudação com Nome e Nível */}
+          <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-700/60 pb-2.5">
+            <h1 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
+              Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
+            </h1>
+            <span className="inline-flex items-center gap-1 text-[10px] font-heading font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/70 dark:border-blue-900 px-2 py-0.5 rounded-md shadow-2xs shrink-0">
+              🛡️ Nível {level}
+            </span>
+          </div>
 
-            <div className="shrink-0 text-right">
-              <span className="inline-flex items-center gap-1 text-[10px] font-heading font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/70 dark:border-blue-900 px-2 py-0.5 rounded-md shadow-2xs">
-                🛡️ Nível {level}
+          {/* Status da Meta Diária */}
+          <div className="flex items-center gap-3 min-w-0">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border ${
+              totalDue > 0 
+                ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200/80 dark:border-amber-800/80' 
+                : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/80'
+            }`}>
+              {totalDue > 0 ? '🎯' : '🏆'}
+            </div>
+            
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block leading-tight">
+                {totalDue > 0 ? 'Meta de Hoje' : 'Status dos Estudos'}
               </span>
+              <h2 className="text-sm font-heading font-extrabold text-slate-800 dark:text-white truncate">
+                {totalDue > 0 ? `${totalDue} ${totalDue === 1 ? 'card pendente' : 'cards pendentes'}` : 'Tudo em dia por aqui! ✨'}
+              </h2>
             </div>
           </div>
 
