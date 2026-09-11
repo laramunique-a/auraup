@@ -82,6 +82,9 @@ export function DashboardPage() {
     return localStorage.getItem('uply_dashboard_sort') || 'newest'
   })
 
+  // Aba ativa no Mobile/PWA
+  const [mobileTab, setMobileTab] = useState<'decks' | 'word' | 'stats'>('decks')
+
   // Aprendizado Semanal e Histórico
   const [weeklyLearned, setWeeklyLearned] = useState(0)
   const [totalLearned, setTotalLearned] = useState(0)
@@ -258,11 +261,371 @@ export function DashboardPage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen space-y-8">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 min-h-screen space-y-6 sm:space-y-8">
       
-      {/* -------------------------------------------------------------------------- */}
-      {/* 1. HERO DE AVENTURA GAMIFICADO                                            */}
-      {/* -------------------------------------------------------------------------- */}
+      {/* ========================================================================== */}
+      {/* 📱 VERSÃO EXCLUSIVA MOBILE / PWA (< 768px)                                */}
+      {/* ========================================================================== */}
+      <div className="block md:hidden space-y-4">
+        {/* 1. Header Compacto do Aluno */}
+        <section className="card-3d p-4 bg-white relative overflow-hidden">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center text-2xl shrink-0 shadow-xs">
+              {AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="badge-level text-[10px] px-2 py-0.5">
+                  🛡️ Nível {level}
+                </span>
+                <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
+                  {user?.role === 'admin' ? 'Admin' : 'Explorador(a)'}
+                </span>
+              </div>
+              <h1 className="text-base font-heading font-bold text-slate-800 dark:text-white truncate">
+                Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
+              </h1>
+            </div>
+          </div>
+
+          {/* Barra de Progresso Físico de Nível Compacta */}
+          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-between items-center text-[10px] mb-1 font-heading">
+              <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                Nível {level}
+              </span>
+              <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                Faltam {xpForNextLevel} XP ⭐
+              </span>
+            </div>
+            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
+              <div 
+                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* 2. Card de Ação Principal (Meta do Dia) */}
+        <section className="card-3d p-4 border border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/70 to-orange-50/40 dark:from-amber-950/30 dark:to-slate-900 shadow-2xs">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              {totalDue > 0 ? <Target size={20} /> : <Trophy size={20} />}
+            </div>
+            <div>
+              <span className="text-[10px] font-heading font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
+                {totalDue > 0 ? 'Meta de Hoje' : 'Missão Cumprida'}
+              </span>
+              <h2 className="text-base font-heading font-extrabold text-slate-800 dark:text-white leading-tight">
+                {totalDue > 0 ? `${totalDue} cards para revisar` : 'Tudo em dia! ✨'}
+              </h2>
+            </div>
+          </div>
+
+          {totalDue > 0 ? (
+            <Button 
+              variant="orange" 
+              size="md" 
+              onClick={() => navigate('/study/all')}
+              className="w-full !py-2.5 text-xs sm:text-sm font-bold shadow-xs active:scale-95 transition-transform"
+            >
+              Começar Revisão Diária 🔥
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMobileTab('decks')}
+              className="w-full !py-2 text-xs font-semibold"
+            >
+              Ver Meus Baralhos 📚
+            </Button>
+          )}
+        </section>
+
+        {/* 3. Segmented Controls / Abas do Mobile */}
+        <div className="flex p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setMobileTab('decks')}
+            className={`flex-1 py-2 text-xs font-heading font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 ${
+              mobileTab === 'decks'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <LayoutGrid size={13} />
+            <span>Baralhos ({decks.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileTab('word')}
+            className={`flex-1 py-2 text-xs font-heading font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 ${
+              mobileTab === 'word'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <span>📖</span>
+            <span>Palavra</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileTab('stats')}
+            className={`flex-1 py-2 text-xs font-heading font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 ${
+              mobileTab === 'stats'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <Trophy size={13} />
+            <span>Desempenho</span>
+          </button>
+        </div>
+
+        {/* 4. Conteúdo Dinâmico por Aba no Mobile */}
+        {mobileTab === 'decks' && (
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-heading font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Coleção de Estudos
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => document.getElementById('anki-dashboard-import')?.click()} 
+                  disabled={importing}
+                  className="text-xs !py-1 !px-2.5"
+                >
+                  <FileUp size={12} /> Importar
+                </Button>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={() => setShowCreate(true)}
+                  className="text-xs !py-1 !px-2.5"
+                >
+                  <Plus size={13} /> Novo
+                </Button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="card-3d h-28 animate-pulse bg-slate-100/60" />
+                ))}
+              </div>
+            ) : decks.length === 0 ? (
+              <div className="card-3d p-8 text-center space-y-3">
+                <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">
+                  📚
+                </div>
+                <h3 className="text-base font-heading font-bold text-slate-800 dark:text-white">
+                  Nenhum baralho criado ainda
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  Crie seu primeiro baralho de flashcards para começar seus estudos com repetição espaçada!
+                </p>
+                <Button variant="orange" size="sm" onClick={() => setShowCreate(true)}>
+                  <Plus size={14} /> Criar Baralho
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sortedDecks.map(deck => (
+                  <DeckCard
+                    key={deck.id}
+                    deck={deck}
+                    stats={statsMap[deck.id]}
+                    viewMode="list"
+                    onDelete={() => handleDelete(deck.id, deck.name)}
+                    onClick={() => navigate(statsMap[deck.id]?.due > 0 ? `/study/${deck.id}` : `/deck/${deck.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {mobileTab === 'word' && (
+          <div className="pt-1">
+            <section className="card-3d p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                <span className="text-xs font-heading font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-md border border-blue-200/80 dark:border-blue-800 flex items-center gap-1.5">
+                  <span>📖</span> Palavra do Dia
+                </span>
+                <span className="text-[11px] font-medium text-slate-400 capitalize flex items-center gap-1">
+                  <Calendar size={12} />
+                  {new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-heading font-bold text-slate-800 dark:text-white">
+                      {wordOfTheDay.word}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60">
+                        {wordOfTheDay.type}
+                      </span>
+                      <span className="text-xs font-heading font-bold text-blue-600 dark:text-blue-400">
+                        🇧🇷 {wordOfTheDay.translation}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => speakWord(wordOfTheDay.word)}
+                    disabled={isPlayingAudio}
+                    className="w-10 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center transition-all active:scale-95 shadow-xs cursor-pointer"
+                    title="Ouvir Pronúncia"
+                  >
+                    <Volume2 size={20} className={isPlayingAudio ? 'animate-pulse' : ''} />
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                  <span className="text-[10px] font-heading font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                    Definição
+                  </span>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {wordOfTheDay.definition}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] font-heading font-semibold text-amber-600 dark:text-amber-400">
+                    <Sparkles size={12} />
+                    <span>Exemplo em Contexto</span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-800 dark:text-white italic">
+                    "{wordOfTheDay.example}"
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    {wordOfTheDay.exampleTranslation}
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {mobileTab === 'stats' && (
+          <div className="space-y-4 pt-1">
+            {/* Métricas Rápidas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card-3d p-4 flex flex-col justify-between">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs mb-2">
+                  <Calendar size={16} />
+                </div>
+                <div>
+                  <div className="text-2xl font-heading font-bold text-slate-800 dark:text-white">{weeklyLearned}</div>
+                  <div className="text-[11px] font-medium text-slate-500">Cards na Semana</div>
+                </div>
+              </div>
+
+              <div className="card-3d p-4 flex flex-col justify-between">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs mb-2">
+                  <Trophy size={16} />
+                </div>
+                <div>
+                  <div className="text-2xl font-heading font-bold text-slate-800 dark:text-white">{totalLearned}</div>
+                  <div className="text-[11px] font-medium text-slate-500">Total Dominado</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Colocação no Ranking */}
+            <div className="card-3d p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-3">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Trophy size={14} />
+                  </div>
+                  <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white">
+                    Sua Posição no Ranking
+                  </h3>
+                </div>
+                <button
+                  onClick={() => navigate('/ranking')}
+                  className="text-[11px] font-heading font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                >
+                  Ver Pódio <ArrowRight size={12} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                <div 
+                  onClick={() => navigate('/ranking')}
+                  className="p-3 rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-slate-800 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs">
+                      <Globe size={14} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-heading font-semibold uppercase text-blue-600 dark:text-blue-400 block">
+                        Global
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {userRankings.global.total} alunos
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-blue-200 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs">
+                    {userRankings.global.pos}º lugar
+                  </span>
+                </div>
+
+                <div 
+                  onClick={() => navigate('/ranking')}
+                  className="p-3 rounded-lg border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-slate-800 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs">
+                      <Users size={14} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-heading font-semibold uppercase text-emerald-600 dark:text-emerald-400 block">
+                        Minha Turma
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {userRankings.turma.total} colegas
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-emerald-200 text-emerald-700 dark:text-emerald-300 font-heading font-bold text-xs">
+                    {userRankings.turma.pos}º lugar
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Constância Diária Heatmap */}
+            <div className="card-3d p-4">
+              <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-1.5">
+                <Calendar size={15} className="text-blue-600 dark:text-blue-400" /> Constância Diária
+              </h3>
+              <StudyHeatmap activity={activity} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================== */}
+      {/* 💻 VERSÃO DESKTOP (>= 768px)                                              */}
+      {/* ========================================================================== */}
+      <div className="hidden md:block space-y-8">
+        {/* -------------------------------------------------------------------------- */}
+        {/* 1. HERO DE AVENTURA GAMIFICADO                                            */}
+        {/* -------------------------------------------------------------------------- */}
       <section className="card-3d p-6 sm:p-7 bg-white relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           {/* Avatar e Boas-vindas */}
@@ -740,6 +1103,7 @@ export function DashboardPage() {
             </div>
           </div>
         </aside>
+      </div>
       </div>
 
       {/* -------------------------------------------------------------------------- */}

@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut } from 'lucide-react'
+import { useEconomy } from '../../contexts/EconomyContext'
+import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame } from 'lucide-react'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -60,6 +61,7 @@ function getUserSpaceLevel(user: any) {
 
 export function Navbar() {
   const { user, signOut } = useAuth()
+  const { streak, coins } = useEconomy()
   const location = useLocation()
   const navigate = useNavigate()
 
@@ -76,10 +78,10 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-900/5 dark:border-slate-800 transition-colors">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between relative gap-4">
+    <header className="sticky top-0 z-40 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-900/5 dark:border-slate-800 transition-colors">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between relative gap-2 sm:gap-4">
         {/* Logo Sem Fundo AuraUP */}
-        <div className={`flex items-center ${!user ? 'absolute left-1/2 -translate-x-1/2' : ''}`}>
+        <div className={`flex items-center shrink-0 ${!user ? 'absolute left-1/2 -translate-x-1/2' : ''}`}>
           <Link 
             to="/" 
             className="flex items-center gap-2 group transition-transform active:scale-95"
@@ -88,19 +90,19 @@ export function Navbar() {
             <img 
               src="/logo.png" 
               alt="AuraUP" 
-              className="h-10 w-auto object-contain group-hover:scale-105 transition-transform" 
+              className="h-8 sm:h-10 w-auto object-contain group-hover:scale-105 transition-transform" 
             />
             {user && (
-              <span className="font-heading font-bold text-xl text-blue-600 hidden sm:inline-block tracking-tight">
+              <span className="font-heading font-bold text-lg sm:text-xl text-blue-600 hidden sm:inline-block tracking-tight">
                 Aura<span className="text-amber-500">UP</span>
               </span>
             )}
           </Link>
         </div>
 
-        {/* Links de Navegação */}
+        {/* Links de Navegação Desktop (Ocultos no Mobile) */}
         {user ? (
-          <nav className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+          <nav className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
             {isAdmin && (
               <NavLink to="/admin" icon={<Shield size={16} />} label="Admin" active={location.pathname === '/admin'} />
             )}
@@ -112,16 +114,28 @@ export function Navbar() {
           <div className="w-10" />
         )}
 
-        {/* Ações & Perfil do Aluno com Nível de Missão Espacial */}
+        {/* Ações & Perfil do Aluno */}
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           {user && (
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
+              {/* Pílulas Rápidas no Mobile (Streak & Moedas) */}
+              <div className="flex md:hidden items-center gap-1.5">
+                <div className="badge-streak font-heading text-[11px] px-2 py-1 flex items-center gap-1">
+                  <Flame size={12} className="animate-flame" />
+                  <span className="font-bold">{streak}</span>
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-heading font-bold px-2 py-1 rounded-lg flex items-center gap-1 text-[11px] shadow-2xs">
+                  <span>🟡</span>
+                  <span>{coins}</span>
+                </div>
+              </div>
+
               {/* Profile Card & Level Indicator */}
               <Link 
                 to="/profile" 
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 hover:border-blue-300 shadow-xs transition-all active:scale-95"
+                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 hover:border-blue-300 shadow-2xs sm:shadow-xs transition-all active:scale-95"
               >
-                <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-slate-700 text-blue-600 flex items-center justify-center text-base shrink-0">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-blue-50 dark:bg-slate-700 text-blue-600 flex items-center justify-center text-sm sm:text-base shrink-0">
                   {isAdmin ? '👑' : (AVATARS[user.avatar_id] || '🦊')}
                 </div>
                 
@@ -136,11 +150,11 @@ export function Navbar() {
                 </div>
               </Link>
 
-              {/* Botão de Logout */}
+              {/* Botão de Logout (Apenas no desktop; no mobile fica em /profile) */}
               <button
                 type="button"
                 onClick={handleLogout}
-                className="btn-3d-icon w-8 h-8 !rounded-lg text-slate-400 hover:text-rose-600 hover:border-rose-300 transition-all flex items-center justify-center"
+                className="hidden md:flex btn-3d-icon w-8 h-8 !rounded-lg text-slate-400 hover:text-rose-600 hover:border-rose-300 transition-all items-center justify-center"
                 title="Sair da Conta"
                 aria-label="Sair da Conta"
               >

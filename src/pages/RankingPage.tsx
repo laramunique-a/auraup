@@ -46,7 +46,7 @@ export function RankingPage() {
   const top3 = currentList.slice(0, 3)
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8 min-h-screen">
       {/* Header */}
       <header className="text-center mb-8">
         <div className="w-14 h-14 mx-auto mb-3 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-xs">

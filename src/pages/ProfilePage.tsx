@@ -94,7 +94,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 min-h-screen space-y-6">
+    <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 sm:py-8 min-h-screen space-y-6">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

@@ -66,6 +66,7 @@
     color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', 'Nunito', -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
     scroll-behavior: smooth;
     overflow-x: hidden;
   }
