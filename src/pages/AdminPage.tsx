@@ -856,9 +856,9 @@ function saveLocalAdminLevels(levelsList: any[]) {
       </div>
 
       {activeTab === 'users' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Gestão de Alunos */}
-          <section className="lg:col-span-8 space-y-4">
+          <section className="xl:col-span-8 space-y-4">
             <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
                 <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Alunos Cadastrados</h2>
@@ -871,15 +871,15 @@ function saveLocalAdminLevels(levelsList: any[]) {
               </Button>
             </div>
 
-            <div className="card-3d overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs rounded-xl bg-white dark:bg-slate-800">
-              <div className="overflow-x-auto">
+            <div className="card-3d border border-slate-200 dark:border-slate-700 shadow-xs rounded-xl bg-white dark:bg-slate-800 overflow-hidden">
+              <div className="w-full">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                      <th className="py-3 px-4">Aluno</th>
-                      <th className="py-3 px-4 whitespace-nowrap">Liga Atual</th>
-                      <th className="py-3 px-4 whitespace-nowrap">Saldo</th>
-                      <th className="py-3 px-4 text-right whitespace-nowrap">Ações</th>
+                      <th className="py-2.5 px-3 sm:px-4">Aluno</th>
+                      <th className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">Liga Atual</th>
+                      <th className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">Saldo</th>
+                      <th className="py-2.5 px-3 sm:px-4 text-right whitespace-nowrap">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
@@ -892,54 +892,55 @@ function saveLocalAdminLevels(levelsList: any[]) {
                     ) : (
                       allStudents.map((u) => (
                         <tr key={u.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-slate-700 flex items-center justify-center text-base shrink-0 border border-slate-200/60 dark:border-slate-600 shadow-xs">
+                          <td className="py-2.5 px-3 sm:px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-slate-700 flex items-center justify-center text-sm shrink-0 border border-slate-200/60 dark:border-slate-600 shadow-xs">
                                 {AVATARS[u.avatar_id] || '👤'}
                               </div>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-heading font-semibold text-slate-800 dark:text-white leading-tight">{u.nickname || u.name}</span>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-heading font-semibold text-slate-800 dark:text-white leading-tight text-xs sm:text-sm">{u.nickname || u.name}</span>
                                   {u.is_active === false && (
-                                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
+                                    <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
                                       Inativo
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-xs text-slate-400 font-normal">{u.email}</div>
+                                <div className="text-[11px] text-slate-400 font-normal truncate">{u.email}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="inline-flex items-center text-xs font-heading font-semibold px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 whitespace-nowrap shadow-2xs">
+                          <td className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">
+                            <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-heading font-semibold px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 whitespace-nowrap shadow-2xs">
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: u.level?.color || '#3B82F6' }} />
                               {u.level?.name || 'Iniciante'}
                             </span>
                           </td>
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-3">
-                              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
-                                <Sparkles size={13} className="fill-amber-500 text-amber-500" />
-                                <span className="font-semibold">{u.xp}</span> XP
+                          <td className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-2 text-xs font-medium">
+                              <div className="flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
+                                <Sparkles size={12} className="fill-amber-500 text-amber-500" />
+                                <span className="font-semibold">{u.xp}</span>
                               </div>
-                              <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium">
-                                <Coins size={13} className="fill-amber-500 text-amber-500" />
+                              <div className="flex items-center gap-0.5 text-amber-700 dark:text-amber-300">
+                                <Coins size={12} className="fill-amber-500 text-amber-500" />
                                 <span className="font-semibold">{u.coins}</span>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
-                            <div className="flex items-center justify-end gap-1.5">
+                          <td className="py-2.5 px-3 sm:px-4 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
                               <button 
                                 type="button"
                                 title="Premiar Aluno com XP ou Moedas"
-                                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-colors flex items-center gap-1 cursor-pointer"
+                                className="px-2 py-1 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-colors flex items-center gap-1 cursor-pointer"
                                 onClick={() => {
                                   setSelectedUser(u)
                                   setAdjustXP(0); setAdjustCoins(0)
                                   setActiveModal('editBalance')
                                 }}
                               >
-                                <Sparkles size={13} className="text-amber-500" />
+                                <Sparkles size={12} className="text-amber-500" />
                                 <span className="hidden sm:inline">Premiar</span>
                               </button>
 
@@ -949,7 +950,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                                 className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800 cursor-pointer"
                                 onClick={() => handleOpenEditUser(u)}
                               >
-                                <Pencil size={15} />
+                                <Pencil size={14} />
                               </button>
 
                               <button 
@@ -961,7 +962,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                                   setActiveModal('deleteUser')
                                 }}
                               >
-                                <Trash2 size={15} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>
@@ -975,7 +976,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
           </section>
 
           {/* Sidebar: Ligas */}
-          <aside className="lg:col-span-4 space-y-4">
+          <aside className="xl:col-span-4 space-y-4">
             <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Ligas</h2>
               <Button variant="primary" size="sm" onClick={() => setActiveModal('addLevel')}>
