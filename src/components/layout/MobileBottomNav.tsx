@@ -62,6 +62,11 @@ export function MobileBottomNav() {
             <Link
               key={item.to}
               to={item.to}
+              onClick={() => {
+                window.scrollTo(0, 0)
+                document.documentElement.scrollTop = 0
+                document.body.scrollTop = 0
+              }}
               className={`flex-1 flex flex-col items-center justify-center py-1 px-1 rounded-xl transition-all select-none active:scale-90 ${
                 item.isActive
                   ? 'text-blue-600 dark:text-blue-400 font-bold'

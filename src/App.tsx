@@ -15,6 +15,7 @@ import { AuthPage } from './pages/AuthPage'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { FirstLoginModal } from './components/auth/FirstLoginModal'
 import { MobileBottomNav } from './components/layout/MobileBottomNav'
+import { ScrollToTop } from './components/common/ScrollToTop'
 
 function AppRoutes() {
   return (
@@ -99,6 +100,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ThemeProvider>
         <AuthProvider>
           <EconomyProvider>

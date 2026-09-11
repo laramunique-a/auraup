@@ -182,6 +182,12 @@ function saveLocalAdminLevels(levelsList: any[]) {
     loadWordsOfTheDay()
   }, [])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [activeTab])
+
   async function loadUsers() {
     if (isLocalMode || !supabase) {
       setUsers(getLocalAdminUsers())
