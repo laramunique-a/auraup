@@ -11,7 +11,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'logo.png', 'icons/*.png', 'sql-wasm.wasm'],
+      includeAssets: ['favicon.png', 'apple-touch-icon.png', 'apple-touch-icon-precomposed.png', 'logo.png', 'icons/*.png', 'sql-wasm.wasm'],
       manifest: {
         name: 'AuraUP',
         short_name: 'AuraUP',
