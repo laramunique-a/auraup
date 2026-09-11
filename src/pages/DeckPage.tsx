@@ -168,7 +168,7 @@ export function DeckPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 sm:pb-12 min-h-screen">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
         <div className="flex items-center gap-4 flex-1">

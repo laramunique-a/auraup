@@ -123,7 +123,7 @@ export function StudyPage() {
   // --------------------------------------------------------------------------
   if (sessionDone) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-aura-bg p-4 sm:p-6 relative overflow-hidden">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-aura-bg p-3.5 sm:p-6 py-6 pb-[calc(env(safe-area-inset-bottom,0px)+24px)] pt-[calc(env(safe-area-inset-top,0px)+16px)] relative overflow-y-auto">
         {/* Confetes / Partículas decorativas no fundo */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="absolute top-10 left-1/4 text-3xl animate-bounce">🎉</div>
@@ -133,91 +133,91 @@ export function StudyPage() {
           <div className="absolute top-12 right-12 text-2xl">🎊</div>
         </div>
 
-        <div className="card-3d p-8 sm:p-10 max-w-lg w-full text-center relative z-10 animate-pop-in space-y-6">
+        <div className="card-3d p-5 sm:p-8 max-w-lg w-full text-center relative z-10 animate-pop-in space-y-4 sm:space-y-6 my-auto">
           {/* Troféu 3D comemorativo */}
-          <div className="w-24 h-24 mx-auto bg-gradient-to-tr from-amber-400 to-amber-200 rounded-3xl flex items-center justify-center text-5xl shadow-3d-orange animate-float-smooth border-2 border-white">
+          <div className="w-18 h-18 sm:w-24 sm:h-24 mx-auto bg-gradient-to-tr from-amber-400 to-amber-200 rounded-2xl sm:rounded-3xl flex items-center justify-center text-4xl sm:text-5xl shadow-3d-orange animate-float-smooth border-2 border-white">
             🏆
           </div>
           
           <div>
-            <span className="badge-xp text-xs mb-2 inline-block">
+            <span className="badge-xp text-xs mb-1.5 inline-block">
               SESSÃO FINALIZADA!
             </span>
-            <h2 className="text-3xl sm:text-4xl font-heading font-extrabold text-aura-text-primary tracking-tight">
+            <h2 className="text-2xl sm:text-4xl font-heading font-extrabold text-aura-text-primary tracking-tight">
               Mandou Bem Demais! 🎉
             </h2>
-            <p className="text-aura-text-secondary text-sm font-bold mt-1">
+            <p className="text-aura-text-secondary text-xs sm:text-sm font-bold mt-1">
               Você revisou com sucesso <strong className="text-aura-blue font-extrabold">{reviewed} cards</strong> nesta rodada.
             </p>
           </div>
 
           {/* Recompensas XP & Moedas */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="card-3d p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 text-center">
-              <div className="w-10 h-10 mx-auto rounded-2xl bg-amber-100 flex items-center justify-center text-xl mb-1 shadow-sm">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="card-3d p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 text-center">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-xl sm:rounded-2xl bg-amber-100 flex items-center justify-center text-lg sm:text-xl mb-1 shadow-sm">
                 ⭐
               </div>
-              <div className="text-2xl font-heading font-extrabold text-aura-orange">+{sessionXP} XP</div>
-              <div className="text-[11px] font-heading font-bold uppercase text-aura-text-muted">Experiência</div>
+              <div className="text-xl sm:text-2xl font-heading font-extrabold text-aura-orange">+{sessionXP} XP</div>
+              <div className="text-[10px] sm:text-[11px] font-heading font-bold uppercase text-aura-text-muted">Experiência</div>
             </div>
 
-            <div className="card-3d p-4 bg-gradient-to-br from-blue-50 to-sky-50 border border-blue-200 text-center">
-              <div className="w-10 h-10 mx-auto rounded-2xl bg-blue-100 flex items-center justify-center text-xl mb-1 shadow-sm">
+            <div className="card-3d p-3 sm:p-4 bg-gradient-to-br from-blue-50 to-sky-50 border border-blue-200 text-center">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-xl sm:rounded-2xl bg-blue-100 flex items-center justify-center text-lg sm:text-xl mb-1 shadow-sm">
                 🟡
               </div>
-              <div className="text-2xl font-heading font-extrabold text-aura-blue">+{sessionCoins}</div>
-              <div className="text-[11px] font-heading font-bold uppercase text-aura-text-muted">Moedas Ganhas</div>
+              <div className="text-xl sm:text-2xl font-heading font-extrabold text-aura-blue">+{sessionCoins}</div>
+              <div className="text-[10px] sm:text-[11px] font-heading font-bold uppercase text-aura-text-muted">Moedas Ganhas</div>
             </div>
           </div>
 
           {/* Estatísticas da Sessão */}
-          <div className="card-3d p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 text-left space-y-4">
+          <div className="card-3d p-3.5 sm:p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left space-y-3 sm:space-y-4">
             <div className="flex justify-between items-center text-xs font-heading font-bold uppercase tracking-wider text-aura-text-muted">
               <span>📊 Métricas do Treino</span>
               <span className="text-aura-green font-extrabold">Retenção: <strong>{sessionStats.accuracy}%</strong></span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs font-bold">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs font-bold">
               <div className="flex items-center gap-2">
-                <Clock size={16} className="text-aura-blue" />
-                <span>Tempo: {formatDuration(sessionStats.durationSeconds)}</span>
+                <Clock size={15} className="text-aura-blue shrink-0" />
+                <span className="truncate">Tempo: {formatDuration(sessionStats.durationSeconds)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <Target size={16} className="text-aura-green" />
-                <span>Cards Estudados: <strong className="font-extrabold">{reviewed}</strong></span>
+                <Target size={15} className="text-aura-green shrink-0" />
+                <span className="truncate">Cards: <strong className="font-extrabold">{reviewed}</strong></span>
               </div>
             </div>
 
             {/* Pílulas de Respostas */}
-            <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-200">
-              <div className="text-center p-2 rounded-xl bg-red-50 text-red-700">
-                <div className="font-black text-sm">{sessionStats.ratingCounts[0]}</div>
-                <div className="text-[10px] font-bold">De novo</div>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+              <div className="text-center p-1.5 sm:p-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
+                <div className="font-black text-xs sm:text-sm">{sessionStats.ratingCounts[0]}</div>
+                <div className="text-[9px] sm:text-[10px] font-bold">De novo</div>
               </div>
-              <div className="text-center p-2 rounded-xl bg-orange-50 text-orange-700">
-                <div className="font-black text-sm">{sessionStats.ratingCounts[1]}</div>
-                <div className="text-[10px] font-bold">Difícil</div>
+              <div className="text-center p-1.5 sm:p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300">
+                <div className="font-black text-xs sm:text-sm">{sessionStats.ratingCounts[1]}</div>
+                <div className="text-[9px] sm:text-[10px] font-bold">Difícil</div>
               </div>
-              <div className="text-center p-2 rounded-xl bg-blue-50 text-blue-700">
-                <div className="font-black text-sm">{sessionStats.ratingCounts[2]}</div>
-                <div className="text-[10px] font-bold">Bom</div>
+              <div className="text-center p-1.5 sm:p-2 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300">
+                <div className="font-black text-xs sm:text-sm">{sessionStats.ratingCounts[2]}</div>
+                <div className="text-[9px] sm:text-[10px] font-bold">Bom</div>
               </div>
-              <div className="text-center p-2 rounded-xl bg-emerald-50 text-emerald-700">
-                <div className="font-black text-sm">{sessionStats.ratingCounts[3]}</div>
-                <div className="text-[10px] font-bold">Fácil</div>
+              <div className="text-center p-1.5 sm:p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300">
+                <div className="font-black text-xs sm:text-sm">{sessionStats.ratingCounts[3]}</div>
+                <div className="text-[9px] sm:text-[10px] font-bold">Fácil</div>
               </div>
             </div>
           </div>
 
           {/* Ações */}
-          <div className="space-y-3 pt-2">
+          <div className="space-y-2.5 pt-1">
             <Button 
               variant="orange" 
               size="lg" 
               fullWidth 
               onClick={() => navigate('/')}
             >
-              <Home size={20} /> Continuar Jornada 🚀
+              <Home size={18} /> Continuar Jornada 🚀
             </Button>
             {id !== 'all' && (
               <Button 
@@ -226,7 +226,7 @@ export function StudyPage() {
                 fullWidth 
                 onClick={() => navigate(`/deck/${id}`)}
               >
-                <BookOpen size={18} /> Gerenciar Este Baralho
+                <BookOpen size={16} /> Gerenciar Este Baralho
               </Button>
             )}
           </div>
@@ -239,25 +239,25 @@ export function StudyPage() {
   // TELA DE ESTUDO ATIVA
   // --------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-aura-bg flex flex-col justify-between p-4 sm:p-6 relative">
+    <div className="min-h-[100dvh] bg-aura-bg flex flex-col justify-between p-3.5 sm:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] pt-[calc(env(safe-area-inset-top,0px)+8px)] relative overflow-x-hidden">
       
       {/* XP Floating Toast (Animação de Recompensa) */}
       {floatingXP && (
         <div 
           key={floatingXP.id}
-          className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-xp-rise pointer-events-none"
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-xp-rise pointer-events-none"
         >
-          <div className="badge-xp text-lg px-6 py-2.5 shadow-2xl">
+          <div className="badge-xp text-base sm:text-lg px-5 py-2 sm:px-6 sm:py-2.5 shadow-2xl">
             {floatingXP.text}
           </div>
         </div>
       )}
 
       {/* Header com Barra de Progresso Tátil */}
-      <header className="max-w-xl mx-auto w-full flex items-center justify-between gap-4 py-2">
+      <header className="max-w-xl mx-auto w-full flex items-center justify-between gap-3 py-1 sm:py-2 shrink-0">
         <button
           onClick={() => navigate('/')}
-          className="w-9 h-9 rounded-lg bg-white border border-slate-200 text-aura-text-secondary hover:text-aura-blue flex items-center justify-center shadow-xs active:scale-95 cursor-pointer"
+          className="w-9 h-9 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 flex items-center justify-center shadow-xs active:scale-95 cursor-pointer shrink-0"
           title="Sair do estudo"
         >
           <ArrowLeft size={18} />
@@ -265,7 +265,7 @@ export function StudyPage() {
 
         {/* Barra de Progresso Tátil */}
         <div className="flex-1 px-1">
-          <div className="w-full h-3.5 bg-slate-200/90 dark:bg-slate-700 rounded-md overflow-hidden p-0.5 border border-slate-300/80 dark:border-slate-600 shadow-inner relative flex items-center">
+          <div className="w-full h-3 sm:h-3.5 bg-slate-200/90 dark:bg-slate-700 rounded-md overflow-hidden p-0.5 border border-slate-300/80 dark:border-slate-600 shadow-inner relative flex items-center">
             <div 
               className="h-full bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500 rounded-sm transition-all duration-500 ease-out relative shadow-[inset_0_2px_0_rgba(255,255,255,0.45)]"
               style={{ width: `${progressPercent}%` }}
@@ -283,7 +283,7 @@ export function StudyPage() {
       </header>
 
       {/* Flashcard 3D */}
-      <main className="flex-1 flex items-center justify-center my-6">
+      <main className="flex-1 flex items-center justify-center my-2 sm:my-4 w-full">
         {current && (
           <FlashCard
             key={current.id}
@@ -294,7 +294,7 @@ export function StudyPage() {
       </main>
 
       {/* Footer Dica */}
-      <footer className="max-w-xl mx-auto w-full text-center text-xs font-normal text-slate-500 dark:text-slate-400 py-2">
+      <footer className="max-w-xl mx-auto w-full text-center text-[11px] sm:text-xs font-normal text-slate-500 dark:text-slate-400 py-1 sm:py-2 shrink-0">
         Repita em <span className="text-slate-700 dark:text-slate-200 font-semibold">voz alta</span> para acelerar a <span className="text-blue-600 dark:text-blue-400 font-semibold">retenção neural</span> 🎧
       </footer>
     </div>
