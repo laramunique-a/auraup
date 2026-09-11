@@ -267,76 +267,73 @@ export function DashboardPage() {
       {/* 📱 VERSÃO EXCLUSIVA MOBILE / PWA (< 768px)                                */}
       {/* ========================================================================== */}
       <div className="block md:hidden space-y-4 pb-8">
-        {/* Hub do Aluno & Ação Diária Compacta */}
-        <section className="card-3d p-4 bg-white relative overflow-hidden space-y-3">
-          {/* Linha Superior: Avatar, Saudação e Nível */}
+        {/* Card de Missão Diária (Limpo, Moderno e Direto ao Ponto) */}
+        <section className="card-3d p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs space-y-3.5">
+          {/* Top: Status da Meta Diária */}
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center text-xl shrink-0 shadow-xs">
-                {AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border ${
+                totalDue > 0 
+                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200/80 dark:border-amber-800/80' 
+                  : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/80'
+              }`}>
+                {totalDue > 0 ? '🎯' : '🏆'}
               </div>
+              
               <div className="min-w-0">
-                <span className="badge-level text-[10px] px-2 py-0.5 inline-block mb-0.5">
-                  🛡️ Nível {level}
+                <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block leading-tight">
+                  {totalDue > 0 ? 'Meta de Hoje' : 'Status dos Estudos'}
                 </span>
-                <h1 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
-                  Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
-                </h1>
+                <h2 className="text-sm font-heading font-extrabold text-slate-800 dark:text-white truncate">
+                  {totalDue > 0 ? `${totalDue} ${totalDue === 1 ? 'card pendente' : 'cards pendentes'}` : 'Tudo em dia por aqui! ✨'}
+                </h2>
               </div>
             </div>
 
-            <div className="text-right shrink-0">
-              <span className="text-[10px] font-heading font-bold text-amber-600 dark:text-amber-400 block">
+            <div className="shrink-0 text-right">
+              <span className="inline-flex items-center gap-1 text-[10px] font-heading font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/70 dark:border-blue-900 px-2 py-0.5 rounded-md shadow-2xs">
+                🛡️ Nível {level}
+              </span>
+            </div>
+          </div>
+
+          {/* Barra de Progresso do Nível */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span>Progresso do Nível</span>
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
                 Faltam {xpForNextLevel} XP ⭐
               </span>
-              <div className="w-20 sm:w-24 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600 mt-1">
-                <div 
-                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                  style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
-                />
-              </div>
+            </div>
+            <div className="w-full h-2 bg-slate-100 dark:bg-slate-700/80 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-600/80">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
+              />
             </div>
           </div>
 
-          {/* Destaque da Meta Diária & Botão de Ação Imediata */}
-          <div className="p-3 rounded-xl border border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/70 to-orange-50/40 dark:from-amber-950/30 dark:to-slate-900 flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">{totalDue > 0 ? '🎯' : '🏆'}</span>
-                <div>
-                  <span className="text-[10px] font-heading font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider block leading-none">
-                    {totalDue > 0 ? 'Meta de Hoje' : 'Missão Cumprida'}
-                  </span>
-                  <span className="text-xs font-heading font-extrabold text-slate-800 dark:text-white">
-                    {totalDue > 0 ? `${totalDue} cards para revisar` : 'Tudo em dia! ✨'}
-                  </span>
-                </div>
-              </div>
-              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
-                +10 XP / card
-              </span>
-            </div>
-
-            {totalDue > 0 ? (
-              <Button 
-                variant="orange" 
-                size="md" 
-                onClick={() => navigate('/study/all')}
-                className="w-full !py-2 text-xs font-bold shadow-xs active:scale-95 transition-transform"
-              >
-                Começar Revisão Diária 🔥
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setMobileTab('decks')}
-                className="w-full !py-1.5 text-xs font-semibold"
-              >
-                Ver Meus Baralhos 📚
-              </Button>
-            )}
-          </div>
+          {/* Botão de Ação Primário Direto */}
+          {totalDue > 0 ? (
+            <Button 
+              variant="orange" 
+              size="md" 
+              onClick={() => navigate('/study/all')}
+              className="w-full !py-2.5 text-xs font-heading font-bold shadow-xs active:scale-95 transition-transform"
+            >
+              <Flame size={15} className="fill-white shrink-0" />
+              Começar Revisão Diária ({totalDue})
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMobileTab('decks')}
+              className="w-full !py-2 text-xs font-heading font-semibold"
+            >
+              Ver Coleção de Baralhos 📚
+            </Button>
+          )}
         </section>
 
         {/* 3. Segmented Controls / Abas do Mobile */}
