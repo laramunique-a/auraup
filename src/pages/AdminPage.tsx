@@ -877,9 +877,9 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
                       <th className="py-3 px-4">Aluno</th>
-                      <th className="py-3 px-4">Liga Atual</th>
-                      <th className="py-3 px-4">Saldo</th>
-                      <th className="py-3 px-4 text-right">Ação</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Liga Atual</th>
+                      <th className="py-3 px-4 whitespace-nowrap">Saldo</th>
+                      <th className="py-3 px-4 text-right whitespace-nowrap">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
@@ -910,12 +910,12 @@ function saveLocalAdminLevels(levelsList: any[]) {
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs font-heading font-semibold px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200">
+                          <td className="py-3 px-4 whitespace-nowrap">
+                            <span className="inline-flex items-center text-xs font-heading font-semibold px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 whitespace-nowrap shadow-2xs">
                               {u.level?.name || 'Iniciante'}
                             </span>
                           </td>
-                          <td className="py-3 px-4">
+                          <td className="py-3 px-4 whitespace-nowrap">
                             <div className="flex items-center gap-3">
                               <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
                                 <Sparkles size={13} className="fill-amber-500 text-amber-500" />
@@ -927,7 +927,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right">
+                          <td className="py-3 px-4 text-right whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
                               <button 
                                 type="button"
