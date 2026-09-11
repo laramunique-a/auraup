@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useEconomy } from '../../contexts/EconomyContext'
-import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame } from 'lucide-react'
+import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame, Coins } from 'lucide-react'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -78,23 +78,23 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-b border-slate-900/5 dark:border-slate-800 transition-colors">
-      <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between relative gap-2 sm:gap-4">
-        {/* Logo Sem Fundo AuraUP */}
-        <div className={`flex items-center shrink-0 ${!user ? 'absolute left-1/2 -translate-x-1/2' : ''}`}>
+    <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 shadow-[0_1px_4px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition-colors pt-[env(safe-area-inset-top,0px)]">
+      <div className="max-w-6xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2.5 sm:gap-4">
+        {/* Logo e Nome AuraUP */}
+        <div className="flex items-center shrink-0">
           <Link 
             to="/" 
             className="flex items-center gap-2 group transition-transform active:scale-95"
-            aria-label="AuraUP App"
+            aria-label="AuraUP Início"
           >
             <img 
               src="/logo.png" 
               alt="AuraUP" 
-              className="h-8 sm:h-10 w-auto object-contain group-hover:scale-105 transition-transform" 
+              className="h-8 sm:h-9 w-auto object-contain drop-shadow-2xs group-hover:scale-105 transition-transform" 
             />
             {user && (
-              <span className="font-heading font-bold text-lg sm:text-xl text-blue-600 hidden sm:inline-block tracking-tight">
-                Aura<span className="text-amber-500">UP</span>
+              <span className="font-heading font-extrabold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white flex items-center">
+                Aura<span className="text-blue-600 dark:text-blue-400">UP</span>
               </span>
             )}
           </Link>
@@ -102,7 +102,7 @@ export function Navbar() {
 
         {/* Links de Navegação Desktop (Ocultos no Mobile) */}
         {user ? (
-          <nav className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+          <nav className="hidden md:flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80">
             {isAdmin && (
               <NavLink to="/admin" icon={<Shield size={16} />} label="Admin" active={location.pathname === '/admin'} />
             )}
@@ -114,43 +114,56 @@ export function Navbar() {
           <div className="w-10" />
         )}
 
-        {/* Ações & Perfil do Aluno */}
-        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+        {/* Gamificação & Perfil do Aluno */}
+        <div className="flex items-center gap-1.5 sm:gap-3 ml-auto">
           {user && (
-            <div className="flex items-center gap-1.5 sm:gap-3">
-              {/* Pílulas Rápidas no Mobile (Streak & Moedas) */}
-              <div className="flex md:hidden items-center gap-1.5">
-                <div className="badge-streak font-heading text-[11px] px-2 py-1 flex items-center gap-1">
-                  <Flame size={12} className="animate-flame" />
-                  <span className="font-bold">{streak}</span>
-                </div>
-                <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-heading font-bold px-2 py-1 rounded-lg flex items-center gap-1 text-[11px] shadow-2xs">
-                  <span>🟡</span>
-                  <span>{coins}</span>
-                </div>
-              </div>
+            <>
+              {/* Pílula de Ofensiva (Streak) */}
+              <Link
+                to="/ranking"
+                title="Ofensiva diária"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/40 dark:to-amber-950/30 border border-orange-200/80 dark:border-orange-800/60 shadow-2xs hover:bg-orange-100/70 transition-all active:scale-95 cursor-pointer"
+              >
+                <Flame size={14} className="fill-orange-500 text-orange-500 shrink-0" />
+                <span className="font-heading font-black text-xs text-orange-600 dark:text-orange-400 leading-none">
+                  {streak}
+                </span>
+              </Link>
 
-              {/* Profile Card & Level Indicator */}
+              {/* Pílula de Moedas */}
+              <Link
+                to="/store"
+                title="Moedas AuraUP"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-950/40 dark:to-yellow-950/30 border border-amber-200/80 dark:border-amber-800/60 shadow-2xs hover:bg-amber-100/70 transition-all active:scale-95 cursor-pointer"
+              >
+                <Coins size={14} className="fill-amber-400 text-amber-500 shrink-0" />
+                <span className="font-heading font-black text-xs text-amber-700 dark:text-amber-300 leading-none">
+                  {coins}
+                </span>
+              </Link>
+
+              {/* Avatar do Usuário */}
               <Link 
                 to="/profile" 
-                className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 hover:border-blue-300 shadow-2xs sm:shadow-xs transition-all active:scale-95"
+                title="Meu Perfil"
+                className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-blue-400/40 transition-all active:scale-95 cursor-pointer"
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-md bg-blue-50 dark:bg-slate-700 text-blue-600 flex items-center justify-center text-sm sm:text-base shrink-0">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-sm shadow-2xs">
                   {isAdmin ? '👑' : (AVATARS[user.avatar_id] || '🦊')}
                 </div>
                 
-                <div className="hidden md:flex flex-col text-left">
+                <div className="hidden md:flex flex-col text-left pr-1">
                   <span className="text-xs font-heading font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                     {isAdmin ? user.name : (user.nickname || user.name)}
                   </span>
-                  <span className={`text-[11px] font-semibold flex items-center gap-1 ${userLevelInfo.badgeText}`}>
-                    <LevelIcon size={12} color={userLevelInfo.iconColor} />
+                  <span className={`text-[10px] font-semibold flex items-center gap-1 ${userLevelInfo.badgeText}`}>
+                    <LevelIcon size={11} color={userLevelInfo.iconColor} />
                     {userLevelInfo.title}
                   </span>
                 </div>
               </Link>
 
-              {/* Botão de Logout (Apenas no desktop; no mobile fica em /profile) */}
+              {/* Botão de Logout Desktop */}
               <button
                 type="button"
                 onClick={handleLogout}
@@ -160,7 +173,7 @@ export function Navbar() {
               >
                 <LogOut size={15} />
               </button>
-            </div>
+            </>
           )}
         </div>
       </div>
