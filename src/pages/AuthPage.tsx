@@ -157,7 +157,7 @@ export function AuthPage() {
         {/* Rodapé */}
         <p className="text-center mt-2.5 text-[11px] font-medium text-slate-400 flex items-center justify-center gap-1.5">
           <Sparkles size={12} className="text-blue-600" />
-          AuraUP — Gamified Learning Experience
+          AuraUP — Learn. Play. Level Up.
         </p>
       </div>
     </div>
