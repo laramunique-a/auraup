@@ -83,7 +83,8 @@ const DEFAULT_LOCAL_STUDENTS: User[] = [
     coins: 140,
     streak: 14,
     level_id: 'lvl_3',
-    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' }
+    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
+    is_active: true
   },
   {
     id: 'user_2',
@@ -96,7 +97,8 @@ const DEFAULT_LOCAL_STUDENTS: User[] = [
     coins: 95,
     streak: 10,
     level_id: 'lvl_3',
-    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' }
+    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
+    is_active: true
   },
   {
     id: 'user_3',
@@ -109,7 +111,8 @@ const DEFAULT_LOCAL_STUDENTS: User[] = [
     coins: 45,
     streak: 7,
     level_id: 'lvl_2',
-    level: { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' }
+    level: { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' },
+    is_active: true
   },
   {
     id: 'user_4',
@@ -122,7 +125,8 @@ const DEFAULT_LOCAL_STUDENTS: User[] = [
     coins: 20,
     streak: 3,
     level_id: 'lvl_1',
-    level: { id: 'lvl_1', name: 'Nível 1: Hello', min_xp: 0, color: '#FF8A00' }
+    level: { id: 'lvl_1', name: 'Nível 1: Hello', min_xp: 0, color: '#FF8A00' },
+    is_active: true
   }
 ]
 

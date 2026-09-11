@@ -20,7 +20,7 @@ export interface User {
   streak: number
   level_id?: string
   level?: Level
-  is_active: boolean
+  is_active?: boolean
   must_change_password?: boolean
 }
 
