@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { Button } from '../ui/Button'
 import { KeyRound, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react'
@@ -12,8 +13,18 @@ export function FirstLoginModal() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isMustChange = !!(user && user.must_change_password)
+
+  useEffect(() => {
+    if (!isMustChange) return
+    document.body.classList.add('modal-open')
+    return () => {
+      document.body.classList.remove('modal-open')
+    }
+  }, [isMustChange])
+
   // Só renderiza se houver usuário autenticado e a flag must_change_password for verdadeira
-  if (!user || !user.must_change_password) {
+  if (!isMustChange) {
     return null
   }
 
@@ -44,8 +55,8 @@ export function FirstLoginModal() {
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fade-in">
       <div 
         className="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 animate-pop-in relative"
         role="dialog"
@@ -149,6 +160,7 @@ export function FirstLoginModal() {
           Esta confirmação ocorre apenas uma única vez no seu primeiro acesso.
         </p>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

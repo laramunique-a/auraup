@@ -266,7 +266,7 @@ export function DashboardPage() {
       {/* ========================================================================== */}
       {/* 📱 VERSÃO EXCLUSIVA MOBILE / PWA (< 768px)                                */}
       {/* ========================================================================== */}
-      <div className="block md:hidden space-y-4">
+      <div className="block md:hidden space-y-4 pb-8">
         {/* Hub do Aluno & Ação Diária Compacta */}
         <section className="card-3d p-4 bg-white relative overflow-hidden space-y-3">
           {/* Linha Superior: Avatar, Saudação e Nível */}
@@ -1104,7 +1104,19 @@ export function DashboardPage() {
       {/* -------------------------------------------------------------------------- */}
       {/* MODALS                                                                     */}
       {/* -------------------------------------------------------------------------- */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="✨ Novo Baralho de Estudo">
+      <Modal 
+        open={showCreate} 
+        onClose={() => setShowCreate(false)} 
+        title="✨ Novo Baralho de Estudo"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancelar</Button>
+            <Button variant="orange" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
+              Criar Baralho 🚀
+            </Button>
+          </div>
+        }
+      >
         <div className="space-y-4 py-2">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -1118,17 +1130,23 @@ export function DashboardPage() {
               onKeyDown={e => { if (e.key === 'Enter') handleCreate() }}
             />
           </div>
-          <div className="flex gap-2.5 justify-end pt-3 pb-1 border-t border-slate-100 dark:border-slate-700">
-            <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button variant="orange" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
-              Criar Baralho 🚀
-            </Button>
-          </div>
         </div>
       </Modal>
 
-      <Modal open={showImportModal} onClose={() => !importing && setShowImportModal(false)} title="📥 Importar do Anki (.apkg)">
-        <div className="space-y-4">
+      <Modal 
+        open={showImportModal} 
+        onClose={() => !importing && setShowImportModal(false)} 
+        title="📥 Importar do Anki (.apkg)"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
+            <Button variant="primary" loading={importing} onClick={handleImportConfirm}>
+              Começar Importação ⚡
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
           <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
             O AuraUP vai converter seus cards, imagens e áudios do Anki automaticamente. Como deseja chamar este novo baralho?
           </p>
@@ -1139,12 +1157,6 @@ export function DashboardPage() {
             disabled={importing}
             className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-base text-slate-900 dark:text-white outline-none transition-all"
           />
-          <div className="flex gap-2.5 justify-end pt-3 pb-1 border-t border-slate-100 dark:border-slate-700">
-            <Button variant="ghost" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
-            <Button variant="primary" loading={importing} onClick={handleImportConfirm}>
-              Começar Importação ⚡
-            </Button>
-          </div>
         </div>
       </Modal>
 

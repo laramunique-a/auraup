@@ -320,6 +320,22 @@ export function DeckPage() {
         onClose={() => { setShowCreate(false); setEditingCard(null); resetForm() }} 
         title={editingCard ? "✏️ Editar Card" : "✨ Criar Novo Card"}
         maxWidth="640px"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => { setShowCreate(false); setEditingCard(null); resetForm() }}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="primary" 
+              size="md" 
+              loading={saving} 
+              onClick={handleSaveCard} 
+              disabled={!((front.trim() || frontImage) && (back.trim() || backImage))}
+            >
+              {editingCard ? 'Salvar Alterações' : 'Criar Card'}
+            </Button>
+          </div>
+        }
       >
         <div className="flex flex-col gap-6">
           {/* Visual Hint Banner */}
@@ -480,20 +496,6 @@ export function DeckPage() {
             </div>
           </div>
 
-          {/* Action Buttons (Fixos no rodapé do modal para nunca sumirem) */}
-          <div className="sticky bottom-0 bg-white dark:bg-slate-800 pt-3 pb-1 border-t border-slate-100 dark:border-slate-700 flex gap-2.5 justify-end mt-4">
-            <Button variant="ghost" size="md" onClick={() => { setShowCreate(false); setEditingCard(null); resetForm() }}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="primary" 
-              size="md" 
-              loading={saving} 
-              onClick={handleSaveCard} 
-              disabled={!((front.trim() || frontImage) && (back.trim() || backImage))}
-            >
-              {editingCard ? 'Salvar Alterações' : 'Criar Card'}
-            </Button>
           </div>
         </div>
       </Modal>

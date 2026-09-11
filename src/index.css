@@ -453,3 +453,26 @@
 .animate-xp-rise {
   animation: xpRise 900ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Regras Estritas Mobile / PWA                                               */
+/* -------------------------------------------------------------------------- */
+
+/* Oculta a barra de navegação inferior quando qualquer modal estiver aberto */
+body.modal-open .mobile-bottom-nav {
+  display: none !important;
+}
+
+body.modal-open {
+  overflow: hidden !important;
+}
+
+/* Evita o auto-zoom incômodo do Safari no iOS em campos de formulário */
+@media (max-width: 640px) {
+  input, 
+  textarea, 
+  select {
+    font-size: 16px !important;
+  }
+}
+

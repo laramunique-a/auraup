@@ -21,7 +21,7 @@ function AppRoutes() {
     <div className="relative min-h-screen flex flex-col bg-aura-bg text-aura-text-primary font-sans antialiased pb-20 md:pb-0">
       <Navbar />
       <FirstLoginModal />
-      <main className="flex-1 relative z-10">
+      <main className="flex-1">
         <Routes>
           {/* Rota pública de login */}
           <Route path="/login" element={<AuthPage />} />

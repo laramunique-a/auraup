@@ -1,21 +1,26 @@
+import { createPortal } from 'react-dom'
+
 interface ToastProps {
   message: string
   type?: 'success' | 'error' | 'info'
 }
 
 const toastThemes = {
-  success: { border: 'border-aura-green', icon: '✨', text: 'text-aura-green' },
-  error:   { border: 'border-aura-red', icon: '❌', text: 'text-aura-red' },
-  info:    { border: 'border-aura-blue', icon: 'ℹ️', text: 'text-aura-blue' },
+  success: { border: 'border-emerald-500/60 dark:border-emerald-500/50', icon: '✨', text: 'text-emerald-700 dark:text-emerald-300' },
+  error:   { border: 'border-rose-500/60 dark:border-rose-500/50', icon: '❌', text: 'text-rose-700 dark:text-rose-300' },
+  info:    { border: 'border-blue-500/60 dark:border-blue-500/50', icon: 'ℹ️', text: 'text-blue-700 dark:text-blue-300' },
 }
 
 export function Toast({ message, type = 'info' }: ToastProps) {
   const t = toastThemes[type]
-  return (
-    <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 px-5 py-3 bg-white dark:bg-slate-800 rounded-xl animate-pop-in shadow-lg border ${t.border} max-w-[92vw] min-w-[280px]`}>
+  return createPortal(
+    <div 
+      className={`fixed bottom-[calc(env(safe-area-inset-bottom,0px)+72px)] sm:bottom-8 sm:top-auto left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-3 px-5 py-3.5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl animate-pop-in shadow-2xl border ${t.border} max-w-[92vw] min-w-[260px] pointer-events-none select-none`}
+    >
       <span className="text-xl shrink-0">{t.icon}</span>
-      <span className="font-sans font-bold text-sm text-slate-800 dark:text-white">{message}</span>
-    </div>
+      <span className="font-heading font-bold text-sm text-slate-900 dark:text-white leading-snug">{message}</span>
+    </div>,
+    document.body
   )
 }
 
