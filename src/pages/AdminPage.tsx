@@ -28,7 +28,7 @@ export function AdminPage() {
   const { speak } = useSpeech()
   const [users, setUsers] = useState<User[]>([])
   const [activeTab, setActiveTab] = useState<'users' | 'decks' | 'words'>('users')
-  const [activeModal, setActiveModal] = useState<'addUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'wordOfTheDay' | null>(null)
+  const [activeModal, setActiveModal] = useState<'addUser' | 'editUser' | 'deleteUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'wordOfTheDay' | null>(null)
   
   // Novo Usuário Form
   const [newEmail, setNewEmail] = useState('')
@@ -37,6 +37,20 @@ export function AdminPage() {
   const [selectedLevelId, setSelectedLevelId] = useState('')
   const [showLevelDropdown, setShowLevelDropdown] = useState(false)
   const [creating, setCreating] = useState(false)
+
+  // Editar Usuário Form
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editPassword, setEditPassword] = useState('')
+  const [editLevelId, setEditLevelId] = useState('')
+  const [editIsActive, setEditIsActive] = useState(true)
+  const [showEditLevelDropdown, setShowEditLevelDropdown] = useState(false)
+  const [savingUser, setSavingUser] = useState(false)
+
+  // Excluir Usuário State
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [deletingUser, setDeletingUser] = useState(false)
 
   // Form Baralho Padrão (2-Step Modal)
   const [deckFormStep, setDeckFormStep] = useState<1 | 2>(1)
@@ -277,6 +291,83 @@ function saveLocalAdminLevels(levelsList: any[]) {
       show(err.message || 'Erro ao criar usuário.', 'error')
     } finally {
       setCreating(false)
+    }
+  }
+
+  function handleOpenEditUser(u: User) {
+    setEditingUser(u)
+    setEditName(u.name || u.nickname || '')
+    setEditEmail(u.email)
+    setEditPassword('')
+    setEditLevelId(u.level_id || u.level?.id || 'lvl_1')
+    setEditIsActive(u.is_active !== false)
+    setShowEditLevelDropdown(false)
+    setActiveModal('editUser')
+  }
+
+  async function handleSaveEditUser() {
+    if (!editingUser) return
+    if (!editName.trim() || !editEmail.trim()) {
+      show('Preencha o nome e o e-mail do aluno.', 'error')
+      return
+    }
+
+    if (editPassword && editPassword.trim().length > 0 && editPassword.trim().length < 6) {
+      show('A nova senha deve ter no mínimo 6 caracteres.', 'error')
+      return
+    }
+
+    setSavingUser(true)
+    try {
+      const selectedLvl = levels.find(l => l.id === editLevelId) || levels[0]
+
+      const updated = await authService.adminUpdateStudent(editingUser.id, {
+        name: editName.trim(),
+        email: editEmail.trim(),
+        newPassword: editPassword.trim() || undefined,
+        level_id: editLevelId,
+        level: selectedLvl,
+        is_active: editIsActive
+      })
+
+      // Atualiza lista local
+      const currentList = getLocalAdminUsers()
+      const idx = currentList.findIndex(u => u.id === editingUser.id)
+      if (idx !== -1) {
+        currentList[idx] = { ...currentList[idx], ...updated }
+        saveLocalAdminUsers(currentList)
+        setUsers([...currentList])
+      } else {
+        setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...updated } : u))
+      }
+
+      show('Dados do aluno atualizados com sucesso!', 'success')
+      setActiveModal(null)
+      setEditingUser(null)
+    } catch (err: any) {
+      show(err.message || 'Erro ao atualizar aluno.', 'error')
+    } finally {
+      setSavingUser(false)
+    }
+  }
+
+  async function handleConfirmDeleteUser() {
+    if (!userToDelete) return
+    setDeletingUser(true)
+    try {
+      await authService.adminDeleteStudent(userToDelete.id)
+
+      const currentList = getLocalAdminUsers().filter(u => u.id !== userToDelete.id)
+      saveLocalAdminUsers(currentList)
+      setUsers(currentList)
+
+      show(`Aluno ${userToDelete.name || userToDelete.email} excluído com sucesso.`, 'success')
+      setActiveModal(null)
+      setUserToDelete(null)
+    } catch (err: any) {
+      show(err.message || 'Erro ao excluir aluno.', 'error')
+    } finally {
+      setDeletingUser(false)
     }
   }
 
@@ -804,7 +895,14 @@ function saveLocalAdminLevels(levelsList: any[]) {
                                 {AVATARS[u.avatar_id] || '👤'}
                               </div>
                               <div>
-                                <div className="font-heading font-semibold text-slate-800 dark:text-white leading-tight">{u.nickname || u.name}</div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-heading font-semibold text-slate-800 dark:text-white leading-tight">{u.nickname || u.name}</span>
+                                  {u.is_active === false && (
+                                    <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
+                                      Inativo
+                                    </span>
+                                  )}
+                                </div>
                                 <div className="text-xs text-slate-400 font-normal">{u.email}</div>
                               </div>
                             </div>
@@ -827,17 +925,42 @@ function saveLocalAdminLevels(levelsList: any[]) {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <Button 
-                              variant="secondary" 
-                              size="sm" 
-                              onClick={() => {
-                                setSelectedUser(u)
-                                setAdjustXP(0); setAdjustCoins(0)
-                                setActiveModal('editBalance')
-                              }}
-                            >
-                              Premiar
-                            </Button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button 
+                                type="button"
+                                title="Premiar Aluno com XP ou Moedas"
+                                className="px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 transition-colors flex items-center gap-1 cursor-pointer"
+                                onClick={() => {
+                                  setSelectedUser(u)
+                                  setAdjustXP(0); setAdjustCoins(0)
+                                  setActiveModal('editBalance')
+                                }}
+                              >
+                                <Sparkles size={13} className="text-amber-500" />
+                                <span className="hidden sm:inline">Premiar</span>
+                              </button>
+
+                              <button 
+                                type="button"
+                                title="Editar dados do aluno"
+                                className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:text-slate-400 dark:hover:text-blue-400 dark:hover:bg-slate-700 rounded-lg transition-colors border border-transparent hover:border-blue-200 dark:hover:border-blue-800 cursor-pointer"
+                                onClick={() => handleOpenEditUser(u)}
+                              >
+                                <Pencil size={15} />
+                              </button>
+
+                              <button 
+                                type="button"
+                                title="Excluir aluno"
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:text-rose-400 dark:hover:bg-rose-950/50 rounded-lg transition-colors border border-transparent hover:border-rose-200 dark:hover:border-rose-900 cursor-pointer"
+                                onClick={() => {
+                                  setUserToDelete(u)
+                                  setActiveModal('deleteUser')
+                                }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1631,6 +1754,141 @@ function saveLocalAdminLevels(levelsList: any[]) {
             <Button variant="vibrant" size="md" loading={creating} onClick={handleCreateUser} disabled={!newEmail || !newName || !selectedLevelId}>
               Cadastrar Agora
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Editar Aluno */}
+      <Modal open={activeModal === 'editUser'} onClose={() => { setActiveModal(null); setEditingUser(null) }} title="📝 Editar Aluno">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <AdminField 
+            label="Nome Completo" 
+            value={editName} 
+            onChange={setEditName} 
+            placeholder="Ex: João Silva" 
+          />
+          <AdminField 
+            label="E-mail" 
+            value={editEmail} 
+            onChange={setEditEmail} 
+            placeholder="aluno@email.com" 
+            type="email" 
+          />
+          
+          <AdminField 
+            label="Redefinir Senha (opcional)" 
+            value={editPassword} 
+            onChange={setEditPassword} 
+            placeholder="Deixe em branco para manter a senha atual" 
+            type="text" 
+          />
+          
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Liga do Aluno
+            </label>
+            <div className="relative">
+              <button 
+                type="button"
+                onClick={() => setShowEditLevelDropdown(!showEditLevelDropdown)}
+                className="w-full rounded-lg p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
+              >
+                <span>
+                  {editLevelId ? (
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-800 dark:text-white">
+                        {levels.find(l => l.id === editLevelId)?.name || 'Selecionar liga...'}
+                      </span>
+                      <span className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 font-semibold">
+                        {levels.find(l => l.id === editLevelId)?.min_xp || 0} XP
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">Selecione uma liga...</span>
+                  )}
+                </span>
+                <ChevronDown 
+                  size={18} 
+                  className={`text-slate-400 transition-transform duration-200 ${showEditLevelDropdown ? 'rotate-180' : ''}`} 
+                />
+              </button>
+
+              {showEditLevelDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden py-1 max-h-60 overflow-y-auto">
+                  {levels.map(l => (
+                    <div 
+                      key={l.id} 
+                      onClick={() => { setEditLevelId(l.id); setShowEditLevelDropdown(false) }} 
+                      className="px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-between text-sm text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color || '#3B82F6' }} />
+                        <span className="font-medium">{l.name}</span>
+                      </div>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-600">
+                        Mínimo {l.min_xp} XP
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Status da Conta */}
+          <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-slate-800 dark:text-slate-200">Status do Acesso</div>
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                {editIsActive ? 'Aluno pode fazer login normalmente' : 'Acesso bloqueado temporariamente'}
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={editIsActive} 
+                onChange={e => setEditIsActive(e.target.checked)} 
+                className="sr-only peer"
+              />
+              <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <Button variant="ghost" size="md" onClick={() => { setActiveModal(null); setEditingUser(null) }}>Cancelar</Button>
+            <Button variant="vibrant" size="md" loading={savingUser} onClick={handleSaveEditUser} disabled={!editName || !editEmail}>
+              Salvar Alterações
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal Excluir Aluno */}
+      <Modal open={activeModal === 'deleteUser'} onClose={() => { setActiveModal(null); setUserToDelete(null) }} title="🗑️ Excluir Aluno">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl flex items-start gap-3">
+            <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/60 flex items-center justify-center shrink-0 text-rose-600 dark:text-rose-300">
+              <Trash2 size={18} />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">Atenção: Ação Irreversível</h4>
+              <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
+                Você está prestes a excluir o aluno <strong className="font-semibold text-rose-950 dark:text-white">{userToDelete?.name || userToDelete?.nickname}</strong> ({userToDelete?.email}).
+                Todos os dados de progresso e histórico deste aluno serão removidos da plataforma.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <Button variant="ghost" size="md" onClick={() => { setActiveModal(null); setUserToDelete(null) }}>Cancelar</Button>
+            <button 
+              type="button"
+              disabled={deletingUser}
+              onClick={handleConfirmDeleteUser}
+              className="px-4 py-2 text-sm font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              {deletingUser ? 'Excluindo...' : 'Sim, Excluir Aluno'}
+            </button>
           </div>
         </div>
       </Modal>

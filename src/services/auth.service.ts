@@ -374,6 +374,83 @@ export const authService = {
   },
 
   /**
+   * Atualização de dados de aluno pelo Administrador
+   */
+  async adminUpdateStudent(userId: string, data: {
+    name?: string
+    email?: string
+    newPassword?: string
+    level_id?: string
+    level?: any
+    is_active?: boolean
+  }): Promise<User> {
+    const accounts = getLocalAccounts()
+    const idx = accounts.findIndex(a => a.id === userId)
+    if (idx === -1) throw new Error('Aluno não encontrado.')
+
+    if (data.email) {
+      const cleanEmail = data.email.trim().toLowerCase()
+      if (accounts.some((a, i) => i !== idx && a.email.toLowerCase() === cleanEmail)) {
+        throw new Error('Já existe outro usuário com este e-mail.')
+      }
+      accounts[idx].email = cleanEmail
+    }
+
+    if (data.name) {
+      accounts[idx].name = data.name.trim()
+      accounts[idx].nickname = data.name.trim().split(' ')[0]
+    }
+
+    if (data.newPassword && data.newPassword.trim().length > 0) {
+      const val = validatePassword(data.newPassword.trim())
+      if (!val.valid) throw new Error(val.error)
+      accounts[idx].password = data.newPassword.trim()
+    }
+
+    if (data.level_id) {
+      accounts[idx].level_id = data.level_id
+      if (data.level) accounts[idx].level = data.level
+    }
+
+    if (data.is_active !== undefined) {
+      accounts[idx].is_active = data.is_active
+    }
+
+    saveLocalAccounts(accounts)
+
+    if (!isLocalMode && supabase) {
+      try {
+        await supabase.from('profiles').update({
+          full_name: accounts[idx].name,
+          level_id: accounts[idx].level_id,
+          is_active: accounts[idx].is_active
+        }).eq('id', userId)
+      } catch {
+        // ignore
+      }
+    }
+
+    return toUser(accounts[idx])
+  },
+
+  /**
+   * Exclusão de aluno pelo Administrador
+   */
+  async adminDeleteStudent(userId: string): Promise<void> {
+    const accounts = getLocalAccounts()
+    const filtered = accounts.filter(a => a.id !== userId)
+    saveLocalAccounts(filtered)
+
+    if (!isLocalMode && supabase) {
+      try {
+        await supabase.from('profiles').delete().eq('id', userId)
+      } catch {
+        // ignore
+      }
+    }
+  },
+
+  /**
    * Encerra a sessão ativa
    */
   async signOut(): Promise<void> {
