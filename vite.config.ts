@@ -11,28 +11,29 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.png', 'logo.png', 'icons/*.png'],
+      includeAssets: ['favicon.png', 'logo.png', 'icons/*.png', 'sql-wasm.wasm'],
       manifest: {
-        name: 'Aura English App — Flashcards Inteligentes',
-        short_name: 'Aura English',
-        description: 'Aprenda inglês mais rápido com repetição espaçada inteligente',
-        theme_color: '#0f0f13',
-        background_color: '#0f0f13',
+        name: 'AuraUP',
+        short_name: 'AuraUP',
+        description: 'Plataforma Gamificada de Aprendizagem e Memorização',
+        theme_color: '#1769D5',
+        background_color: '#FFFFFF',
         display: 'standalone',
+        orientation: 'portrait',
         start_url: '/',
         icons: [
           {
-            src: '/favicon.png',
+            src: '/icons/icon-192.png',
             sizes: '192x192',
             type: 'image/png'
           },
           {
-            src: '/logo.png',
+            src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png'
           },
           {
-            src: '/logo.png',
+            src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

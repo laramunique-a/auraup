@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../services/storage'
+import { supabase, isLocalMode, generateId } from '../services/storage'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { Toast, useToast } from '../components/ui/Toast'
@@ -8,12 +8,14 @@ import { compressImage } from '../lib/utils'
 import { 
   UserPlus, Users, Pencil, Trash2, Plus, Coins, Sparkles, 
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
-  Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List
+  Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
+  ChevronDown
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
 import { wordsOfTheDayService, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { isEnglishText } from '../lib/speechUtils'
+import { authService } from '../services/auth.service'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -31,6 +33,7 @@ export function AdminPage() {
   // Novo Usuário Form
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
+  const [newInitialPassword, setNewInitialPassword] = useState('aura123')
   const [selectedLevelId, setSelectedLevelId] = useState('')
   const [showLevelDropdown, setShowLevelDropdown] = useState(false)
   const [creating, setCreating] = useState(false)
@@ -58,6 +61,101 @@ export function AdminPage() {
   const [wordExampleTranslation, setWordExampleTranslation] = useState('')
   const [savingWord, setSavingWord] = useState(false)
 
+const LS_ADMIN_USERS = 'uply_admin_users'
+const LS_ADMIN_LEVELS = 'uply_admin_levels'
+
+const DEFAULT_LOCAL_LEVELS = [
+  { id: 'lvl_1', name: 'Nível 1: Hello', min_xp: 0, color: '#FF8A00' },
+  { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' },
+  { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
+  { id: 'lvl_4', name: 'Nível 4: Mastery', min_xp: 3000, color: '#8B5CF6' },
+]
+
+const DEFAULT_LOCAL_STUDENTS: User[] = [
+  {
+    id: 'user_1',
+    name: 'Lucas Andrade',
+    nickname: 'Lucas',
+    email: 'lucas.andrade@email.com',
+    role: 'user',
+    avatar_id: 'avatar_3',
+    xp: 2850,
+    coins: 140,
+    streak: 14,
+    level_id: 'lvl_3',
+    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' }
+  },
+  {
+    id: 'user_2',
+    name: 'Beatriz Lima',
+    nickname: 'Bia',
+    email: 'beatriz.lima@email.com',
+    role: 'user',
+    avatar_id: 'avatar_1',
+    xp: 2420,
+    coins: 95,
+    streak: 10,
+    level_id: 'lvl_3',
+    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' }
+  },
+  {
+    id: 'user_3',
+    name: 'Carlos Eduardo',
+    nickname: 'Cadu',
+    email: 'carlos.edu@email.com',
+    role: 'user',
+    avatar_id: 'avatar_5',
+    xp: 1200,
+    coins: 45,
+    streak: 7,
+    level_id: 'lvl_2',
+    level: { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' }
+  },
+  {
+    id: 'user_4',
+    name: 'Mariana Costa',
+    nickname: 'Mari',
+    email: 'mariana.costa@email.com',
+    role: 'user',
+    avatar_id: 'avatar_4',
+    xp: 450,
+    coins: 20,
+    streak: 3,
+    level_id: 'lvl_1',
+    level: { id: 'lvl_1', name: 'Nível 1: Hello', min_xp: 0, color: '#FF8A00' }
+  }
+]
+
+function getLocalAdminUsers(): User[] {
+  try {
+    const raw = localStorage.getItem(LS_ADMIN_USERS)
+    if (raw) return JSON.parse(raw)
+    localStorage.setItem(LS_ADMIN_USERS, JSON.stringify(DEFAULT_LOCAL_STUDENTS))
+    return DEFAULT_LOCAL_STUDENTS
+  } catch {
+    return DEFAULT_LOCAL_STUDENTS
+  }
+}
+
+function saveLocalAdminUsers(usersList: User[]) {
+  localStorage.setItem(LS_ADMIN_USERS, JSON.stringify(usersList))
+}
+
+function getLocalAdminLevels(): any[] {
+  try {
+    const raw = localStorage.getItem(LS_ADMIN_LEVELS)
+    if (raw) return JSON.parse(raw)
+    localStorage.setItem(LS_ADMIN_LEVELS, JSON.stringify(DEFAULT_LOCAL_LEVELS))
+    return DEFAULT_LOCAL_LEVELS
+  } catch {
+    return DEFAULT_LOCAL_LEVELS
+  }
+}
+
+function saveLocalAdminLevels(levelsList: any[]) {
+  localStorage.setItem(LS_ADMIN_LEVELS, JSON.stringify(levelsList))
+}
+
   useEffect(() => {
     loadUsers()
     loadLevels()
@@ -66,16 +164,23 @@ export function AdminPage() {
   }, [])
 
   async function loadUsers() {
+    if (isLocalMode || !supabase) {
+      setUsers(getLocalAdminUsers())
+      return
+    }
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('*, level:levels(*)')
         .order('created_at', { ascending: false })
       
-      if (error) throw error
-      setUsers(data || [])
-    } catch (err) {
-      show('Erro ao carregar usuários.', 'error')
+      if (error || !data || data.length === 0) {
+        setUsers(getLocalAdminUsers())
+        return
+      }
+      setUsers(data)
+    } catch {
+      setUsers(getLocalAdminUsers())
     }
   }
 
@@ -99,25 +204,70 @@ export function AdminPage() {
 
   async function handleCreateUser() {
     if (!newEmail || !newName) return
+    if (newInitialPassword.length < 6) {
+      show('A senha padrão deve ter no mínimo 6 caracteres.', 'error')
+      return
+    }
+
     setCreating(true)
     try {
+      if (isLocalMode || !supabase) {
+        const localLevels = getLocalAdminLevels()
+        const selectedLvl = localLevels.find(l => l.id === selectedLevelId) || localLevels[0]
+        const initialXP = selectedLvl ? (selectedLvl.min_xp || 0) : 0
+
+        const newUser = await authService.adminRegisterStudent({
+          name: newName.trim(),
+          email: newEmail.trim(),
+          initialPassword: newInitialPassword.trim(),
+          level_id: selectedLvl?.id || 'lvl_1',
+          level: selectedLvl,
+          initialXP
+        })
+
+        const currentList = getLocalAdminUsers()
+        currentList.unshift(newUser)
+        saveLocalAdminUsers(currentList)
+        setUsers(currentList)
+        setActiveModal(null)
+        setNewEmail('')
+        setNewName('')
+        setNewInitialPassword('aura123')
+        setSelectedLevelId('')
+        show(`Aluno cadastrado com sucesso com ${initialXP} XP inicial!`, 'success')
+        return
+      }
+
+      const selectedLvl = levels.find(l => l.id === selectedLevelId)
+      const initialXP = selectedLvl ? (selectedLvl.min_xp || 0) : 0
+
       const { data, error } = await supabase.functions.invoke('create-user', {
         body: { 
           email: newEmail.trim(), 
-          password: 'aura_user_default', 
+          password: newInitialPassword.trim() || 'aura123', 
           name: newName.trim(),
-          level_id: selectedLevelId || undefined
+          level_id: selectedLevelId || undefined,
+          xp: initialXP,
+          must_change_password: true
         }
       })
 
       if (error) throw error
       if (data?.error) throw new Error(data.error)
 
+      if (data?.user?.id) {
+        await supabase.from('profiles').update({ 
+          xp: initialXP,
+          must_change_password: true
+        }).eq('id', data.user.id)
+      }
+
       setActiveModal(null)
       setNewEmail('')
       setNewName('')
+      setNewInitialPassword('aura123')
       setSelectedLevelId('')
-      show('Usuário cadastrado com sucesso!', 'success')
+      show(`Aluno cadastrado com sucesso com ${initialXP} XP inicial!`, 'success')
       await loadUsers()
     } catch (err: any) {
       show(err.message || 'Erro ao criar usuário.', 'error')
@@ -348,17 +498,57 @@ export function AdminPage() {
   async function handleUpdateBalance() {
     if (!selectedUser) return
     setUpdatingBalance(true)
+    const xpToAdd = parseInt(adjustXP.toString()) || 0
+    const coinsToAdd = parseInt(adjustCoins.toString()) || 0
+
     try {
+      if (isLocalMode || !supabase) {
+        const currentList = getLocalAdminUsers()
+        const idx = currentList.findIndex(u => u.id === selectedUser.id)
+        if (idx !== -1) {
+          currentList[idx] = {
+            ...currentList[idx],
+            xp: Math.max(0, (currentList[idx].xp || 0) + xpToAdd),
+            coins: Math.max(0, (currentList[idx].coins || 0) + coinsToAdd)
+          }
+          saveLocalAdminUsers(currentList)
+          setUsers([...currentList])
+        }
+
+        // Se for o usuário conectado atualmente, sincronizar também uply_user e economia
+        const rawUser = localStorage.getItem('uply_user')
+        if (rawUser) {
+          const currentLogged = JSON.parse(rawUser)
+          if (currentLogged.id === selectedUser.id || selectedUser.id === 'user_1') {
+            currentLogged.xp = Math.max(0, (currentLogged.xp || 0) + xpToAdd)
+            currentLogged.coins = Math.max(0, (currentLogged.coins || 0) + coinsToAdd)
+            localStorage.setItem('uply_user', JSON.stringify(currentLogged))
+          }
+        }
+        const savedEco = localStorage.getItem('uply_economy_state')
+        if (savedEco) {
+          const eco = JSON.parse(savedEco)
+          eco.xp = Math.max(0, (eco.xp || 0) + xpToAdd)
+          eco.coins = Math.max(0, (eco.coins || 0) + coinsToAdd)
+          localStorage.setItem('uply_economy_state', JSON.stringify(eco))
+          window.dispatchEvent(new CustomEvent('uply_economy_sync'))
+        }
+
+        show('Saldo atualizado com sucesso!', 'success')
+        setActiveModal(null)
+        return
+      }
+
       const { error } = await supabase.rpc('add_user_reward', {
         user_id: selectedUser.id,
-        xp_to_add: parseInt(adjustXP.toString()) || 0,
-        coins_to_add: parseInt(adjustCoins.toString()) || 0
+        xp_to_add: xpToAdd,
+        coins_to_add: coinsToAdd
       })
       if (error) throw error
       show('Saldo atualizado com sucesso!', 'success')
       setActiveModal(null)
       await loadUsers()
-    } catch (err) {
+    } catch {
       show('Erro ao atualizar saldo.', 'error')
     } finally {
       setUpdatingBalance(false)
@@ -374,14 +564,46 @@ export function AdminPage() {
   const PRESET_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
   async function loadLevels() {
-    const { data } = await supabase.from('levels').select('*').order('min_xp', { ascending: true })
-    setLevels(data || [])
+    if (isLocalMode || !supabase) {
+      setLevels(getLocalAdminLevels())
+      return
+    }
+    try {
+      const { data, error } = await supabase.from('levels').select('*').order('min_xp', { ascending: true })
+      if (error || !data || data.length === 0) {
+        setLevels(getLocalAdminLevels())
+        return
+      }
+      setLevels(data)
+    } catch {
+      setLevels(getLocalAdminLevels())
+    }
   }
 
   async function handleCreateLevel() {
+    const minXp = parseInt(newLevelXP.toString()) || 0
+    if (isLocalMode || !supabase) {
+      const newLvl = {
+        id: 'lvl_' + generateId(),
+        name: newLevelName.trim() || 'Nova Liga',
+        min_xp: minXp,
+        color: newLevelColor
+      }
+      const list = getLocalAdminLevels()
+      list.push(newLvl)
+      list.sort((a, b) => a.min_xp - b.min_xp)
+      saveLocalAdminLevels(list)
+      setLevels(list)
+      show('Liga criada!', 'success')
+      setActiveModal(null)
+      setNewLevelName('')
+      setNewLevelXP(0)
+      return
+    }
+
     const { error } = await supabase.from('levels').insert({
       name: newLevelName,
-      min_xp: parseInt(newLevelXP.toString()) || 0,
+      min_xp: minXp,
       color: newLevelColor
     })
     if (error) show('Erro ao criar liga.', 'error')
@@ -396,11 +618,48 @@ export function AdminPage() {
 
   async function handleUpdateLevel() {
     if (!editingLevel) return
+    const minXp = parseInt(newLevelXP.toString()) || 0
+    if (isLocalMode || !supabase) {
+      const list = getLocalAdminLevels()
+      const idx = list.findIndex(l => l.id === editingLevel.id)
+      if (idx !== -1) {
+        list[idx] = {
+          ...list[idx],
+          name: newLevelName.trim() || list[idx].name,
+          min_xp: minXp,
+          color: newLevelColor
+        }
+        list.sort((a, b) => a.min_xp - b.min_xp)
+        saveLocalAdminLevels(list)
+        setLevels(list)
+
+        // Sincronizar alunos dessa liga que tenham menos que o novo XP mínimo
+        const usersList = getLocalAdminUsers()
+        let updatedUsers = false
+        for (const u of usersList) {
+          if (u.level_id === editingLevel.id && (u.xp || 0) < minXp) {
+            u.xp = minXp
+            updatedUsers = true
+          }
+        }
+        if (updatedUsers) {
+          saveLocalAdminUsers(usersList)
+          setUsers([...usersList])
+        }
+      }
+      show('Liga atualizada!', 'success')
+      setActiveModal(null)
+      setEditingLevel(null)
+      setNewLevelName('')
+      setNewLevelXP(0)
+      return
+    }
+
     const { error } = await supabase
       .from('levels')
       .update({
         name: newLevelName,
-        min_xp: parseInt(newLevelXP.toString()) || 0,
+        min_xp: minXp,
         color: newLevelColor
       })
       .eq('id', editingLevel.id)
@@ -409,7 +668,7 @@ export function AdminPage() {
     else {
       await supabase.rpc('sync_league_xp', {
         target_level_id: editingLevel.id,
-        new_min_xp: parseInt(newLevelXP.toString()) || 0
+        new_min_xp: minXp
       })
       show('Liga atualizada!', 'success')
       setActiveModal(null)
@@ -423,13 +682,24 @@ export function AdminPage() {
 
   async function handleDeleteLevel() {
     if (!editingLevel) return
+    if (!confirm('Tem certeza que deseja remover esta liga?')) return
+
+    if (isLocalMode || !supabase) {
+      const list = getLocalAdminLevels().filter(l => l.id !== editingLevel.id)
+      saveLocalAdminLevels(list)
+      setLevels(list)
+      show('Liga removida!', 'success')
+      setActiveModal(null)
+      return
+    }
+
     const { count, error: countError } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .eq('level_id', editingLevel.id)
     if (countError) return show('Erro ao verificar alunos.', 'error')
     if (count && count > 0) return show(`Não é possível deletar liga com ${count} alunos.`, 'error')
-    if (!confirm('Tem certeza?')) return
+    
     const { error } = await supabase.from('levels').delete().eq('id', editingLevel.id)
     if (error) show('Erro ao deletar liga.', 'error')
     else {
@@ -488,86 +758,86 @@ export function AdminPage() {
       </div>
 
       {activeTab === 'users' ? (
-        <div className="responsive-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: '2rem', alignItems: 'start' }}>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Gestão de Alunos */}
-          <section>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base sm:text-lg font-heading font-bold text-slate-800 dark:text-white">Alunos Cadastrados</h2>
+          <section className="lg:col-span-8 space-y-4">
+            <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-2.5">
-                <Button variant="primary" size="sm" onClick={() => setActiveModal('addUser')}>
-                  <UserPlus size={16} /> Novo Aluno
-                </Button>
-                <div className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-3 py-2 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700">
-                  Total: <strong className="font-extrabold">{allStudents.length}</strong> {allStudents.length === 1 ? 'aluno' : 'alunos'}
-                </div>
+                <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Alunos Cadastrados</h2>
+                <span className="text-xs font-heading font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800 shadow-xs">
+                  <span className="font-bold">{allStudents.length}</span> {allStudents.length === 1 ? 'aluno' : 'alunos'}
+                </span>
               </div>
+              <Button variant="primary" size="sm" onClick={() => setActiveModal('addUser')}>
+                <UserPlus size={15} /> Novo Aluno
+              </Button>
             </div>
 
-            <div className="card" style={{ overflow: 'hidden', border: 'none', transform: 'none', boxShadow: 'var(--shadow-md)' }}>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="card-3d overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs rounded-xl bg-white dark:bg-slate-800">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left">
                   <thead>
-                    <tr style={{ textAlign: 'left', background: 'var(--bg-surface)' }}>
-                      <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Aluno</th>
-                      <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Liga Atual</th>
-                      <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Saldo</th>
-                      <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', textAlign: 'right' }}>Ação</th>
+                    <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      <th className="py-3 px-4">Aluno</th>
+                      <th className="py-3 px-4">Liga Atual</th>
+                      <th className="py-3 px-4">Saldo</th>
+                      <th className="py-3 px-4 text-right">Ação</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {allStudents.map((u, idx) => (
-                      <tr key={u.id} style={{ borderBottom: '1px solid var(--border)', animation: `fadeIn 0.4s ease ${idx * 0.05}s both` }}>
-                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                            <div style={{ 
-                              width: '44px', height: '44px', borderRadius: '50%', 
-                              background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' 
-                            }}>
-                              {AVATARS[u.avatar_id] || '👤'}
-                            </div>
-                            <div>
-                              <div style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--text-primary)' }}>{u.nickname || u.name}</div>
-                              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 500 }}>{u.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                          <span style={{ 
-                            fontSize: '0.8125rem', fontWeight: 800, 
-                            color: u.level?.color || 'var(--text-secondary)',
-                            background: 'var(--bg-surface)',
-                            padding: '6px 12px', borderRadius: '12px'
-                          }}>
-                            {u.level?.name || 'Iniciante'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '1.25rem 1.5rem' }}>
-                          <div style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <Sparkles size={14} color="#f59e0b" />
-                              <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>{u.xp}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <Coins size={14} color="var(--accent)" />
-                              <span style={{ fontSize: '0.9375rem', fontWeight: 800 }}>{u.coins}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            onClick={() => {
-                              setSelectedUser(u)
-                              setAdjustXP(0); setAdjustCoins(0)
-                              setActiveModal('editBalance')
-                            }}
-                          >
-                            Premiar
-                          </Button>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
+                    {allStudents.length === 0 ? (
+                      <tr>
+                        <td colSpan={4} className="py-8 text-center text-slate-400">
+                          Nenhum aluno cadastrado ainda.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      allStudents.map((u) => (
+                        <tr key={u.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-slate-700 flex items-center justify-center text-base shrink-0 border border-slate-200/60 dark:border-slate-600 shadow-xs">
+                                {AVATARS[u.avatar_id] || '👤'}
+                              </div>
+                              <div>
+                                <div className="font-heading font-semibold text-slate-800 dark:text-white leading-tight">{u.nickname || u.name}</div>
+                                <div className="text-xs text-slate-400 font-normal">{u.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs font-heading font-semibold px-2.5 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200">
+                              {u.level?.name || 'Iniciante'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium">
+                                <Sparkles size={13} className="fill-amber-500 text-amber-500" />
+                                <span className="font-semibold">{u.xp}</span> XP
+                              </div>
+                              <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium">
+                                <Coins size={13} className="fill-amber-500 text-amber-500" />
+                                <span className="font-semibold">{u.coins}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <Button 
+                              variant="secondary" 
+                              size="sm" 
+                              onClick={() => {
+                                setSelectedUser(u)
+                                setAdjustXP(0); setAdjustCoins(0)
+                                setActiveModal('editBalance')
+                              }}
+                            >
+                              Premiar
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -575,35 +845,44 @@ export function AdminPage() {
           </section>
 
           {/* Sidebar: Ligas */}
-          <aside>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Ligas</h2>
-              <Button variant="ghost" size="sm" onClick={() => setActiveModal('addLevel')}><Plus size={16} /> Nova Liga</Button>
+          <aside className="lg:col-span-4 space-y-4">
+            <div className="flex items-center justify-between gap-2 pb-1 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Ligas</h2>
+              <Button variant="primary" size="sm" onClick={() => setActiveModal('addLevel')}>
+                <Plus size={15} /> Nova Liga
+              </Button>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {levels.map((lvl, idx) => (
+            
+            <div className="space-y-2.5">
+              {levels.map((lvl) => (
                 <div 
                   key={lvl.id} 
-                  className="card animate-pop"
                   onClick={() => { setSelectedLevelFilter(lvl.id); setActiveModal('viewLeagueUsers') }}
-                  style={{ 
-                    padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    animationDelay: `${idx * 0.1}s`, borderLeft: `4px solid ${lvl.color || 'var(--accent)'}`,
-                    cursor: 'pointer'
-                  }}
+                  className="card-3d-interactive p-3.5 flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs cursor-pointer hover:border-blue-300 transition-all"
                 >
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '1.125rem', marginBottom: '0.25rem' }}>{lvl.name}</div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>Mínimo {lvl.min_xp} XP</div>
+                  <div className="flex items-center gap-3">
+                    <div 
+                      className="w-2 h-7 rounded-sm shrink-0" 
+                      style={{ backgroundColor: lvl.color || '#3B82F6' }} 
+                    />
+                    <div>
+                      <div className="font-heading font-semibold text-sm text-slate-800 dark:text-white leading-tight">{lvl.name}</div>
+                      <div className="text-xs font-normal text-slate-400 mt-0.5">Mínimo <span className="font-semibold text-slate-600 dark:text-slate-300">{lvl.min_xp} XP</span></div>
+                    </div>
                   </div>
+                  
                   <button 
                     onClick={(e) => {
-                      e.stopPropagation(); setEditingLevel(lvl); setNewLevelName(lvl.name);
-                      setNewLevelXP(lvl.min_xp); setActiveModal('editLevel')
+                      e.stopPropagation()
+                      setEditingLevel(lvl)
+                      setNewLevelName(lvl.name)
+                      setNewLevelXP(lvl.min_xp)
+                      setActiveModal('editLevel')
                     }}
-                    className="btn-icon-soft"
+                    className="btn-3d-icon w-8 h-8 !rounded-lg text-slate-500 hover:text-blue-600"
+                    title="Editar Liga"
                   >
-                    <Pencil size={18} />
+                    <Pencil size={14} />
                   </button>
                 </div>
               ))}
@@ -1276,26 +1555,71 @@ export function AdminPage() {
           <AdminField label="Nome Completo" value={newName} onChange={setNewName} placeholder="Ex: João Silva" />
           <AdminField label="E-mail" value={newEmail} onChange={setNewEmail} placeholder="aluno@email.com" type="email" />
           
+          <AdminField 
+            label="Senha Inicial Padrão (mínimo 6 caracteres)" 
+            value={newInitialPassword} 
+            onChange={setNewInitialPassword} 
+            placeholder="Ex: aura123" 
+            type="text" 
+          />
+          
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Liga Obrigatória</label>
-            <div style={{ position: 'relative' }}>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              Liga Obrigatória
+            </label>
+            <div className="relative">
               <button 
+                type="button"
                 onClick={() => setShowLevelDropdown(!showLevelDropdown)}
-                style={{ width: '100%', padding: '1rem', background: 'var(--bg-surface)', border: '2px solid var(--border)', borderRadius: 'var(--radius)', fontWeight: 600, textAlign: 'left', display: 'flex', justifyContent: 'space-between' }}
+                className="w-full rounded-lg p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
               >
-                {selectedLevelId ? levels.find(l => l.id === selectedLevelId)?.name : 'Selecione uma liga...'}
-                <span>▼</span>
+                <span>
+                  {selectedLevelId ? (
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-slate-800 dark:text-white">
+                        {levels.find(l => l.id === selectedLevelId)?.name}
+                      </span>
+                      <span className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800 font-semibold">
+                        {levels.find(l => l.id === selectedLevelId)?.min_xp || 0} XP
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">Selecione uma liga...</span>
+                  )}
+                </span>
+                <ChevronDown 
+                  size={18} 
+                  className={`text-slate-400 transition-transform duration-200 ${showLevelDropdown ? 'rotate-180' : ''}`} 
+                />
               </button>
+
               {showLevelDropdown && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-lg)', zIndex: 100, marginTop: '8px', overflow: 'hidden' }}>
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden py-1 max-h-60 overflow-y-auto">
                   {levels.map(l => (
-                    <div key={l.id} onClick={() => { setSelectedLevelId(l.id); setShowLevelDropdown(false) }} style={{ padding: '12px', cursor: 'pointer', fontWeight: 600, borderBottom: '1px solid var(--border)' }} className="hover-bounce">
-                      {l.name} ({l.min_xp} XP)
+                    <div 
+                      key={l.id} 
+                      onClick={() => { setSelectedLevelId(l.id); setShowLevelDropdown(false) }} 
+                      className="px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-between text-sm text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color || '#3B82F6' }} />
+                        <span className="font-medium">{l.name}</span>
+                      </div>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-600">
+                        Mínimo {l.min_xp} XP
+                      </span>
                     </div>
                   ))}
                 </div>
               )}
             </div>
+
+            {selectedLevelId && (
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5 font-medium">
+                <Sparkles size={13} className="text-amber-500 shrink-0" />
+                <span>O aluno iniciará automaticamente com <strong className="text-amber-600 dark:text-amber-400 font-semibold">{levels.find(l => l.id === selectedLevelId)?.min_xp || 0} XP</strong> (mínimo desta liga).</span>
+              </p>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
@@ -1415,7 +1739,7 @@ function AdminField({ label, value, onChange, placeholder, type = 'text' }: any)
         value={value} 
         onChange={e => onChange(e.target.value)} 
         placeholder={placeholder}
-        className="w-full rounded-xl p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white"
+        className="w-full rounded-lg p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white shadow-2xs"
       />
     </div>
   )

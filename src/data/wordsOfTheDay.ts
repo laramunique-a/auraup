@@ -287,6 +287,96 @@ export const INITIAL_WORDS_OF_THE_DAY: WordOfTheDay[] = [
     example: 'Wisdom comes from small, continuous efforts accumulated over time.',
     exampleTranslation: 'A sabedoria vem de pequenos esforços contínuos acumulados ao longo do tempo.',
   },
+  {
+    id: 'word_31',
+    word: 'Adaptability',
+    type: 'substantivo',
+    translation: 'Adaptabilidade',
+    definition: 'A capacidade de se ajustar com sucesso a novas condições ou ambientes.',
+    example: 'Adaptability is key when communicating across different cultural backgrounds.',
+    exampleTranslation: 'A adaptabilidade é fundamental ao se comunicar em diferentes contextos culturais.',
+  },
+  {
+    id: 'word_32',
+    word: 'Clarity',
+    type: 'substantivo',
+    translation: 'Clareza',
+    definition: 'O estado de ser claro, compreensível e livre de ambiguidades.',
+    example: 'Expressing your ideas with clarity builds trust in international teams.',
+    exampleTranslation: 'Expressar suas ideias com clareza constrói confiança em equipes internacionais.',
+  },
+  {
+    id: 'word_33',
+    word: 'Dedication',
+    type: 'substantivo',
+    translation: 'Dedicação',
+    definition: 'O compromisso sincero e contínuo com uma tarefa ou propósito.',
+    example: 'Your dedication to studying every day will yield lifelong benefits.',
+    exampleTranslation: 'Sua dedicação em estudar todos os dias trará benefícios para a vida inteira.',
+  },
+  {
+    id: 'word_34',
+    word: 'Efficiency',
+    type: 'substantivo',
+    translation: 'Eficiência',
+    definition: 'A capacidade de realizar algo atingindo o melhor resultado com o menor desperdício de tempo.',
+    example: 'Spaced repetition increases vocabulary learning efficiency significantly.',
+    exampleTranslation: 'A repetição espaçada aumenta significativamente a eficiência no aprendizado de vocabulário.',
+  },
+  {
+    id: 'word_35',
+    word: 'Fluency',
+    type: 'substantivo',
+    translation: 'Fluência',
+    definition: 'A habilidade de falar ou escrever um idioma com facilidade, precisão e naturalidade.',
+    example: 'True fluency means thinking in the language without translating in your head.',
+    exampleTranslation: 'Fluência real significa pensar no idioma sem traduzir mentalmente.',
+  },
+  {
+    id: 'word_36',
+    word: 'Gratitude',
+    type: 'substantivo',
+    translation: 'Gratidão',
+    definition: 'O sentimento de reconhecimento e apreço pelas coisas boas da vida.',
+    example: 'Practicing gratitude keeps your motivation high during difficult challenges.',
+    exampleTranslation: 'Praticar a gratidão mantém sua motivação alta durante desafios difíceis.',
+  },
+  {
+    id: 'word_37',
+    word: 'Ingenuity',
+    type: 'substantivo',
+    translation: 'Engenhosidade / Criatividade',
+    definition: 'A habilidade de ser inteligente, inventivo e original ao resolver problemas.',
+    example: 'Human ingenuity created tools that make language learning accessible anywhere.',
+    exampleTranslation: 'A engenhosidade humana criou ferramentas que tornam o aprendizado de idiomas acessível em qualquer lugar.',
+  },
+  {
+    id: 'word_38',
+    word: 'Pivotal',
+    type: 'adjetivo',
+    translation: 'Crucial / Decisivo',
+    definition: 'De importância crucial e determinante no sucesso de algo.',
+    example: 'Consistency was pivotal in helping her achieve high test scores.',
+    exampleTranslation: 'A consistência foi crucial para ajudá-la a obter altas notas nas provas.',
+  },
+  {
+    id: 'word_39',
+    word: 'Reliable',
+    type: 'adjetivo',
+    translation: 'Confiável',
+    definition: 'Que pode ser confiado; consistente no bom desempenho.',
+    example: 'Having a reliable study routine ensures you never fall behind.',
+    exampleTranslation: 'Ter uma rotina de estudos confiável garante que você nunca fique para trás.',
+  },
+  {
+    id: 'word_40',
+    word: 'Tenacious',
+    type: 'adjetivo',
+    translation: 'Tenaz / Incansável',
+    definition: 'Determinado de forma firme; que não desiste facilmente.',
+    example: 'A tenacious learner turns every mistake into an opportunity to grow.',
+    exampleTranslation: 'Um aluno tenaz transforma cada erro em uma oportunidade de crescimento.',
+  },
 ]
 
 const LS_WORDS_KEY = 'uply_words_of_the_day'
@@ -406,17 +496,35 @@ export const wordsOfTheDayService = {
     }
   },
 
+  /**
+   * Retorna a palavra do dia para a data atual.
+   * Utiliza cálculo de meia-noite em UTC puro sobre a data local do calendário,
+   * garantindo que cada novo dia (às 00:00:00) avance exatamente 1 índice de forma determinística,
+   * sem risco de repetição por horário de verão (DST) ou fuso horário.
+   */
   async getTodayWord(): Promise<WordOfTheDay> {
+    return this.getWordForDate(new Date())
+  },
+
+  /**
+   * Retorna a palavra correspondente a qualquer data informada
+   */
+  async getWordForDate(targetDate: Date): Promise<WordOfTheDay> {
     const words = await this.getAllWords()
     if (!words || words.length === 0) return INITIAL_WORDS_OF_THE_DAY[0]
 
-    const now = new Date()
-    const localDateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const baseDate = new Date(2026, 0, 1)
-    const diffInMs = localDateObj.getTime() - baseDate.getTime()
-    const dayIndex = Math.floor(diffInMs / (1000 * 60 * 60 * 24))
+    // Pega ano, mês e dia da data do calendário
+    const year = targetDate.getFullYear()
+    const month = targetDate.getMonth()
+    const date = targetDate.getDate()
+
+    // Meia-noite UTC fixa para eliminar oscilações de 23h/25h em mudanças de horário
+    const currentUtcMidnight = Date.UTC(year, month, date)
+    const baseUtcMidnight = Date.UTC(2026, 0, 1)
+    const dayNumber = Math.floor((currentUtcMidnight - baseUtcMidnight) / 86400000)
     
-    const safeIndex = Math.abs(dayIndex) % words.length
+    // Módulo seguro positivo para qualquer data passada ou futura
+    const safeIndex = ((dayNumber % words.length) + words.length) % words.length
     return words[safeIndex]
   }
 }

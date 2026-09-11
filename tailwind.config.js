@@ -8,10 +8,10 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Nunito', '-apple-system', 'sans-serif'],
-        heading: ['Fredoka', 'Nunito', 'sans-serif'],
-        display: ['Fredoka', 'sans-serif'],
-        duo: ['Fredoka', 'sans-serif'],
+        sans: ['Plus Jakarta Sans', 'Nunito', '-apple-system', 'sans-serif'],
+        heading: ['Plus Jakarta Sans', 'Nunito', 'sans-serif'],
+        display: ['Plus Jakarta Sans', 'sans-serif'],
+        duo: ['Plus Jakarta Sans', 'sans-serif'],
       },
       colors: {
         aura: {
@@ -65,9 +65,12 @@ export default {
         'glow-orange': '0 4px 14px rgba(245, 158, 11, 0.3)',
       },
       borderRadius: {
-        'xl': '1.25rem',
-        '2xl': '1.5rem',
-        '3xl': '2rem',
+        'sm': '0.25rem',
+        'md': '0.375rem',
+        'lg': '0.5rem',
+        'xl': '0.75rem',
+        '2xl': '1rem',
+        '3xl': '1.25rem',
       },
     },
   },

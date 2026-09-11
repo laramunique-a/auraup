@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../services/storage'
 import { useDecks } from '../hooks/useDecks'
@@ -10,7 +10,8 @@ import { useEconomy } from '../contexts/EconomyContext'
 import { 
   Plus, FileUp, LayoutGrid, List, 
   Sparkles, Calendar, Trophy, Volume2, 
-  Flame, Target, ArrowRight
+  Flame, Target, ArrowRight, Globe, Users,
+  ArrowUpDown
 } from 'lucide-react'
 import { StudyHeatmap } from '../components/dashboard/StudyHeatmap'
 import { reviewService } from '../services/review.service'
@@ -18,6 +19,7 @@ import { DeckCard } from '../components/ui/DeckCard'
 import { ankiService } from '../services/anki.service'
 import { getStudyDayKey } from '../lib/sm2'
 import { wordsOfTheDayService, INITIAL_WORDS_OF_THE_DAY, type WordOfTheDay } from '../data/wordsOfTheDay'
+import { GLOBAL_RANKING_MOCK, CLASS_RANKING_MOCK } from '../mockData'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -41,15 +43,30 @@ export function DashboardPage() {
   const [deckName, setDeckName] = useState('')
   const [creating, setCreating] = useState(false)
   const [activity, setActivity] = useState<Record<string, number>>({})
-  const [ranking, setRanking] = useState<any[]>([])
-  const [rankingLoading, setRankingLoading] = useState(true)
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
 
   // Palavra do Dia
   const [wordOfTheDay, setWordOfTheDay] = useState<WordOfTheDay>(INITIAL_WORDS_OF_THE_DAY[0])
 
   useEffect(() => {
-    wordsOfTheDayService.getTodayWord().then(setWordOfTheDay)
+    const updateWord = () => {
+      wordsOfTheDayService.getTodayWord().then(setWordOfTheDay)
+    }
+    updateWord()
+
+    // Atualiza automaticamente se o dia virar enquanto a aba está aberta
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') updateWord()
+    }
+    window.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('focus', updateWord)
+    const interval = setInterval(updateWord, 10 * 60 * 1000)
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('focus', updateWord)
+      clearInterval(interval)
+    }
   }, [])
   
   // Import Anki State
@@ -121,23 +138,39 @@ export function DashboardPage() {
     reviewService.getActivity(user.id).then(data => {
       setActivity(data)
     })
-    
-    if (supabase) {
-      supabase
-        .from('profiles')
-        .select('id, name, nickname, xp, avatar_id')
-        .order('xp', { ascending: false })
-        .limit(5)
-        .then(({ data }: any) => {
-          setRanking(data || [])
-          setRankingLoading(false)
-        }, () => {
-          setRankingLoading(false)
-        })
-    } else {
-      setRankingLoading(false)
-    }
   }, [user?.id])
+
+  // Cálculo dinâmico e em tempo real da colocação do usuário nos dois rankings
+  const userRankings = useMemo(() => {
+    // 1. Ranking Global
+    const globalList = GLOBAL_RANKING_MOCK.map(item => {
+      if (item.isCurrentUser) {
+        return { ...item, xp: Math.max(item.xp, liveXP) }
+      }
+      return item
+    }).sort((a, b) => b.xp - a.xp)
+
+    const globalIndex = globalList.findIndex(item => item.isCurrentUser)
+    const globalPos = globalIndex !== -1 ? globalIndex + 1 : 1
+    const totalGlobal = globalList.length
+
+    // 2. Ranking Minha Turma
+    const classList = CLASS_RANKING_MOCK.map(item => {
+      if (item.isCurrentUser) {
+        return { ...item, xp: Math.max(item.xp, liveXP) }
+      }
+      return item
+    }).sort((a, b) => b.xp - a.xp)
+
+    const classIndex = classList.findIndex(item => item.isCurrentUser)
+    const classPos = classIndex !== -1 ? classIndex + 1 : 1
+    const totalClass = classList.length
+
+    return {
+      global: { pos: globalPos, total: totalGlobal },
+      turma: { pos: classPos, total: totalClass },
+    }
+  }, [liveXP])
 
   function speakWord(word: string) {
     if ('speechSynthesis' in window) {
@@ -244,21 +277,21 @@ export function DashboardPage() {
                 <span className="badge-level text-xs">
                   🛡️ Nível {level}
                 </span>
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">
                   {user?.role === 'admin' ? 'Comandante Admin' : 'Explorador(a)'}
                 </span>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-heading font-bold text-slate-900 dark:text-white tracking-tight">
-                Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
+              <h1 className="text-2xl sm:text-3xl font-heading font-semibold text-slate-800 dark:text-white tracking-tight">
+                Olá, <span className="text-blue-600 dark:text-blue-400 font-bold">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
               </h1>
-              <p className="text-slate-600 dark:text-slate-300 text-sm font-medium mt-1">
+              <p className="text-slate-600 dark:text-slate-300 text-sm font-normal mt-1">
                 {totalDue > 0 ? (
                   <span>
-                    Você tem <strong className="text-blue-600 dark:text-blue-400 font-extrabold">{totalDue} cards</strong> esperando por você hoje. Pronto para <strong className="text-slate-800 dark:text-white font-extrabold">subir de nível</strong>?
+                    Você tem <span className="text-blue-600 dark:text-blue-400 font-semibold">{totalDue} cards</span> esperando por você hoje. Pronto para <span className="text-slate-700 dark:text-slate-200 font-semibold">subir de nível</span>?
                   </span>
                 ) : (
                   <span>
-                    Parabéns! Todas as suas revisões estão <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">100% em dia</strong>. Arrasou! ✨
+                    Parabéns! Todas as suas revisões estão <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% em dia</span>. Arrasou! ✨
                   </span>
                 )}
               </p>
@@ -266,41 +299,41 @@ export function DashboardPage() {
           </div>
 
           {/* Badges de Economia Virtual (XP, Streak, Moedas) */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
             {/* Streak */}
-            <div className="badge-streak font-heading text-sm px-3.5 py-1.5">
-              <Flame size={17} className="animate-flame" />
-              <span><strong>{liveStreak}</strong> dias</span>
+            <div className="badge-streak font-heading text-xs px-3 py-1.5">
+              <Flame size={15} className="animate-flame" />
+              <span><span className="font-semibold">{liveStreak}</span> dias</span>
             </div>
 
             {/* XP */}
-            <div className="badge-xp font-heading text-sm px-3.5 py-1.5">
-              <Sparkles size={17} className="fill-amber-500" />
-              <span><strong>{liveXP}</strong> XP</span>
+            <div className="badge-xp font-heading text-xs px-3 py-1.5">
+              <Sparkles size={15} className="fill-amber-500" />
+              <span><span className="font-semibold">{liveXP}</span> XP</span>
             </div>
 
             {/* Moedas */}
-            <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-heading font-bold px-3.5 py-1.5 rounded-full flex items-center gap-1.5 shadow-xs text-sm">
+            <div className="bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700 font-heading font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-xs text-xs">
               <span>🟡</span>
-              <span><strong>{liveCoins}</strong> moedas</span>
+              <span><span className="font-semibold">{liveCoins}</span> moedas</span>
             </div>
           </div>
         </div>
 
         {/* Barra de Progresso Físico de Nível */}
         <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800">
-          <div className="flex justify-between items-center text-xs font-bold mb-2">
-            <span className="text-blue-600 dark:text-blue-400 font-heading">
-              Progresso do <strong>Nível {level}</strong>
+          <div className="flex justify-between items-center text-xs mb-2">
+            <span className="text-blue-600 dark:text-blue-400 font-heading font-medium">
+              Progresso do <span className="font-semibold">Nível {level}</span>
             </span>
-            <span className="text-amber-600 dark:text-amber-400 font-heading">
-              Faltam <strong className="font-extrabold">{xpForNextLevel} XP</strong> para o <strong className="font-extrabold">Nível {level + 1}</strong> ⭐
+            <span className="text-amber-600 dark:text-amber-400 font-heading font-medium">
+              Faltam <span className="font-semibold">{xpForNextLevel} XP</span> para o <span className="font-semibold">Nível {level + 1}</span> ⭐
             </span>
           </div>
 
-          <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
+          <div className="w-full h-3 bg-slate-100 dark:bg-slate-700 rounded-md overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
             <div 
-              className="h-full bg-blue-500 rounded-full transition-all duration-500"
+              className="h-full bg-blue-500 rounded-sm transition-all duration-500"
               style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
             />
           </div>
@@ -313,35 +346,35 @@ export function DashboardPage() {
       <section className="card-3d p-6 border border-amber-200/80 dark:border-amber-900/60 bg-amber-50/30 dark:bg-amber-950/20 relative overflow-hidden">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
           <div className="flex items-center gap-4 text-center sm:text-left">
-            <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-              {totalDue > 0 ? <Target size={24} /> : <Trophy size={24} />}
+            <div className="w-11 h-11 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+              {totalDue > 0 ? <Target size={22} /> : <Trophy size={22} />}
             </div>
             <div>
               <div className="flex items-center justify-center sm:justify-start gap-2 mb-1">
-                <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-heading font-bold px-2.5 py-0.5 rounded-full">
+                <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 text-xs font-heading font-semibold px-2.5 py-0.5 rounded-md">
                   {totalDue > 0 ? '🎯 Missão de Hoje' : '🏆 Missão Cumprida'}
                 </span>
-                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  <strong>+10 XP</strong> por acerto
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <span className="font-semibold">+10 XP</span> por acerto
                 </span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-heading font-bold text-slate-900 dark:text-white">
+              <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">
                 {totalDue > 0 ? (
                   <span>
-                    <strong className="text-amber-600 dark:text-amber-400">{totalDue} cards</strong> precisam de revisão agora
+                    <span className="text-amber-600 dark:text-amber-400 font-bold">{totalDue} cards</span> precisam de revisão agora
                   </span>
                 ) : (
                   <span>Nenhum card pendente por hoje!</span>
                 )}
               </h2>
-              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-medium mt-0.5">
+              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-normal mt-0.5">
                 {totalDue > 0 ? (
                   <span>
-                    Complete sua meta diária de <strong className="text-slate-800 dark:text-white">repetição espaçada</strong> e mantenha seu <strong className="text-amber-600 dark:text-amber-400">streak ativo</strong>! 🔥
+                    Complete sua meta diária de <span className="text-slate-700 dark:text-slate-200 font-medium">repetição espaçada</span> e mantenha seu <span className="text-amber-600 dark:text-amber-400 font-medium">streak ativo</span>! 🔥
                   </span>
                 ) : (
                   <span>
-                    Você está invicto(a)! Aproveite para adicionar <strong className="text-slate-800 dark:text-white">novos baralhos</strong> ou praticar vocabulário.
+                    Você está invicto(a)! Aproveite para adicionar novos baralhos ou praticar vocabulário.
                   </span>
                 )}
               </p>
@@ -380,11 +413,11 @@ export function DashboardPage() {
             {/* Header da Palavra do Dia */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700/80 pb-3 mb-5">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-heading font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1 rounded-full border border-blue-200/80 dark:border-blue-800 flex items-center gap-1.5 shadow-xs">
+                <span className="text-xs font-heading font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-md border border-blue-200/80 dark:border-blue-800 flex items-center gap-1.5 shadow-xs">
                   <span>📖</span> Palavra do Dia
                 </span>
               </div>
-              <span className="text-xs font-bold text-slate-400 dark:text-slate-500 capitalize flex items-center gap-1.5">
+              <span className="text-xs font-medium text-slate-400 dark:text-slate-500 capitalize flex items-center gap-1.5">
                 <Calendar size={13} className="text-slate-400" />
                 {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
               </span>
@@ -395,7 +428,7 @@ export function DashboardPage() {
               {/* Coluna Esquerda: Palavra, Pronúncia, Tipo e Tradução */}
               <div className="md:col-span-5 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-700/80 pb-5 md:pb-0 md:pr-6 space-y-3">
                 <div className="flex items-center gap-3">
-                  <h3 className="text-3xl sm:text-4xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-heading font-bold text-slate-800 dark:text-white tracking-tight">
                     {wordOfTheDay.word}
                   </h3>
                   <button
@@ -403,17 +436,17 @@ export function DashboardPage() {
                     disabled={isPlayingAudio}
                     aria-label="Ouvir pronúncia"
                     title="Ouvir Pronúncia"
-                    className="w-10 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
+                    className="w-9 h-9 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center transition-all active:scale-95 cursor-pointer shadow-xs shrink-0"
                   >
-                    <Volume2 size={19} className={isPlayingAudio ? 'animate-pulse' : ''} />
+                    <Volume2 size={18} className={isPlayingAudio ? 'animate-pulse' : ''} />
                   </button>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-heading font-bold px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60 inline-block">
+                  <span className="text-xs font-heading font-semibold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60 inline-block">
                     {wordOfTheDay.type}
                   </span>
-                  <div className="text-sm font-heading font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-sm font-heading font-semibold text-blue-600 dark:text-blue-400">
                     🇧🇷 {wordOfTheDay.translation}
                   </div>
                 </div>
@@ -422,23 +455,23 @@ export function DashboardPage() {
               {/* Coluna Direita: Definição e Exemplo em Contexto */}
               <div className="md:col-span-7 space-y-3">
                 <div>
-                  <h4 className="text-[11px] font-heading font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                  <h4 className="text-[11px] font-heading font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
                     Definição
                   </h4>
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 leading-snug">
+                  <p className="text-sm font-normal text-slate-600 dark:text-slate-300 leading-snug">
                     {wordOfTheDay.definition}
                   </p>
                 </div>
 
-                <div className="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700">
-                  <div className="flex items-center gap-1.5 mb-1 text-[11px] font-heading font-bold text-amber-600 dark:text-amber-400">
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] font-heading font-semibold text-amber-600 dark:text-amber-400">
                     <Sparkles size={12} />
                     <span>Exemplo no Dia a Dia</span>
                   </div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white italic">
+                  <p className="text-sm font-medium text-slate-800 dark:text-white italic">
                     "{wordOfTheDay.example}"
                   </p>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-xs font-normal text-slate-500 dark:text-slate-400 mt-1">
                     {wordOfTheDay.exampleTranslation}
                   </p>
                 </div>
@@ -450,29 +483,29 @@ export function DashboardPage() {
         {/* Cards de Métricas Rápidas */}
         <div className="grid grid-cols-2 gap-4">
           <div className="card-3d p-5 flex flex-col justify-between">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
-              <Calendar size={20} />
+            <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs">
+              <Calendar size={18} />
             </div>
             <div>
-              <div className="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">{weeklyLearned}</div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Aprendidos na <strong className="text-slate-700 dark:text-slate-300">Semana</strong></div>
+              <div className="text-2xl sm:text-3xl font-heading font-bold text-slate-800 dark:text-white">{weeklyLearned}</div>
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Aprendidos na <span className="font-semibold text-slate-700 dark:text-slate-300">Semana</span></div>
             </div>
           </div>
 
           <div className="card-3d p-5 flex flex-col justify-between">
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
-              <Trophy size={20} />
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs">
+              <Trophy size={18} />
             </div>
             <div>
-              <div className="text-3xl font-heading font-extrabold text-slate-900 dark:text-white">{totalLearned}</div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400">Total <strong className="text-slate-700 dark:text-slate-300">Dominado</strong></div>
+              <div className="text-2xl sm:text-3xl font-heading font-bold text-slate-800 dark:text-white">{totalLearned}</div>
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">Total <span className="font-semibold text-slate-700 dark:text-slate-300">Dominado</span></div>
             </div>
           </div>
 
           <div className="col-span-2 card-3d p-5 bg-gradient-to-r from-blue-600 to-blue-700 text-white flex items-center justify-between shadow-xs">
             <div>
-              <div className="text-xs font-bold opacity-90">Pronto para praticar?</div>
-              <div className="text-lg font-heading font-bold">Revisão Rápida Geral</div>
+              <div className="text-xs font-medium opacity-90">Pronto para praticar?</div>
+              <div className="text-base sm:text-lg font-heading font-semibold">Revisão Rápida Geral</div>
             </div>
             <Button 
               variant="orange" 
@@ -490,28 +523,29 @@ export function DashboardPage() {
       {/* -------------------------------------------------------------------------- */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <section className="lg:col-span-2 space-y-4">
-          {/* Header da Coleção (Estruturado em 2 níveis limpos) */}
-          <div className="space-y-3 pb-2 border-b border-slate-100 dark:border-slate-800">
-            {/* Nível 1: Título e Ações Primárias */}
+          {/* Header da Coleção & Barra de Ações Integrada */}
+          <div className="space-y-3.5">
+            {/* Linha 1: Título e Ações Primárias */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <h2 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-xl sm:text-2xl font-heading font-bold text-slate-800 dark:text-white tracking-tight">
                   Meus Baralhos
                 </h2>
-                <span className="text-xs font-heading font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-800 shadow-xs">
-                  <strong>{decks.length}</strong> {decks.length === 1 ? 'baralho' : 'baralhos'}
+                <span className="text-xs font-heading font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 shadow-2xs">
+                  <span className="font-bold text-blue-600 dark:text-blue-400">{decks.length}</span> {decks.length === 1 ? 'baralho' : 'baralhos'}
                 </span>
               </div>
 
-              {/* Botões de Ação Principais (Importar e Novo Baralho) */}
-              <div className="flex items-center gap-2.5">
+              {/* Botões de Ação Principais (Importar Anki e Novo Baralho) */}
+              <div className="flex items-center gap-2">
                 <Button 
                   variant="secondary" 
                   size="sm" 
                   onClick={() => document.getElementById('anki-dashboard-import')?.click()} 
                   disabled={importing}
+                  className="text-xs"
                 >
-                  <FileUp size={15} /> Importar
+                  <FileUp size={14} className="text-slate-500 dark:text-slate-400" /> Importar
                 </Button>
                 <input type="file" id="anki-dashboard-import" accept=".apkg,.zip" className="hidden" onChange={handleFileSelect} />
 
@@ -519,47 +553,60 @@ export function DashboardPage() {
                   variant="primary" 
                   size="sm" 
                   onClick={() => setShowCreate(true)}
+                  className="text-xs"
                 >
-                  <Plus size={16} /> Novo Baralho
+                  <Plus size={15} /> Novo Baralho
                 </Button>
               </div>
             </div>
 
-            {/* Nível 2: Barra de Filtros e Visualização */}
-            <div className="flex items-center justify-between gap-2 pt-1 text-xs">
-              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
-                Organizar por:
-              </span>
-
+            {/* Linha 2: Barra de Ferramentas (Ordenação e Modo de Visualização) */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-2 px-3 rounded-lg bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+              {/* Ordenação: Rótulo + Select unificados no lado esquerdo */}
               <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 shrink-0">
+                  <ArrowUpDown size={13} className="text-slate-400" />
+                  Organizar por:
+                </span>
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value)}
-                  className="h-9 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-300 px-3 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer shadow-xs"
+                  className="h-8 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 pl-2.5 pr-8 py-1 rounded-md border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer shadow-2xs"
                   title="Ordenar Baralhos"
                 >
                   <option value="newest">Mais Recentes</option>
                   <option value="due">Pendentes Primeiro</option>
-                  <option value="alpha">A-Z</option>
+                  <option value="alpha">Ordem Alfabética (A-Z)</option>
                   <option value="cards">Mais Cards</option>
                 </select>
+              </div>
 
-                <div className="h-9 bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl flex items-center border border-slate-200 dark:border-slate-700 shadow-xs">
-                  <button 
-                    onClick={() => setViewMode('grid')}
-                    className={`h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white dark:bg-slate-700 shadow-xs text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                    title="Modo Grade"
-                  >
-                    <LayoutGrid size={15} />
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('list')}
-                    className={`h-7 w-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${viewMode === 'list' ? 'bg-white dark:bg-slate-700 shadow-xs text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                    title="Modo Lista"
-                  >
-                    <List size={15} />
-                  </button>
-                </div>
+              {/* Alternador de Visualização Grade / Lista com ícones e rótulos */}
+              <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-0.5 rounded-md border border-slate-200 dark:border-slate-700 shadow-2xs">
+                <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`h-7 px-2.5 rounded flex items-center gap-1.5 text-xs transition-all cursor-pointer ${
+                    viewMode === 'grid' 
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold border border-blue-200/60 dark:border-blue-800' 
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'
+                  }`}
+                  title="Visualização em Grade"
+                >
+                  <LayoutGrid size={13} />
+                  <span>Grade</span>
+                </button>
+                <button 
+                  onClick={() => setViewMode('list')}
+                  className={`h-7 px-2.5 rounded flex items-center gap-1.5 text-xs transition-all cursor-pointer ${
+                    viewMode === 'list' 
+                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 font-bold border border-blue-200/60 dark:border-blue-800' 
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 font-medium'
+                  }`}
+                  title="Visualização em Lista"
+                >
+                  <List size={13} />
+                  <span>Lista</span>
+                </button>
               </div>
             </div>
           </div>
@@ -614,45 +661,83 @@ export function DashboardPage() {
             <StudyHeatmap activity={activity} />
           </div>
 
-          {/* Mini Ranking dos Campeões */}
-          <div className="card-3d p-5">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-sm font-heading font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <Trophy size={18} className="text-amber-500" /> Liga dos Campeões
-              </h2>
+          {/* Box: Colocação no Ranking (Global e Minha Turma) */}
+          <div className="card-3d p-5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-xs space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700/60">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 flex items-center justify-center border border-amber-200 dark:border-amber-800 shadow-xs">
+                  <Trophy size={16} />
+                </div>
+                <div>
+                  <h2 className="text-sm font-heading font-bold text-slate-800 dark:text-white leading-tight">
+                    Sua Colocação
+                  </h2>
+                  <p className="text-[11px] text-slate-400 font-medium">Liga dos Campeões</p>
+                </div>
+              </div>
+
               <button 
                 onClick={() => navigate('/ranking')} 
-                className="text-xs font-heading font-bold text-blue-600 dark:text-blue-400 hover:underline border-none bg-transparent cursor-pointer"
+                className="text-xs font-heading font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1 hover:underline cursor-pointer"
+                title="Ver ranking completo e pódio"
               >
-                Ver Ranking →
+                Ver Ranking <ArrowRight size={13} />
               </button>
             </div>
-            
-            <div className="space-y-2.5">
-              {rankingLoading ? (
-                [1, 2, 3].map(i => <div key={i} className="h-10 rounded-xl bg-slate-100 dark:bg-slate-700 animate-pulse" />)
-              ) : (
-                ranking.map((u, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
-                    <span className={`w-5 text-center font-heading font-extrabold text-xs ${
-                      idx === 0 ? 'text-amber-500' : 
-                      idx === 1 ? 'text-slate-400' : 
-                      idx === 2 ? 'text-amber-700' : 'text-slate-400'
-                    }`}>
-                      {idx + 1}º
-                    </span>
-                    <div className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-sm shadow-xs">
-                      {AVATARS[u.avatar_id] || '👤'}
-                    </div>
-                    <span className="flex-1 font-bold text-xs text-slate-800 dark:text-slate-200 truncate">
-                      {u.nickname || u.name}
-                    </span>
-                    <span className="font-heading font-bold text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200/60 dark:border-blue-800">
-                      <strong>{u.xp}</strong> XP
-                    </span>
+
+            {/* Grid com as duas colocações: Global e Minha Turma */}
+            <div className="grid grid-cols-1 gap-2.5">
+              {/* Ranking Global */}
+              <div 
+                onClick={() => navigate('/ranking')}
+                className="p-3.5 rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/50 dark:bg-slate-800/90 flex items-center justify-between gap-3 cursor-pointer hover:border-blue-300 dark:hover:border-blue-700 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-md bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <Globe size={18} />
                   </div>
-                ))
-              )}
+                  <div>
+                    <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400 block">
+                      Ranking Global
+                    </span>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Entre {userRankings.global.total} estudantes
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-heading font-extrabold text-sm shadow-2xs">
+                    {userRankings.global.pos}º lugar
+                  </span>
+                </div>
+              </div>
+
+              {/* Ranking Minha Turma */}
+              <div 
+                onClick={() => navigate('/ranking')}
+                className="p-3.5 rounded-lg border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-slate-800/90 flex items-center justify-between gap-3 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-700 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-md bg-emerald-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <Users size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
+                      Minha Turma
+                    </span>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Entre {userRankings.turma.total} colegas
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-heading font-extrabold text-sm shadow-2xs">
+                    {userRankings.turma.pos}º lugar
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </aside>

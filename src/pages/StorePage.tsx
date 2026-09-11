@@ -75,36 +75,36 @@ export function StorePage() {
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <ShoppingCart size={20} />
+            <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+              <ShoppingCart size={18} />
             </div>
-            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-heading font-bold text-slate-800 dark:text-white">
               Loja de <span className="text-blue-600 dark:text-blue-400">Decks Oficiais</span>
             </h1>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
-            Adicione baralhos <strong className="text-slate-800 dark:text-white">prontos e testados</strong> à sua conta com <strong className="text-blue-600 dark:text-blue-400">1 clique</strong>. ✨
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-normal">
+            Adicione baralhos <span className="font-semibold text-slate-700 dark:text-slate-200">prontos e testados</span> à sua conta com <span className="font-semibold text-blue-600 dark:text-blue-400">1 clique</span>. ✨
           </p>
         </div>
 
-        <div className="card-3d px-4 py-2.5 flex items-center gap-3 rounded-xl">
-          <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-xs">
-            <Coins size={18} className="fill-amber-500 text-amber-500" />
+        <div className="card-3d px-4 py-2 flex items-center gap-3 rounded-lg">
+          <div className="w-8 h-8 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-xs">
+            <Coins size={16} className="fill-amber-500 text-amber-500" />
           </div>
           <div>
-            <div className="text-xl font-heading font-extrabold text-slate-900 dark:text-white leading-none">
+            <div className="text-lg font-heading font-bold text-slate-800 dark:text-white leading-none">
               {user?.coins || 0}
             </div>
-            <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">Suas moedas</div>
+            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">Suas moedas</div>
           </div>
         </div>
       </header>
 
       {visibleOfficialDecks.length === 0 ? (
-        <div className="card-3d p-12 text-center flex flex-col items-center justify-center gap-3 rounded-2xl border-dashed">
-          <BookOpen size={44} className="text-slate-400 mb-2 opacity-60" />
-          <h2 className="text-lg font-heading font-bold text-slate-900 dark:text-white">Nenhum baralho disponível no seu nível</h2>
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 max-w-md">
+        <div className="card-3d p-12 text-center flex flex-col items-center justify-center gap-3 rounded-xl border-dashed">
+          <BookOpen size={40} className="text-slate-400 mb-2 opacity-60" />
+          <h2 className="text-lg font-heading font-semibold text-slate-800 dark:text-white">Nenhum baralho disponível no seu nível</h2>
+          <p className="text-sm font-normal text-slate-500 dark:text-slate-400 max-w-md">
             Nossos professores estão criando novos baralhos padrões para seu nível. Volte em breve!
           </p>
         </div>
@@ -115,31 +115,31 @@ export function StorePage() {
             return (
               <div 
                 key={deck.id} 
-                className="card-3d-interactive p-5 sm:p-6 flex flex-col justify-between gap-4 rounded-2xl"
+                className="card-3d-interactive p-5 sm:p-6 flex flex-col justify-between gap-4 rounded-xl"
               >
                 {/* Banner / Category */}
-                <div className="w-full h-28 rounded-xl bg-gradient-to-br from-blue-50/60 to-amber-50/50 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative overflow-hidden border border-slate-100 dark:border-slate-700">
-                  <Sparkles size={44} className="text-blue-500 opacity-10 absolute" />
-                  <div className="absolute top-2.5 right-2.5 bg-blue-600 text-white px-2.5 py-0.5 rounded-full text-xs font-heading font-bold flex items-center gap-1 shadow-xs">
-                    <Star size={11} className="fill-white" /> Oficial Aura
+                <div className="w-full h-28 rounded-lg bg-gradient-to-br from-blue-50/60 to-amber-50/50 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center relative overflow-hidden border border-slate-100 dark:border-slate-700">
+                  <Sparkles size={40} className="text-blue-500 opacity-10 absolute" />
+                  <div className="absolute top-2.5 right-2.5 bg-blue-600 text-white px-2 py-0.5 rounded-md text-[11px] font-heading font-semibold flex items-center gap-1 shadow-xs">
+                    <Star size={10} className="fill-white" /> Oficial Aura
                   </div>
                   <div className="text-4xl">📚</div>
                 </div>
                 
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-heading font-bold px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
-                      Nível: <strong>{deck.level || 'Todos'}</strong>
+                    <span className="text-xs font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                      Nível: <span className="font-bold">{deck.level || 'Todos'}</span>
                     </span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">
-                      <Layers size={13} className="text-blue-600 dark:text-blue-400" /> <strong className="text-slate-800 dark:text-slate-200">{deck.cards?.length || 0}</strong> cards
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                      <Layers size={13} className="text-blue-600 dark:text-blue-400" /> <span className="font-semibold text-slate-700 dark:text-slate-300">{deck.cards?.length || 0}</span> cards
                     </span>
                   </div>
 
-                  <h3 className="font-heading font-bold text-base sm:text-lg text-slate-900 dark:text-white mb-1 leading-snug">
+                  <h3 className="font-heading font-semibold text-base sm:text-lg text-slate-800 dark:text-white mb-1 leading-snug">
                     {deck.name}
                   </h3>
-                  <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 line-clamp-2">
+                  <p className="text-xs sm:text-sm font-normal text-slate-500 dark:text-slate-400 line-clamp-2">
                     {deck.description || 'Baralho oficial preparado para impulsionar sua fluência e retenção.'}
                   </p>
                 </div>

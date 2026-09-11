@@ -5,8 +5,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 
-const DEFAULT_SUPABASE_URL = 'https://mkgkqihzoxdszzkbetjr.supabase.co'
-const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1rZ2txaWh6b3hkc3p6a2JldGpyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MTU0MzYsImV4cCI6MjEwMzQ5MTQzNn0.EuYih5ilKf1YNUu2vpoUpaBMt0mQGdgvkvRaTO_KHYM'
+const DEFAULT_SUPABASE_URL = 'https://gyxrwavcjkxxgplvqsgf.supabase.co'
+const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5eHJ3YXZjamt4eGdwbHZxc2dmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkwODEyMzIsImV4cCI6MjEwNDY1NzIzMn0.K3MITJbrepqK7XtDa0s80XM52YROVhUkmNNM1Q7OiDI'
 
 function getValidEnv(val: unknown, fallback: string): string {
   if (typeof val === 'string' && val.trim().length > 15) {

@@ -1,7 +1,6 @@
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { LayoutGrid, Sun, Moon, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles } from 'lucide-react'
-import { useTheme } from '../../contexts/ThemeContext'
+import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut } from 'lucide-react'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -60,16 +59,21 @@ function getUserSpaceLevel(user: any) {
 }
 
 export function Navbar() {
-  const { user } = useAuth()
-  const { theme, toggleTheme } = useTheme()
+  const { user, signOut } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
   const isStudy = location.pathname.startsWith('/study')
-  if (isStudy) return null
+  if (!user || location.pathname === '/login' || isStudy) return null
 
   const isAdmin = user?.role === 'admin'
   const userLevelInfo = getUserSpaceLevel(user)
   const LevelIcon = userLevelInfo.icon
+
+  async function handleLogout() {
+    await signOut()
+    navigate('/login', { replace: true })
+  }
 
   return (
     <header className="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-900/5 dark:border-slate-800 transition-colors">
@@ -87,7 +91,7 @@ export function Navbar() {
               className="h-10 w-auto object-contain group-hover:scale-105 transition-transform" 
             />
             {user && (
-              <span className="font-heading font-bold text-2xl text-blue-600 hidden sm:inline-block tracking-tight">
+              <span className="font-heading font-bold text-xl text-blue-600 hidden sm:inline-block tracking-tight">
                 Aura<span className="text-amber-500">UP</span>
               </span>
             )}
@@ -96,7 +100,7 @@ export function Navbar() {
 
         {/* Links de Navegação */}
         {user ? (
-          <nav className="flex items-center gap-1 sm:gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <nav className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
             {isAdmin && (
               <NavLink to="/admin" icon={<Shield size={16} />} label="Admin" active={location.pathname === '/admin'} />
             )}
@@ -110,27 +114,19 @@ export function Navbar() {
 
         {/* Ações & Perfil do Aluno com Nível de Missão Espacial */}
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-          <button
-            onClick={toggleTheme}
-            aria-label="Alternar Tema"
-            className="w-10 h-10 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 shadow-xs flex items-center justify-center transition-all active:scale-95 cursor-pointer"
-          >
-            {theme === 'dark' ? <Sun size={17} className="text-amber-400" /> : <Moon size={17} className="text-slate-600" />}
-          </button>
-
           {user && (
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Profile Card & Level Indicator */}
               <Link 
                 to="/profile" 
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 hover:border-blue-300 shadow-xs transition-all active:scale-95"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 hover:border-blue-300 shadow-xs transition-all active:scale-95"
               >
-                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-slate-700 text-blue-600 flex items-center justify-center text-base shrink-0">
+                <div className="w-8 h-8 rounded-md bg-blue-50 dark:bg-slate-700 text-blue-600 flex items-center justify-center text-base shrink-0">
                   {isAdmin ? '👑' : (AVATARS[user.avatar_id] || '🦊')}
                 </div>
                 
                 <div className="hidden md:flex flex-col text-left">
-                  <span className="text-xs font-heading font-bold text-slate-800 dark:text-slate-200 leading-tight">
+                  <span className="text-xs font-heading font-semibold text-slate-800 dark:text-slate-200 leading-tight">
                     {isAdmin ? user.name : (user.nickname || user.name)}
                   </span>
                   <span className={`text-[11px] font-semibold flex items-center gap-1 ${userLevelInfo.badgeText}`}>
@@ -139,6 +135,17 @@ export function Navbar() {
                   </span>
                 </div>
               </Link>
+
+              {/* Botão de Logout */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="btn-3d-icon w-8 h-8 !rounded-lg text-slate-400 hover:text-rose-600 hover:border-rose-300 transition-all flex items-center justify-center"
+                title="Sair da Conta"
+                aria-label="Sair da Conta"
+              >
+                <LogOut size={15} />
+              </button>
             </div>
           )}
         </div>
@@ -151,9 +158,9 @@ function NavLink({ to, icon, label, active }: { to: string, icon: any, label: st
   return (
     <Link
       to={to}
-      className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-heading font-bold transition-all select-none ${
+      className={`flex items-center gap-2 px-3 sm:px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-heading font-semibold transition-all select-none ${
         active
-          ? 'bg-blue-600 text-white shadow-sm'
+          ? 'bg-blue-600 text-white shadow-xs'
           : 'text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-white dark:hover:bg-slate-700'
       }`}
     >

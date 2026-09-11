@@ -11,21 +11,82 @@ import { AdminPage } from './pages/AdminPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { RankingPage } from './pages/RankingPage'
 import { StorePage } from './pages/StorePage'
+import { AuthPage } from './pages/AuthPage'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
+import { FirstLoginModal } from './components/auth/FirstLoginModal'
+
 function AppRoutes() {
   return (
     <div className="relative min-h-screen flex flex-col bg-aura-bg text-aura-text-primary font-sans antialiased">
       <Navbar />
+      <FirstLoginModal />
       <main className="flex-1 relative z-10">
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/deck/:id" element={<DeckPage />} />
-          <Route path="/study/:id" element={<StudyPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/ranking" element={<RankingPage />} />
-          <Route path="/store" element={<StorePage />} />
-          <Route path="/login" element={<Navigate to="/" replace />} />
-          <Route path="/auth" element={<Navigate to="/" replace />} />
+          {/* Rota pública de login */}
+          <Route path="/login" element={<AuthPage />} />
+          <Route path="/auth" element={<Navigate to="/login" replace />} />
+
+          {/* Rotas protegidas (exigem estar autenticado) */}
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/deck/:id" 
+            element={
+              <ProtectedRoute>
+                <DeckPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/study/:id" 
+            element={
+              <ProtectedRoute>
+                <StudyPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/ranking" 
+            element={
+              <ProtectedRoute>
+                <RankingPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/store" 
+            element={
+              <ProtectedRoute>
+                <StorePage />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Rota administrativa com proteção estrita (apenas role === 'admin') */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminPage />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

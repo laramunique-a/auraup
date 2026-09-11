@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useStudySession } from '../hooks/useStudySession'
 import { useDecks } from '../hooks/useDecks'
 import { useAuth } from '../contexts/AuthContext'
+import { useEconomy } from '../contexts/EconomyContext'
 import { profileService } from '../services/profile.service'
 import { FlashCard } from '../components/study/FlashCard'
 import { Button } from '../components/ui/Button'
@@ -57,6 +58,7 @@ export function StudyPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { addReward: addEconomyReward, recordActivity } = useEconomy()
   const { current, loading, sessionDone, reviewed, total, submitRating, sessionStats } = useStudySession(id!)
   const { refreshStats, recordReviewLocally } = useDecks()
 
@@ -77,6 +79,7 @@ export function StudyPage() {
       if (xp > 0 || coins > 0) {
         setSessionXP(prev => prev + xp)
         setSessionCoins(prev => prev + coins)
+        addEconomyReward(xp, coins)
         profileService.addReward(user.id, xp, coins)
         
         // Efeito comemorativo de XP flutuante
@@ -90,9 +93,10 @@ export function StudyPage() {
   useEffect(() => {
     if (sessionDone && user) {
       refreshStats()
+      recordActivity()
       profileService.updateStreak(user.id)
     }
-  }, [sessionDone, refreshStats, user])
+  }, [sessionDone, refreshStats, user, recordActivity])
 
   useEffect(() => {
     return () => { if (window.speechSynthesis) window.speechSynthesis.cancel() }
@@ -253,28 +257,28 @@ export function StudyPage() {
       <header className="max-w-xl mx-auto w-full flex items-center justify-between gap-4 py-2">
         <button
           onClick={() => navigate('/')}
-          className="w-10 h-10 rounded-2xl bg-white border-2 border-slate-200 text-aura-text-secondary hover:text-aura-blue flex items-center justify-center shadow-sm active:scale-95 cursor-pointer"
+          className="w-9 h-9 rounded-lg bg-white border border-slate-200 text-aura-text-secondary hover:text-aura-blue flex items-center justify-center shadow-xs active:scale-95 cursor-pointer"
           title="Sair do estudo"
         >
-          <ArrowLeft size={20} />
+          <ArrowLeft size={18} />
         </button>
 
-        {/* Barra de Progresso Tátil Duolingo */}
+        {/* Barra de Progresso Tátil */}
         <div className="flex-1 px-1">
-          <div className="w-full h-4 sm:h-5 bg-slate-200/90 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-300/80 dark:border-slate-600 shadow-inner relative flex items-center">
+          <div className="w-full h-3.5 bg-slate-200/90 dark:bg-slate-700 rounded-md overflow-hidden p-0.5 border border-slate-300/80 dark:border-slate-600 shadow-inner relative flex items-center">
             <div 
-              className="h-full bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500 rounded-full transition-all duration-500 ease-out relative shadow-[inset_0_2px_0_rgba(255,255,255,0.45)]"
+              className="h-full bg-gradient-to-r from-emerald-500 via-green-400 to-emerald-500 rounded-sm transition-all duration-500 ease-out relative shadow-[inset_0_2px_0_rgba(255,255,255,0.45)]"
               style={{ width: `${progressPercent}%` }}
             >
               {/* Brilho Superior / Highlight */}
-              <div className="absolute inset-x-2 top-0.5 h-1 bg-white/40 rounded-full pointer-events-none" />
+              <div className="absolute inset-x-2 top-0.5 h-0.5 bg-white/40 rounded-sm pointer-events-none" />
             </div>
           </div>
         </div>
 
         {/* Contador */}
-        <span className="text-xs font-heading font-extrabold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-800 shadow-xs shrink-0">
-          <strong>{Math.min(reviewed + 1, total)}</strong> / {total}
+        <span className="text-xs font-heading font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 shadow-xs shrink-0">
+          <span className="font-bold">{Math.min(reviewed + 1, total)}</span> / {total}
         </span>
       </header>
 
@@ -290,8 +294,8 @@ export function StudyPage() {
       </main>
 
       {/* Footer Dica */}
-      <footer className="max-w-xl mx-auto w-full text-center text-xs font-medium text-slate-500 dark:text-slate-400 py-2">
-        Repita em <strong className="text-slate-800 dark:text-slate-200 font-extrabold">voz alta</strong> para acelerar a <strong className="text-blue-600 dark:text-blue-400 font-extrabold">retenção neural</strong> 🎧
+      <footer className="max-w-xl mx-auto w-full text-center text-xs font-normal text-slate-500 dark:text-slate-400 py-2">
+        Repita em <span className="text-slate-700 dark:text-slate-200 font-semibold">voz alta</span> para acelerar a <span className="text-blue-600 dark:text-blue-400 font-semibold">retenção neural</span> 🎧
       </footer>
     </div>
   )

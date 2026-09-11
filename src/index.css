@@ -30,10 +30,10 @@
     --border: rgba(16, 59, 143, 0.10);
     --border-hover: rgba(23, 105, 213, 0.30);
     
-    --radius-sm: 0.75rem;
-    --radius: 1.25rem;
-    --radius-lg: 1.5rem;
-    --radius-xl: 2rem;
+    --radius-sm: 0.375rem;
+    --radius: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
   }
 
   [data-theme='dark'] {
@@ -64,16 +64,16 @@
       radial-gradient(circle at 50% 50%, rgba(23, 105, 213, 0.04), transparent 40%);
     background-attachment: fixed;
     color: var(--text-primary);
-    font-family: 'Nunito', -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Nunito', -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     scroll-behavior: smooth;
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Fredoka', 'Nunito', sans-serif;
-    font-weight: 700;
-    letter-spacing: -0.01em;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
   }
 
   #root {
@@ -95,8 +95,8 @@
   .btn-3d-blue {
     background-color: #2563EB;
     color: #FFFFFF;
-    font-weight: 700;
-    border-radius: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
     border: 1px solid #1D4ED8;
     box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
     transition: all 140ms cubic-bezier(0.2, 0, 0, 1);
@@ -115,8 +115,8 @@
   .btn-3d-orange {
     background-color: #F59E0B;
     color: #FFFFFF;
-    font-weight: 700;
-    border-radius: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
     border: 1px solid #D97706;
     box-shadow: 0 2px 4px rgba(245, 158, 11, 0.25);
     transition: all 140ms cubic-bezier(0.2, 0, 0, 1);
@@ -135,8 +135,8 @@
   .btn-3d-green {
     background-color: #10B981;
     color: #FFFFFF;
-    font-weight: 700;
-    border-radius: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
     border: 1px solid #059669;
     box-shadow: 0 2px 4px rgba(16, 185, 129, 0.25);
     transition: all 140ms cubic-bezier(0.2, 0, 0, 1);
@@ -155,8 +155,8 @@
   .btn-3d-red {
     background-color: #F43F5E;
     color: #FFFFFF;
-    font-weight: 700;
-    border-radius: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
     border: 1px solid #E11D48;
     box-shadow: 0 2px 4px rgba(244, 63, 94, 0.25);
     transition: all 140ms cubic-bezier(0.2, 0, 0, 1);
@@ -175,8 +175,8 @@
   .btn-3d-white {
     background-color: #FFFFFF;
     color: #334155;
-    font-weight: 700;
-    border-radius: 0.875rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
     border: 1px solid #CBD5E1;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     transition: all 140ms cubic-bezier(0.2, 0, 0, 1);
@@ -201,7 +201,7 @@
     background-color: #FFFFFF;
     color: #475569;
     border: 1px solid #CBD5E1;
-    border-radius: 0.75rem;
+    border-radius: 0.5rem;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
     display: inline-flex;
     align-items: center;
@@ -235,7 +235,7 @@
 
   .card-3d {
     background-color: #FFFFFF;
-    border-radius: 1.25rem;
+    border-radius: 0.75rem;
     border: 1px solid #E2E8F0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   }
@@ -247,7 +247,7 @@
 
   .card-3d-interactive {
     background-color: #FFFFFF;
-    border-radius: 1.25rem;
+    border-radius: 0.75rem;
     border: 1px solid #E2E8F0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
     transition: all 180ms cubic-bezier(0.2, 0, 0, 1);
@@ -312,39 +312,39 @@
     background-color: #FEF3C7;
     color: #B45309;
     border: 1px solid #FCD34D;
-    font-weight: 700;
-    padding: 0.35rem 0.85rem;
-    border-radius: 9999px;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.5rem;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    box-shadow: 0 1px 2px rgba(245, 158, 11, 0.1);
+    box-shadow: 0 1px 2px rgba(245, 158, 11, 0.08);
   }
 
   .badge-streak {
     background-color: #FFE4E6;
     color: #E11D48;
     border: 1px solid #FECDD3;
-    font-weight: 700;
-    padding: 0.35rem 0.85rem;
-    border-radius: 9999px;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.5rem;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    box-shadow: 0 1px 2px rgba(244, 63, 94, 0.1);
+    box-shadow: 0 1px 2px rgba(244, 63, 94, 0.08);
   }
 
   .badge-level {
     background-color: #EFF6FF;
     color: #1D4ED8;
     border: 1px solid #BFDBFE;
-    font-weight: 700;
-    padding: 0.35rem 0.85rem;
-    border-radius: 9999px;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 0.5rem;
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.08);
   }
 
   /* Compatibilidade Retroativa */

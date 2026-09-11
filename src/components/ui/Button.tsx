@@ -18,12 +18,12 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
-  const baseClasses = 'font-heading font-bold select-none cursor-pointer inline-flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:pointer-events-none disabled:transform-none shrink-0'
+  const baseClasses = 'font-heading font-semibold select-none cursor-pointer inline-flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:pointer-events-none disabled:transform-none shrink-0'
 
   const sizeClasses = {
-    sm: 'h-10 px-4 text-xs sm:text-sm rounded-xl',
-    md: 'h-11 px-5 text-sm rounded-xl',
-    lg: 'h-12 px-6 text-base rounded-xl',
+    sm: 'h-9 px-3.5 text-xs sm:text-sm rounded-lg',
+    md: 'h-10 px-4 text-sm rounded-lg',
+    lg: 'h-11 px-5 text-base rounded-lg',
   }[size]
 
   const variantClasses = {
@@ -36,7 +36,7 @@ export function Button({
     gold: 'btn-3d-orange',
     success: 'btn-3d-green',
     danger: 'btn-3d-red',
-    icon: 'btn-3d-icon !p-0 w-10 h-10 !rounded-xl',
+    icon: 'btn-3d-icon !p-0 w-9 h-9 !rounded-lg',
     ghost: 'bg-transparent text-slate-600 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50/80 dark:hover:bg-slate-800 border-none active:scale-95 transition-all',
   }[variant]
 

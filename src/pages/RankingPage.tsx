@@ -83,90 +83,90 @@ export function RankingPage() {
       <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">
         {/* Posicao 2 (Prata) */}
         {top3[1] && (
-          <div className="card-3d p-4 sm:p-5 flex flex-col items-center text-center rounded-2xl border border-slate-200 bg-white dark:bg-slate-800 shadow-xs hover:-translate-y-1 transition-transform">
+          <div className="card-3d p-4 sm:p-5 flex flex-col items-center text-center rounded-xl border border-slate-200 bg-white dark:bg-slate-800 shadow-xs hover:-translate-y-1 transition-transform">
             <div className="text-2xl mb-1">🥈</div>
-            <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-2xl mb-2 border border-slate-200 dark:border-slate-600 shadow-xs">
+            <div className="w-11 h-11 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-xl mb-2 border border-slate-200 dark:border-slate-600 shadow-xs">
               {top3[1].avatar}
             </div>
-            <h3 className="font-heading font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate w-full">{top3[1].name}</h3>
-            <span className="font-heading font-bold text-xs text-blue-700 dark:text-blue-300 mt-1 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-full border border-blue-200/60">
-              <strong>{top3[1].xp}</strong> XP
+            <h3 className="font-heading font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate w-full">{top3[1].name}</h3>
+            <span className="font-heading font-semibold text-xs text-blue-700 dark:text-blue-300 mt-1 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60">
+              <span className="font-bold">{top3[1].xp}</span> XP
             </span>
           </div>
         )}
 
         {/* Posicao 1 (Ouro) */}
         {top3[0] && (
-          <div className="card-3d p-5 sm:p-6 flex flex-col items-center text-center rounded-2xl border border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-950/30 shadow-xs -translate-y-2 hover:-translate-y-3 transition-transform">
-            <div className="text-2xl mb-1"><Crown size={26} className="text-amber-500 fill-amber-400" /></div>
-            <div className="w-14 h-14 rounded-xl bg-white dark:bg-slate-800 flex items-center justify-center text-3xl mb-2 border-2 border-amber-400 shadow-xs">
+          <div className="card-3d p-5 sm:p-6 flex flex-col items-center text-center rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50/40 dark:bg-amber-950/30 shadow-xs -translate-y-2 hover:-translate-y-3 transition-transform">
+            <div className="text-2xl mb-1"><Crown size={24} className="text-amber-500 fill-amber-400" /></div>
+            <div className="w-12 h-12 rounded-lg bg-white dark:bg-slate-800 flex items-center justify-center text-2xl mb-2 border-2 border-amber-400 shadow-xs">
               {top3[0].avatar}
             </div>
-            <h3 className="font-heading font-bold text-sm sm:text-base text-slate-900 dark:text-white truncate w-full">{top3[0].name}</h3>
-            <span className="font-heading font-bold text-xs text-amber-800 dark:text-amber-300 mt-1 bg-amber-100 dark:bg-amber-950/60 px-3 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
-              <strong>{top3[0].xp}</strong> XP
+            <h3 className="font-heading font-semibold text-sm sm:text-base text-slate-900 dark:text-white truncate w-full">{top3[0].name}</h3>
+            <span className="font-heading font-semibold text-xs text-amber-800 dark:text-amber-300 mt-1 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-md border border-amber-300 dark:border-amber-700">
+              <span className="font-bold">{top3[0].xp}</span> XP
             </span>
           </div>
         )}
 
         {/* Posicao 3 (Bronze) */}
         {top3[2] && (
-          <div className="card-3d p-4 sm:p-5 flex flex-col items-center text-center rounded-2xl border border-amber-200 dark:border-amber-900 bg-white dark:bg-slate-800 shadow-xs hover:-translate-y-1 transition-transform">
+          <div className="card-3d p-4 sm:p-5 flex flex-col items-center text-center rounded-xl border border-amber-200 dark:border-amber-900 bg-white dark:bg-slate-800 shadow-xs hover:-translate-y-1 transition-transform">
             <div className="text-2xl mb-1">🥉</div>
-            <div className="w-12 h-12 rounded-xl bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-2xl mb-2 border border-slate-200 dark:border-slate-600 shadow-xs">
+            <div className="w-11 h-11 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-xl mb-2 border border-slate-200 dark:border-slate-600 shadow-xs">
               {top3[2].avatar}
             </div>
-            <h3 className="font-heading font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate w-full">{top3[2].name}</h3>
-            <span className="font-heading font-bold text-xs text-blue-700 dark:text-blue-300 mt-1 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-full border border-blue-200/60">
-              <strong>{top3[2].xp}</strong> XP
+            <h3 className="font-heading font-semibold text-xs sm:text-sm text-slate-900 dark:text-white truncate w-full">{top3[2].name}</h3>
+            <span className="font-heading font-semibold text-xs text-blue-700 dark:text-blue-300 mt-1 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md border border-blue-200/60">
+              <span className="font-bold">{top3[2].xp}</span> XP
             </span>
           </div>
         )}
       </div>
 
       {/* Full Leaderboard List */}
-      <div className="card-3d p-5 sm:p-6 rounded-2xl">
-        <h2 className="text-base font-heading font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-          <Medal size={18} className="text-blue-600 dark:text-blue-400" /> Tabela de Classificação
+      <div className="card-3d p-5 sm:p-6 rounded-xl">
+        <h2 className="text-base font-heading font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+          <Medal size={17} className="text-blue-600 dark:text-blue-400" /> Tabela de Classificação
         </h2>
 
         <div className="flex flex-col gap-2">
           {currentList.map((item) => (
             <div
               key={item.id}
-              className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+              className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
                 item.isCurrentUser
                   ? 'bg-blue-50/70 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 shadow-xs'
                   : 'bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/50 border-slate-200 dark:border-slate-700'
               }`}
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span className={`w-6 text-center font-heading font-extrabold text-xs sm:text-sm ${item.posicao <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
+                <span className={`w-6 text-center font-heading font-bold text-xs sm:text-sm ${item.posicao <= 3 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'}`}>
                   #{item.posicao}
                 </span>
 
-                <div className="w-9 h-9 rounded-xl bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-lg shrink-0 border border-slate-200 dark:border-slate-600 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-700 flex items-center justify-center text-base shrink-0 border border-slate-200 dark:border-slate-600 shadow-xs">
                   {item.avatar}
                 </div>
 
                 <div className="min-w-0">
-                  <h4 className="font-heading font-bold text-sm text-slate-900 dark:text-white truncate flex items-center gap-1.5">
+                  <h4 className="font-heading font-semibold text-sm text-slate-900 dark:text-white truncate flex items-center gap-1.5">
                     {item.name}
                     {item.isCurrentUser && (
-                      <span className="text-[11px] font-heading font-bold px-2 py-0.5 rounded-full bg-blue-600 text-white">Você</span>
+                      <span className="text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-600 text-white">Você</span>
                     )}
                   </h4>
-                  <div className="flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">
+                  <div className="flex items-center gap-2 text-xs font-normal text-slate-500 dark:text-slate-400 mt-0.5">
                     <span className="flex items-center gap-1">
-                      <Flame size={12} className="text-amber-500 fill-amber-500" /> <strong className="text-slate-700 dark:text-slate-300 font-extrabold">{item.streak}d</strong> de ofensiva
+                      <Flame size={12} className="text-amber-500 fill-amber-500" /> <span className="text-slate-700 dark:text-slate-300 font-semibold">{item.streak}d</span> de ofensiva
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="text-right shrink-0">
-                <span className="text-xs sm:text-sm font-heading font-bold text-blue-700 dark:text-blue-300 flex items-center gap-1 bg-blue-50 dark:bg-blue-950/60 px-3 py-1 rounded-full border border-blue-200/60 dark:border-blue-800">
-                  <Sparkles size={13} className="text-amber-500 fill-amber-500" /> <strong>{item.xp}</strong> XP
+                <span className="text-xs sm:text-sm font-heading font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-md border border-blue-200/60 dark:border-blue-800">
+                  <Sparkles size={13} className="text-amber-500 fill-amber-500" /> <span className="font-bold">{item.xp}</span> XP
                 </span>
               </div>
             </div>

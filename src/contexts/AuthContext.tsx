@@ -1,74 +1,92 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { User } from '../types'
+import { authService } from '../services/auth.service'
 
 export interface AuthContextValue {
-  user: User
+  user: User | null
   loading: boolean
-  signUp: (email: string, password: string, name?: string) => Promise<void>
-  signIn: (email: string, password: string) => Promise<void>
+  signIn: (email: string, password: string) => Promise<User>
   signOut: () => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
+  completeFirstPasswordChange: (newPassword: string) => Promise<void>
   updateUser: (updates: Partial<User>) => void
-}
-
-const DEFAULT_USER: User = {
-  id: 'local_user_default',
-  email: 'aluno@auraup.com',
-  name: 'Estudante Aura',
-  nickname: 'Estudante',
-  role: 'admin', // Permite acesso total inclusive ao painel de administração e loja
-  avatar_id: 'avatar_1',
-  xp: 1500,
-  coins: 50,
-  streak: 5,
-  is_active: true,
-  level: {
-    id: 'lvl_1',
-    name: 'Nível 1: Hello',
-    min_xp: 0,
-    color: '#FF8A00',
-    icon: 'Rocket',
-  }
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User>(() => {
-    try {
-      const saved = localStorage.getItem('uply_user')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return { ...DEFAULT_USER, ...parsed, role: 'admin' }
-      }
-    } catch {
-      // ignore JSON parse errors
-    }
-    return DEFAULT_USER
+  const [user, setUser] = useState<User | null>(() => {
+    return authService.getCurrentUser()
   })
+  const [loading, setLoading] = useState(false)
 
+  // Sincroniza usuário ativo no localStorage
   useEffect(() => {
     try {
-      localStorage.setItem('uply_user', JSON.stringify(user))
+      if (user) {
+        localStorage.setItem('uply_user', JSON.stringify(user))
+      } else {
+        localStorage.removeItem('uply_user')
+      }
     } catch (e) {
       console.error('Erro ao sincronizar usuário no localStorage:', e)
     }
   }, [user])
 
+  async function signIn(email: string, password: string): Promise<User> {
+    setLoading(true)
+    try {
+      const loggedUser = await authService.signIn(email, password)
+      setUser(loggedUser)
+      return loggedUser
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function signOut(): Promise<void> {
+    setLoading(true)
+    try {
+      await authService.signOut()
+      setUser(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (!user) throw new Error('Usuário não autenticado.')
+    await authService.changePassword(user.id, currentPassword, newPassword)
+    setUser(prev => prev ? { ...prev, must_change_password: false } : null)
+  }
+
+  async function completeFirstPasswordChange(newPassword: string): Promise<void> {
+    if (!user) throw new Error('Usuário não autenticado.')
+    const updated = await authService.firstLoginChangePassword(user.id, newPassword)
+    setUser(updated)
+  }
+
   function updateUser(updates: Partial<User>) {
     setUser(prev => {
+      if (!prev) return null
       const next = { ...prev, ...updates }
       localStorage.setItem('uply_user', JSON.stringify(next))
       return next
     })
   }
 
-  // Stubs para compatibilidade retroativa
-  async function signUp() {}
-  async function signIn() {}
-  async function signOut() {}
-
   return (
-    <AuthContext.Provider value={{ user, loading: false, signUp, signIn, signOut, updateUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signOut,
+        changePassword,
+        completeFirstPasswordChange,
+        updateUser,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

@@ -21,6 +21,7 @@ export interface User {
   level_id?: string
   level?: Level
   is_active: boolean
+  must_change_password?: boolean
 }
 
 export interface Deck {

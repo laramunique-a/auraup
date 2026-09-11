@@ -1,169 +1,376 @@
 /**
- * Auth Service — local mode (localStorage) + Supabase mode
+ * Auth Service — Suporte completo para Modo Local (localStorage) e Supabase
  */
 
 import type { User } from '../types'
-import { supabase } from './storage'
+import { isLocalMode, supabase, generateId } from './storage'
 
-// ── Supabase Mode ─────────────────────────────────────────────────────────────
+export interface UserAccount {
+  id: string
+  email: string
+  password: string
+  name: string
+  nickname: string
+  role: 'admin' | 'user'
+  avatar_id: string
+  xp: number
+  coins: number
+  streak: number
+  level_id?: string
+  level?: any
+  is_active: boolean
+  must_change_password: boolean
+}
 
-async function supabaseSignUp(email: string, password: string, name?: string): Promise<User> {
-  const { data, error } = await supabase!.auth.signUp({
-    email,
-    password,
-    options: { data: { name } },
-  })
-  if (error) throw new Error(error.message)
-  const u = data.user!
-  
-  // Tenta criar/garantir o perfil na tabela pública profiles
-  const profileName = name || email.split('@')[0]
-  await supabase!
-    .from('profiles')
-    .upsert({
-      id: u.id,
-      email: u.email!,
-      full_name: profileName,
-      nickname: profileName,
-      role: 'user',
-      avatar_id: 'avatar_1',
-      xp: 0,
-      coins: 0,
-      streak: 0,
-      is_active: true
-    }, { onConflict: 'id' })
+const LS_ACCOUNTS_KEY = 'uply_accounts_db'
 
-  const profile = await fetchUserProfile(u.id, u.email, profileName)
-  
-  return { 
-    id: u.id, 
-    email: u.email!, 
-    name: profile.name || u.user_metadata?.name || profileName,
-    role: profile.role || 'user',
-    avatar_id: profile.avatar_id || 'avatar_1',
-    xp: profile.xp || 0,
-    coins: profile.coins || 0,
-    streak: profile.streak || 0,
+// Contas padrões para inicialização imediata
+const INITIAL_ACCOUNTS: UserAccount[] = [
+  {
+    id: 'admin_master_1',
+    email: 'admin@auraup.com',
+    password: 'admin123',
+    name: 'Comandante Admin',
+    nickname: 'Admin',
+    role: 'admin',
+    avatar_id: 'admin',
+    xp: 3500,
+    coins: 150,
+    streak: 10,
     is_active: true,
-    ...profile
+    must_change_password: false,
+  },
+  {
+    id: 'student_default_1',
+    email: 'aluno@auraup.com',
+    password: 'aura123',
+    name: 'Estudante Aura',
+    nickname: 'Estudante',
+    role: 'user',
+    avatar_id: 'avatar_1',
+    xp: 500,
+    coins: 30,
+    streak: 1,
+    level_id: 'lvl_2',
+    level: { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' },
+    is_active: true,
+    must_change_password: true, // Obriga troca de senha no primeiro acesso
+  },
+  {
+    id: 'user_1',
+    email: 'lucas.andrade@email.com',
+    password: 'aura123',
+    name: 'Lucas Andrade',
+    nickname: 'Lucas',
+    role: 'user',
+    avatar_id: 'avatar_3',
+    xp: 2850,
+    coins: 140,
+    streak: 14,
+    level_id: 'lvl_3',
+    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
+    is_active: true,
+    must_change_password: false,
+  },
+  {
+    id: 'user_2',
+    email: 'beatriz.lima@email.com',
+    password: 'aura123',
+    name: 'Beatriz Lima',
+    nickname: 'Bia',
+    role: 'user',
+    avatar_id: 'avatar_1',
+    xp: 2420,
+    coins: 95,
+    streak: 10,
+    level_id: 'lvl_3',
+    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
+    is_active: true,
+    must_change_password: false,
   }
-}
+]
 
-async function supabaseSignIn(email: string, password: string): Promise<User> {
-  const { data, error } = await supabase!.auth.signInWithPassword({ email: email.trim(), password })
-  if (error) {
-    if (error.message.includes('Invalid login credentials')) {
-      throw new Error('E-mail ou senha incorretos.')
-    }
-    throw new Error(error.message)
-  }
-  const u = data.user
-  const profile = await fetchUserProfile(u.id, u.email, u.user_metadata?.name)
-
-  return { 
-    id: u.id, 
-    email: u.email!, 
-    name: profile.name || u.user_metadata?.name,
-    role: profile.role || 'user',
-    avatar_id: profile.avatar_id || 'avatar_1',
-    xp: profile.xp || 0,
-    coins: profile.coins || 0,
-    streak: profile.streak || 0,
-    is_active: true,
-    ...profile
-  } as User
-}
-
-async function supabaseSignOut(): Promise<void> {
-  await supabase!.auth.signOut()
-}
-
-async function supabaseGetCurrentUser(): Promise<User | null> {
-  const { data } = await supabase!.auth.getUser()
-  if (!data.user) return null
-  const u = data.user
-  const profile = await fetchUserProfile(u.id, u.email, u.user_metadata?.name)
-
-  return {
-    id: u.id,
-    email: u.email!,
-    name: profile.name || u.user_metadata?.name,
-    role: profile.role || 'user',
-    avatar_id: profile.avatar_id || 'avatar_1',
-    xp: profile.xp || 0,
-    coins: profile.coins || 0,
-    streak: profile.streak || 0,
-    is_active: true,
-    ...profile
-  } as User
-}
-
-async function fetchUserProfile(userId: string, email?: string, name?: string): Promise<Partial<User>> {
+function getLocalAccounts(): UserAccount[] {
   try {
-    const { data, error } = await supabase!
-      .from('profiles')
-      .select('*, level:levels(*)')
-      .eq('id', userId)
-      .maybeSingle()
-    
-    if (error || !data) {
-      // Se o perfil não existir ainda, tenta criar automaticamente
-      const fallbackName = name || (email ? email.split('@')[0] : 'Estudante')
-      const { data: newProfile } = await supabase!
-        .from('profiles')
-        .upsert({
-          id: userId,
-          email: email || '',
-          full_name: fallbackName,
-          nickname: fallbackName,
-          role: 'user',
-          avatar_id: 'avatar_1',
-          xp: 0,
-          coins: 0,
-          streak: 0,
-          is_active: true
-        }, { onConflict: 'id' })
-        .select()
-        .maybeSingle()
-
-      if (newProfile) {
-        return {
-          nickname: newProfile.nickname,
-          role: newProfile.role,
-          avatar_id: newProfile.avatar_id,
-          xp: newProfile.xp,
-          coins: newProfile.coins,
-          streak: newProfile.streak,
-          is_active: newProfile.is_active,
-          name: newProfile.full_name || newProfile.nickname
-        }
-      }
-      return {}
+    const raw = localStorage.getItem(LS_ACCOUNTS_KEY)
+    if (raw) {
+      const parsed: UserAccount[] = JSON.parse(raw)
+      return parsed
     }
-
-    return {
-      nickname: data.nickname,
-      role: data.role,
-      avatar_id: data.avatar_id,
-      xp: data.xp,
-      coins: data.coins,
-      streak: data.streak,
-      level: data.level,
-      is_active: data.is_active,
-      name: data.full_name || data.nickname
-    }
+    localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(INITIAL_ACCOUNTS))
+    return INITIAL_ACCOUNTS
   } catch {
-    return {}
+    return INITIAL_ACCOUNTS
   }
 }
 
+function saveLocalAccounts(accounts: UserAccount[]) {
+  localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(accounts))
+}
 
-// ── Public API ────────────────────────────────────────────────────────────────
+function toUser(acc: UserAccount): User {
+  return {
+    id: acc.id,
+    email: acc.email,
+    name: acc.name,
+    nickname: acc.nickname,
+    role: acc.role,
+    avatar_id: acc.avatar_id,
+    xp: acc.xp,
+    coins: acc.coins,
+    streak: acc.streak,
+    level_id: acc.level_id,
+    level: acc.level,
+    is_active: acc.is_active,
+    must_change_password: acc.must_change_password,
+  }
+}
+
+// ── Validação de Senha ────────────────────────────────────────────────────────
+export function validatePassword(password: string): { valid: boolean; error?: string } {
+  if (!password || password.length < 6) {
+    return { valid: false, error: 'A senha deve ter no mínimo 6 caracteres.' }
+  }
+  // Permite letras e números
+  const hasValidChars = /^[a-zA-Z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+$/.test(password)
+  if (!hasValidChars) {
+    return { valid: false, error: 'A senha contém caracteres inválidos.' }
+  }
+  return { valid: true }
+}
 
 export const authService = {
-  signUp: supabaseSignUp,
-  signIn: supabaseSignIn,
-  signOut: supabaseSignOut,
-  getCurrentUser: supabaseGetCurrentUser,
-}
+  /**
+   * Login do usuário (Email e Senha)
+   */
+  async signIn(emailInput: string, passwordInput: string): Promise<User> {
+    const email = emailInput.trim().toLowerCase()
+    const password = passwordInput.trim()
 
+    if (!email || !password) {
+      throw new Error('Preencha seu e-mail e sua senha.')
+    }
+
+    // Modo Local
+    if (isLocalMode || !supabase) {
+      const accounts = getLocalAccounts()
+      const account = accounts.find(a => a.email.toLowerCase() === email)
+
+      if (!account) {
+        throw new Error('E-mail não cadastrado. Solicite seu acesso ao administrador.')
+      }
+
+      if (account.password !== password) {
+        throw new Error('Senha incorreta. Verifique e tente novamente.')
+      }
+
+      if (!account.is_active) {
+        throw new Error('Esta conta de aluno está desativada.')
+      }
+
+      const user = toUser(account)
+      localStorage.setItem('uply_user', JSON.stringify(user))
+      
+      // Sincroniza economia local do usuário logado
+      const ecoState = {
+        xp: user.xp,
+        coins: user.coins,
+        streak: user.streak,
+      }
+      localStorage.setItem('uply_economy_state', JSON.stringify(ecoState))
+      window.dispatchEvent(new CustomEvent('uply_economy_sync'))
+
+      return user
+    }
+
+    // Modo Supabase
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('E-mail ou senha incorretos.')
+        }
+        throw new Error(error.message)
+      }
+
+      const u = data.user
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*, level:levels(*)')
+        .eq('id', u.id)
+        .single()
+
+      const user: User = {
+        id: u.id,
+        email: u.email!,
+        name: profile?.full_name || u.user_metadata?.name || email.split('@')[0],
+        nickname: profile?.nickname || email.split('@')[0],
+        role: profile?.role || 'user',
+        avatar_id: profile?.avatar_id || 'avatar_1',
+        xp: profile?.xp || 0,
+        coins: profile?.coins || 0,
+        streak: profile?.streak || 0,
+        level_id: profile?.level_id,
+        level: profile?.level,
+        is_active: profile?.is_active ?? true,
+        must_change_password: profile?.must_change_password ?? false,
+      }
+
+      localStorage.setItem('uply_user', JSON.stringify(user))
+      return user
+    } catch (err: any) {
+      throw new Error(err.message || 'Falha ao autenticar.')
+    }
+  },
+
+  /**
+   * Troca obrigatória de senha no PRIMEIRO ACESSO do aluno
+   */
+  async firstLoginChangePassword(userId: string, newPasswordInput: string): Promise<User> {
+    const newPassword = newPasswordInput.trim()
+    const val = validatePassword(newPassword)
+    if (!val.valid) throw new Error(val.error)
+
+    if (isLocalMode || !supabase) {
+      const accounts = getLocalAccounts()
+      const idx = accounts.findIndex(a => a.id === userId)
+      if (idx === -1) throw new Error('Usuário não encontrado.')
+
+      accounts[idx].password = newPassword
+      accounts[idx].must_change_password = false
+      saveLocalAccounts(accounts)
+
+      const updatedUser = toUser(accounts[idx])
+      localStorage.setItem('uply_user', JSON.stringify(updatedUser))
+      return updatedUser
+    }
+
+    try {
+      const { error: pwdError } = await supabase.auth.updateUser({ password: newPassword })
+      if (pwdError) throw pwdError
+
+      await supabase
+        .from('profiles')
+        .update({ must_change_password: false })
+        .eq('id', userId)
+
+      const raw = localStorage.getItem('uply_user')
+      const current = raw ? JSON.parse(raw) : {}
+      const updatedUser = { ...current, must_change_password: false }
+      localStorage.setItem('uply_user', JSON.stringify(updatedUser))
+      return updatedUser
+    } catch (err: any) {
+      throw new Error(err.message || 'Erro ao definir nova senha.')
+    }
+  },
+
+  /**
+   * Alteração voluntária de senha em Meu Perfil
+   */
+  async changePassword(userId: string, currentPasswordInput: string, newPasswordInput: string): Promise<void> {
+    const currentPassword = currentPasswordInput.trim()
+    const newPassword = newPasswordInput.trim()
+
+    const val = validatePassword(newPassword)
+    if (!val.valid) throw new Error(val.error)
+
+    if (currentPassword === newPassword) {
+      throw new Error('A nova senha deve ser diferente da senha atual.')
+    }
+
+    if (isLocalMode || !supabase) {
+      const accounts = getLocalAccounts()
+      const idx = accounts.findIndex(a => a.id === userId)
+      if (idx === -1) throw new Error('Usuário não encontrado.')
+
+      if (accounts[idx].password !== currentPassword) {
+        throw new Error('A senha atual informada está incorreta.')
+      }
+
+      accounts[idx].password = newPassword
+      accounts[idx].must_change_password = false
+      saveLocalAccounts(accounts)
+
+      const updatedUser = toUser(accounts[idx])
+      localStorage.setItem('uply_user', JSON.stringify(updatedUser))
+      return
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+    } catch (err: any) {
+      throw new Error(err.message || 'Erro ao atualizar senha.')
+    }
+  },
+
+  /**
+   * Criação de novo aluno pelo Administrador com senha inicial padrão e flag de primeiro acesso
+   */
+  async adminRegisterStudent(userData: {
+    name: string
+    email: string
+    initialPassword?: string
+    level_id?: string
+    level?: any
+    initialXP?: number
+  }): Promise<User> {
+    const email = userData.email.trim().toLowerCase()
+    const initialPassword = (userData.initialPassword || 'aura123').trim()
+    const val = validatePassword(initialPassword)
+    if (!val.valid) throw new Error(`Senha padrão inválida: ${val.error}`)
+
+    const newAccount: UserAccount = {
+      id: 'user_' + generateId(),
+      email,
+      password: initialPassword,
+      name: userData.name.trim(),
+      nickname: userData.name.trim().split(' ')[0],
+      role: 'user',
+      avatar_id: 'avatar_1',
+      xp: userData.initialXP || 0,
+      coins: 0,
+      streak: 1,
+      level_id: userData.level_id || 'lvl_1',
+      level: userData.level,
+      is_active: true,
+      must_change_password: true, // Força primeiro acesso
+    }
+
+    const accounts = getLocalAccounts()
+    if (accounts.some(a => a.email.toLowerCase() === email)) {
+      throw new Error('Já existe um aluno cadastrado com este e-mail.')
+    }
+
+    accounts.unshift(newAccount)
+    saveLocalAccounts(accounts)
+
+    return toUser(newAccount)
+  },
+
+  /**
+   * Encerra a sessão ativa
+   */
+  async signOut(): Promise<void> {
+    localStorage.removeItem('uply_user')
+    if (!isLocalMode && supabase) {
+      try {
+        await supabase.auth.signOut()
+      } catch {
+        // ignore
+      }
+    }
+  },
+
+  /**
+   * Recupera o usuário atualmente autenticado
+   */
+  getCurrentUser(): User | null {
+    try {
+      const raw = localStorage.getItem('uply_user')
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  }
+}

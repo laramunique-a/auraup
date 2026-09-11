@@ -195,12 +195,12 @@ export function DeckPage() {
               </div>
             ) : (
               <div className="flex items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl font-heading font-bold text-slate-800 dark:text-white tracking-tight">
                   {deck?.name || 'Carregando...'}
                 </h1>
                 <button 
                   onClick={() => { setNewDeckName(deck?.name || ''); setEditDeckName(true) }}
-                  className="w-8 h-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-xs flex items-center justify-center transition-all cursor-pointer"
+                  className="w-8 h-8 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-blue-600 hover:border-blue-200 shadow-xs flex items-center justify-center transition-all cursor-pointer"
                   title="Renomear Baralho"
                 >
                   <Pencil size={14} />
@@ -209,10 +209,10 @@ export function DeckPage() {
             )}
             
             <div className="flex items-center gap-2.5 mt-2">
-              <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-full border border-blue-200/60 dark:border-blue-800">
-                <Layers size={13} /> <strong className="font-extrabold">{cards.length}</strong> {cards.length === 1 ? 'card' : 'cards'}
+              <div className="flex items-center gap-1.5 text-blue-700 dark:text-blue-300 font-heading font-semibold text-xs bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800">
+                <Layers size={13} /> <span className="font-bold">{cards.length}</span> {cards.length === 1 ? 'card' : 'cards'}
               </div>
-              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-heading font-bold text-xs bg-amber-50 dark:bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-200/60 dark:border-amber-800">
+              <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-heading font-semibold text-xs bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-800">
                 <Sparkles size={13} className="fill-amber-500 text-amber-500" /> Baralho Pessoal
               </div>
             </div>

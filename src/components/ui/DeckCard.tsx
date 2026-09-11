@@ -71,26 +71,26 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
         className="card-3d-interactive flex items-center justify-between p-4 sm:p-5 gap-4 cursor-pointer"
       >
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className={`w-12 h-12 rounded-2xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0 shadow-sm`}>
-            <LevelIcon size={22} color={theme.iconColor} />
+          <div className={`w-11 h-11 rounded-xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0 shadow-xs`}>
+            <LevelIcon size={20} color={theme.iconColor} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-[11px] font-heading font-extrabold tracking-wider uppercase px-2.5 py-0.5 rounded-full border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
+              <span className={`text-[11px] font-heading font-semibold tracking-wide px-2.5 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
                 {theme.label}
               </span>
             </div>
-            <h3 className="font-heading font-extrabold text-aura-text-primary text-base sm:text-lg truncate">{deck.name}</h3>
-            <div className="text-xs font-bold text-aura-text-muted flex items-center gap-3 mt-1">
+            <h3 className="font-heading font-semibold text-slate-800 dark:text-slate-100 text-base sm:text-lg truncate">{deck.name}</h3>
+            <div className="text-xs font-medium text-aura-text-muted flex items-center gap-3 mt-1">
               <span className="flex items-center gap-1">
-                <Layers size={14} /> <strong>{stats?.total || 0}</strong> cards
+                <Layers size={14} /> <span className="font-semibold text-slate-700 dark:text-slate-200">{stats?.total || 0}</span> cards
               </span>
               {hasDue ? (
-                <span className="text-aura-orange font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md">
-                  🔥 <strong>{stats?.due}</strong> para revisar
+                <span className="text-aura-orange font-semibold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md">
+                  🔥 <span className="font-bold">{stats?.due}</span> para revisar
                 </span>
               ) : (
-                <span className="text-aura-green font-bold flex items-center gap-1">
+                <span className="text-aura-green font-medium flex items-center gap-1">
                   <CheckCircle2 size={13} /> Tudo em dia
                 </span>
               )}
@@ -100,7 +100,7 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
 
         <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
           <button 
-            className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-blue" 
+            className="btn-3d-icon w-8 h-8 !rounded-lg text-aura-text-muted hover:text-aura-blue" 
             onClick={() => navigate(`/deck/${deck.id}`)}
             title="Configurações do Baralho"
           >
@@ -108,7 +108,7 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
           </button>
           {onDelete && (
             <button 
-              className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-red hover:border-red-200" 
+              className="btn-3d-icon w-8 h-8 !rounded-lg text-aura-text-muted hover:text-aura-red hover:border-red-200" 
               onClick={onDelete}
               title="Excluir Baralho"
             >
@@ -144,13 +144,13 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
     >
       {/* Top Header */}
       <div className="flex justify-between items-start">
-        <div className={`w-14 h-14 rounded-2xl ${theme.badgeBg} ${theme.badgeBorder} border-2 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-sm`}>
-          <LevelIcon size={26} color={theme.iconColor} />
+        <div className={`w-12 h-12 rounded-xl ${theme.badgeBg} ${theme.badgeBorder} border-2 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 shadow-xs`}>
+          <LevelIcon size={22} color={theme.iconColor} />
         </div>
 
         <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
           <button 
-            className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-blue" 
+            className="btn-3d-icon w-8 h-8 !rounded-lg text-aura-text-muted hover:text-aura-blue" 
             onClick={() => navigate(`/deck/${deck.id}`)}
             title="Configurações do Baralho"
           >
@@ -158,7 +158,7 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
           </button>
           {onDelete && (
             <button 
-              className="btn-3d-icon w-8 h-8 !rounded-xl text-aura-text-muted hover:text-aura-red hover:border-red-200" 
+              className="btn-3d-icon w-8 h-8 !rounded-lg text-aura-text-muted hover:text-aura-red hover:border-red-200" 
               onClick={onDelete}
               title="Excluir Baralho"
             >
@@ -171,25 +171,25 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
       {/* Deck Info */}
       <div className="my-auto">
         <div className="mb-2">
-          <span className={`text-[11px] font-heading font-extrabold tracking-wider uppercase px-3 py-1 rounded-full border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
+          <span className={`text-[11px] font-heading font-semibold tracking-wide px-2.5 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
             {theme.label}
           </span>
         </div>
 
-        <h3 className="font-heading font-extrabold text-aura-text-primary text-xl mb-2 leading-snug group-hover:text-aura-blue transition-colors">
+        <h3 className="font-heading font-semibold text-slate-800 dark:text-slate-100 text-lg mb-2 leading-snug group-hover:text-aura-blue transition-colors">
           {deck.name}
         </h3>
 
-        <div className="flex items-center gap-3 text-xs font-bold text-aura-text-muted">
-          <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
-            <Layers size={14} className="text-aura-blue" /> <strong className="text-slate-800 dark:text-slate-200 font-extrabold">{stats?.total || 0}</strong> cards
+        <div className="flex items-center gap-3 text-xs font-medium text-aura-text-muted">
+          <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
+            <Layers size={14} className="text-aura-blue" /> <span className="text-slate-700 dark:text-slate-200 font-semibold">{stats?.total || 0}</span> cards
           </span>
           {hasDue ? (
-            <span className="text-aura-orange font-extrabold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2.5 py-1 rounded-lg">
-              🔥 <strong className="font-extrabold">{stats?.due}</strong> pendentes
+            <span className="text-aura-orange font-semibold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md">
+              🔥 <span className="font-bold">{stats?.due}</span> pendentes
             </span>
           ) : (
-            <span className="text-aura-green font-extrabold flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-lg">
+            <span className="text-aura-green font-medium flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
               ✓ Em dia
             </span>
           )}

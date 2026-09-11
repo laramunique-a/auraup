@@ -86,11 +86,11 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
             }`}
           >
             {/* Top Label */}
-            <div className="w-full flex items-center justify-between text-xs font-bold text-slate-500">
-              <span className="flex items-center gap-1.5 text-blue-600 font-heading font-bold">
-                <Sparkles size={16} /> Frente
+            <div className="w-full flex items-center justify-between text-xs font-medium text-slate-500">
+              <span className="flex items-center gap-1.5 text-blue-600 font-heading font-semibold">
+                <Sparkles size={15} /> Frente
               </span>
-              <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-full text-xs font-heading font-bold border border-blue-200/60 dark:border-blue-800">
+              <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md text-xs font-heading font-semibold border border-blue-200/60 dark:border-blue-800">
                 Toque para virar 👆
               </span>
             </div>
@@ -101,12 +101,12 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                 <img 
                   src={card.front_image} 
                   alt="Ilustração frente"
-                  className="max-w-full max-h-40 object-contain rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700" 
+                  className="max-w-full max-h-40 object-contain rounded-xl shadow-xs border border-slate-200 dark:border-slate-700" 
                 />
               )}
               
               {hasFrontText && (
-                <h2 className="font-heading font-extrabold text-3xl sm:text-5xl text-slate-900 dark:text-white leading-tight tracking-tight">
+                <h2 className="font-heading font-bold text-2xl sm:text-4xl text-slate-900 dark:text-white leading-tight tracking-tight">
                   {card.front}
                 </h2>
               )}
@@ -117,10 +117,10 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                     e.stopPropagation()
                     speak(card.front.trim(), 'en-US') 
                   }}
-                  className="rounded-xl text-xs font-heading font-bold px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  className="rounded-lg text-xs font-heading font-semibold px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
                   title="Ouvir pronúncia em inglês"
                 >
-                  <Volume2 size={16} /> Ouvir Pronúncia 🔊
+                  <Volume2 size={15} /> Ouvir Pronúncia 🔊
                 </button>
               )}
             </div>
@@ -138,9 +138,9 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
             }`}
           >
             {/* Top Label */}
-            <div className="w-full flex items-center justify-between text-xs font-heading font-bold text-amber-600 dark:text-amber-400">
+            <div className="w-full flex items-center justify-between text-xs font-heading font-semibold text-amber-600 dark:text-amber-400">
               <span>💡 Resposta</span>
-              <span className="text-slate-400 font-medium text-xs font-sans">Classifique como foi</span>
+              <span className="text-slate-400 font-normal text-xs font-sans">Classifique como foi</span>
             </div>
 
             {/* Body Content */}
@@ -149,12 +149,12 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                 <img 
                   src={card.back_image} 
                   alt="Ilustração verso"
-                  className="max-w-full max-h-40 object-contain rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700" 
+                  className="max-w-full max-h-40 object-contain rounded-xl shadow-xs border border-slate-200 dark:border-slate-700" 
                 />
               )}
 
               {hasBackText && (
-                <h2 className="font-heading font-extrabold text-3xl sm:text-5xl text-slate-900 dark:text-white leading-tight tracking-tight">
+                <h2 className="font-heading font-bold text-2xl sm:text-4xl text-slate-900 dark:text-white leading-tight tracking-tight">
                   {card.back}
                 </h2>
               )}
@@ -165,10 +165,10 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                     e.stopPropagation()
                     speak(card.back.trim(), 'en-US') 
                   }}
-                  className="rounded-xl text-xs font-heading font-bold px-4 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                  className="rounded-lg text-xs font-heading font-semibold px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
                   title="Ouvir pronúncia em inglês"
                 >
-                  <Volume2 size={16} /> Ouvir Pronúncia 🔊
+                  <Volume2 size={15} /> Ouvir Pronúncia 🔊
                 </button>
               )}
             </div>
@@ -187,13 +187,13 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
               <button
                 key={opt.value}
                 onClick={() => handleRating(opt.value)}
-                className={`${opt.btnClass} p-3 flex flex-col items-center justify-center text-center gap-0.5 rounded-xl shadow-xs active:scale-95 transition-all`}
+                className={`${opt.btnClass} p-2.5 flex flex-col items-center justify-center text-center gap-0.5 rounded-lg shadow-xs active:scale-95 transition-all`}
               >
                 <div className="flex items-center gap-1.5">
                   {opt.icon}
-                  <span className="text-sm font-heading font-bold">{opt.label}</span>
+                  <span className="text-xs sm:text-sm font-heading font-semibold">{opt.label}</span>
                 </div>
-                <span className="text-xs font-medium opacity-90">{opt.sub}</span>
+                <span className="text-[11px] font-normal opacity-90">{opt.sub}</span>
               </button>
             ))}
           </div>
