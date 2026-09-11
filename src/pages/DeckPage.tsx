@@ -480,8 +480,8 @@ export function DeckPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 justify-end pt-2">
+          {/* Action Buttons (Fixos no rodapé do modal para nunca sumirem) */}
+          <div className="sticky bottom-0 bg-white dark:bg-slate-800 pt-3 pb-1 border-t border-slate-100 dark:border-slate-700 flex gap-2.5 justify-end mt-4">
             <Button variant="ghost" size="md" onClick={() => { setShowCreate(false); setEditingCard(null); resetForm() }}>
               Cancelar
             </Button>

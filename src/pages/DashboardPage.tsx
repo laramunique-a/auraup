@@ -267,81 +267,76 @@ export function DashboardPage() {
       {/* 📱 VERSÃO EXCLUSIVA MOBILE / PWA (< 768px)                                */}
       {/* ========================================================================== */}
       <div className="block md:hidden space-y-4">
-        {/* 1. Header Compacto do Aluno */}
-        <section className="card-3d p-4 bg-white relative overflow-hidden">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center text-2xl shrink-0 shadow-xs">
-              {AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-0.5">
-                <span className="badge-level text-[10px] px-2 py-0.5">
+        {/* Hub do Aluno & Ação Diária Compacta */}
+        <section className="card-3d p-4 bg-white relative overflow-hidden space-y-3">
+          {/* Linha Superior: Avatar, Saudação e Nível */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-slate-800 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center text-xl shrink-0 shadow-xs">
+                {AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'}
+              </div>
+              <div className="min-w-0">
+                <span className="badge-level text-[10px] px-2 py-0.5 inline-block mb-0.5">
                   🛡️ Nível {level}
                 </span>
-                <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400">
-                  {user?.role === 'admin' ? 'Admin' : 'Explorador(a)'}
-                </span>
+                <h1 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
+                  Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
+                </h1>
               </div>
-              <h1 className="text-base font-heading font-bold text-slate-800 dark:text-white truncate">
-                Olá, <span className="text-blue-600 dark:text-blue-400">{user?.nickname || user?.name?.split(' ')[0] || 'Estudante'}</span>! 👋
-              </h1>
             </div>
-          </div>
 
-          {/* Barra de Progresso Físico de Nível Compacta */}
-          <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
-            <div className="flex justify-between items-center text-[10px] mb-1 font-heading">
-              <span className="text-blue-600 dark:text-blue-400 font-semibold">
-                Nível {level}
-              </span>
-              <span className="text-amber-600 dark:text-amber-400 font-semibold">
+            <div className="text-right shrink-0">
+              <span className="text-[10px] font-heading font-bold text-amber-600 dark:text-amber-400 block">
                 Faltam {xpForNextLevel} XP ⭐
               </span>
-            </div>
-            <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600">
-              <div 
-                className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
-              />
+              <div className="w-20 sm:w-24 h-1.5 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-slate-600 mt-1">
+                <div 
+                  className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
+                />
+              </div>
             </div>
           </div>
-        </section>
 
-        {/* 2. Card de Ação Principal (Meta do Dia) */}
-        <section className="card-3d p-4 border border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/70 to-orange-50/40 dark:from-amber-950/30 dark:to-slate-900 shadow-2xs">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-              {totalDue > 0 ? <Target size={20} /> : <Trophy size={20} />}
-            </div>
-            <div>
-              <span className="text-[10px] font-heading font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider block">
-                {totalDue > 0 ? 'Meta de Hoje' : 'Missão Cumprida'}
+          {/* Destaque da Meta Diária & Botão de Ação Imediata */}
+          <div className="p-3 rounded-xl border border-amber-200/80 dark:border-amber-900/60 bg-gradient-to-br from-amber-50/70 to-orange-50/40 dark:from-amber-950/30 dark:to-slate-900 flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">{totalDue > 0 ? '🎯' : '🏆'}</span>
+                <div>
+                  <span className="text-[10px] font-heading font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider block leading-none">
+                    {totalDue > 0 ? 'Meta de Hoje' : 'Missão Cumprida'}
+                  </span>
+                  <span className="text-xs font-heading font-extrabold text-slate-800 dark:text-white">
+                    {totalDue > 0 ? `${totalDue} cards para revisar` : 'Tudo em dia! ✨'}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                +10 XP / card
               </span>
-              <h2 className="text-base font-heading font-extrabold text-slate-800 dark:text-white leading-tight">
-                {totalDue > 0 ? `${totalDue} cards para revisar` : 'Tudo em dia! ✨'}
-              </h2>
             </div>
-          </div>
 
-          {totalDue > 0 ? (
-            <Button 
-              variant="orange" 
-              size="md" 
-              onClick={() => navigate('/study/all')}
-              className="w-full !py-2.5 text-xs sm:text-sm font-bold shadow-xs active:scale-95 transition-transform"
-            >
-              Começar Revisão Diária 🔥
-            </Button>
-          ) : (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setMobileTab('decks')}
-              className="w-full !py-2 text-xs font-semibold"
-            >
-              Ver Meus Baralhos 📚
-            </Button>
-          )}
+            {totalDue > 0 ? (
+              <Button 
+                variant="orange" 
+                size="md" 
+                onClick={() => navigate('/study/all')}
+                className="w-full !py-2 text-xs font-bold shadow-xs active:scale-95 transition-transform"
+              >
+                Começar Revisão Diária 🔥
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setMobileTab('decks')}
+                className="w-full !py-1.5 text-xs font-semibold"
+              >
+                Ver Meus Baralhos 📚
+              </Button>
+            )}
+          </div>
         </section>
 
         {/* 3. Segmented Controls / Abas do Mobile */}
@@ -1119,12 +1114,11 @@ export function DashboardPage() {
               placeholder="Ex: Inglês — Vocabulário Essencial"
               value={deckName}
               onChange={e => setDeckName(e.target.value)}
-              autoFocus
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-base text-slate-900 dark:text-white outline-none transition-all"
               onKeyDown={e => { if (e.key === 'Enter') handleCreate() }}
             />
           </div>
-          <div className="flex gap-2.5 justify-end pt-2">
+          <div className="flex gap-2.5 justify-end pt-3 pb-1 border-t border-slate-100 dark:border-slate-700">
             <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancelar</Button>
             <Button variant="orange" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
               Criar Baralho 🚀
@@ -1143,9 +1137,9 @@ export function DashboardPage() {
             onChange={e => setImportDeckName(e.target.value)}
             placeholder="Nome do baralho importado"
             disabled={importing}
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-base text-slate-900 dark:text-white outline-none transition-all"
           />
-          <div className="flex gap-2.5 justify-end pt-2">
+          <div className="flex gap-2.5 justify-end pt-3 pb-1 border-t border-slate-100 dark:border-slate-700">
             <Button variant="ghost" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
             <Button variant="primary" loading={importing} onClick={handleImportConfirm}>
               Começar Importação ⚡
