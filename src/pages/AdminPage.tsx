@@ -848,11 +848,11 @@ function saveLocalAdminLevels(levelsList: any[]) {
         </div>
       </header>
 
-      {/* Grid de Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-        <AdminStatCard icon={<Users size={22} />} label="Alunos ativos" value={allStudents.length} color="blue" />
-        <AdminStatCard icon={<BookOpen size={22} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
-        <AdminStatCard icon={<Sparkles size={22} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
+      {/* Grid de Stats Compacto */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-5">
+        <AdminStatCard icon={<Users size={16} />} label="Alunos ativos" value={allStudents.length} color="blue" />
+        <AdminStatCard icon={<BookOpen size={16} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
+        <AdminStatCard icon={<Sparkles size={16} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
       </div>
 
       {activeTab === 'users' ? (
@@ -872,7 +872,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
             </div>
 
             <div className="card-3d border border-slate-200 dark:border-slate-700 shadow-xs rounded-xl bg-white dark:bg-slate-800 overflow-hidden">
-              <div className="w-full">
+              {/* Tabela para Telas Médias e Grandes (Desktop) */}
+              <div className="hidden md:block w-full">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -972,6 +973,96 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   </tbody>
                 </table>
               </div>
+
+              {/* Lista Otimizada para Mobile / PWA */}
+              <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                {allStudents.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-sm font-medium">
+                    Nenhum aluno cadastrado ainda.
+                  </div>
+                ) : (
+                  allStudents.map((u) => (
+                    <div key={u.id} className="p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-slate-700 flex items-center justify-center text-base shrink-0 border border-slate-200/60 dark:border-slate-600 shadow-xs">
+                            {AVATARS[u.avatar_id] || '👤'}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-heading font-bold text-slate-800 dark:text-white text-sm truncate leading-tight">
+                                {u.nickname || u.name}
+                              </span>
+                              {u.is_active === false && (
+                                <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
+                                  Inativo
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-normal truncate mt-0.5">{u.email}</div>
+                          </div>
+                        </div>
+
+                        {/* Botões de Ação Imediatos e Acessíveis no Mobile */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button 
+                            type="button"
+                            title="Premiar Aluno"
+                            onClick={() => {
+                              setSelectedUser(u)
+                              setAdjustXP(0); setAdjustCoins(0)
+                              setActiveModal('editBalance')
+                            }}
+                            className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                          >
+                            <Sparkles size={14} className="text-amber-500" />
+                          </button>
+
+                          <button 
+                            type="button"
+                            title="Editar Aluno"
+                            onClick={() => handleOpenEditUser(u)}
+                            className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                          >
+                            <Pencil size={14} />
+                          </button>
+
+                          <button 
+                            type="button"
+                            title="Excluir Aluno"
+                            onClick={() => {
+                              setUserToDelete(u)
+                              setActiveModal('deleteUser')
+                            }}
+                            className="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Linha Inferior: Liga e Saldo */}
+                      <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-100/80 dark:border-slate-700/60">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: u.level?.color || '#3B82F6' }} />
+                          {u.level?.name || 'Iniciante'}
+                        </span>
+
+                        <div className="inline-flex items-center gap-2.5 text-xs font-semibold">
+                          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                            <Sparkles size={12} className="fill-amber-500 text-amber-500" />
+                            <span>{u.xp} XP</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                            <Coins size={12} className="fill-amber-500 text-amber-500" />
+                            <span>{u.coins}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </section>
 
@@ -1023,14 +1114,14 @@ function saveLocalAdminLevels(levelsList: any[]) {
       ) : activeTab === 'decks' ? (
         /* Gestão de Baralhos Padrões */
         <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 900 }}>Baralhos Oficiais Administráveis</h2>
-            <Button variant="vibrant" size="sm" onClick={openCreateOfficialDeck}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <h2 className="text-lg font-heading font-extrabold text-slate-900 dark:text-white">Baralhos Oficiais Administráveis</h2>
+            <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
               <Plus size={16} /> Criar Baralho Padrão
             </Button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {officialDecks.map((deck) => (
               <div key={deck.id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1131,7 +1222,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
           {wordViewMode === 'grid' ? (
             /* Visualização 1: QUADROS (GRID) */
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedWordsOfTheDay.map((w, idx) => (
                 <div key={w.id || idx} className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -2043,13 +2134,13 @@ function AdminStatCard({ icon, label, value, color = 'blue' }: any) {
   const theme = colorMap[color] || colorMap.blue
 
   return (
-    <div className="card-3d p-2.5 sm:p-5 flex flex-col sm:flex-row items-center sm:items-center gap-1.5 sm:gap-4 text-center sm:text-left">
-      <div className={`w-8 h-8 sm:w-12 sm:h-12 rounded-xl ${theme.bg} ${theme.text} ${theme.border} border flex items-center justify-center shrink-0 shadow-xs`}>
+    <div className="card-3d px-2.5 py-2 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3 rounded-xl shadow-2xs">
+      <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg ${theme.bg} ${theme.text} ${theme.border} border flex items-center justify-center shrink-0`}>
         {icon}
       </div>
       <div className="min-w-0">
-        <div className="text-lg sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white leading-tight">{value}</div>
-        <div className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5 leading-tight truncate">{label}</div>
+        <div className="text-sm sm:text-xl font-heading font-extrabold text-slate-900 dark:text-white leading-none">{value}</div>
+        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 leading-tight truncate">{label}</div>
       </div>
     </div>
   )
