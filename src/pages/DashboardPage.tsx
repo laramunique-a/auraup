@@ -513,42 +513,66 @@ export function DashboardPage() {
 
         {mobileTab === 'stats' && (
           <div className="space-y-3 pt-1">
-            {/* Métricas Rápidas Compactas */}
-            <div className="grid grid-cols-2 gap-2">
-              <div className="card-3d p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center gap-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/60">
-                  <Calendar size={15} />
+            {/* Header da Seção de Desempenho no mesmo padrão de Baralhos */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-heading font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Resumo de Desempenho
+              </span>
+              <button
+                type="button"
+                onClick={() => navigate('/ranking')}
+                className="text-xs font-heading font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1 active:scale-95 transition-transform"
+              >
+                Ver Ranking <ArrowRight size={13} />
+              </button>
+            </div>
+
+            {/* 1. Cards de Métricas Rápidas no Padrão do App */}
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="card-3d p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/70 dark:border-amber-800/70 flex items-center justify-center shrink-0">
+                    <Calendar size={16} />
+                  </div>
+                  <span className="text-[10px] font-heading font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded">
+                    7 dias
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <div className="text-base font-heading font-extrabold text-slate-800 dark:text-white leading-none">
+                <div>
+                  <div className="text-xl sm:text-2xl font-heading font-extrabold text-slate-800 dark:text-white leading-none">
                     {weeklyLearned}
                   </div>
-                  <div className="text-[10px] font-heading font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  <div className="text-[11px] font-heading font-semibold text-slate-500 dark:text-slate-400 mt-1">
                     Cards na Semana
                   </div>
                 </div>
               </div>
 
-              <div className="card-3d p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 flex items-center gap-2.5 shadow-2xs">
-                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-200/60 dark:border-emerald-800/60">
-                  <Trophy size={15} />
+              <div className="card-3d p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border border-emerald-200/70 dark:border-emerald-800/70 flex items-center justify-center shrink-0">
+                    <Trophy size={16} />
+                  </div>
+                  <span className="text-[10px] font-heading font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                    Total
+                  </span>
                 </div>
-                <div className="min-w-0">
-                  <div className="text-base font-heading font-extrabold text-slate-800 dark:text-white leading-none">
+                <div>
+                  <div className="text-xl sm:text-2xl font-heading font-extrabold text-slate-800 dark:text-white leading-none">
                     {totalLearned}
                   </div>
-                  <div className="text-[10px] font-heading font-semibold text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                  <div className="text-[11px] font-heading font-semibold text-slate-500 dark:text-slate-400 mt-1">
                     Total Dominado
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Colocação no Ranking */}
-            <div className="card-3d p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-2.5">
-              <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700">
+            {/* 2. Colocação no Ranking */}
+            <div className="card-3d p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs space-y-2.5">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700/60">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/60 flex items-center justify-center">
                     <Trophy size={13} />
                   </div>
                   <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white">
@@ -556,6 +580,7 @@ export function DashboardPage() {
                   </h3>
                 </div>
                 <button
+                  type="button"
                   onClick={() => navigate('/ranking')}
                   className="text-[11px] font-heading font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1"
                 >
@@ -563,57 +588,57 @@ export function DashboardPage() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div 
                   onClick={() => navigate('/ranking')}
-                  className="p-2.5 rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-slate-800 flex items-center justify-between cursor-pointer"
+                  className="p-2.5 rounded-xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-slate-900/50 flex items-center justify-between cursor-pointer active:scale-98 transition-transform"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 text-xs">
                       <Globe size={13} />
                     </div>
-                    <div>
-                      <span className="text-[10px] font-heading font-semibold uppercase text-blue-600 dark:text-blue-400 block leading-tight">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-heading font-bold uppercase text-blue-600 dark:text-blue-400 block leading-tight">
                         Global
                       </span>
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">
                         {userRankings.global.total} alunos
                       </span>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-blue-200 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs">
-                    {userRankings.global.pos}º lugar
+                  <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs shrink-0">
+                    {userRankings.global.pos}º
                   </span>
                 </div>
 
                 <div 
                   onClick={() => navigate('/ranking')}
-                  className="p-2.5 rounded-lg border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-slate-800 flex items-center justify-between cursor-pointer"
+                  className="p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-slate-900/50 flex items-center justify-between cursor-pointer active:scale-98 transition-transform"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 text-xs">
                       <Users size={13} />
                     </div>
-                    <div>
-                      <span className="text-[10px] font-heading font-semibold uppercase text-emerald-600 dark:text-emerald-400 block leading-tight">
-                        Minha Turma
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-heading font-bold uppercase text-emerald-600 dark:text-emerald-400 block leading-tight">
+                        Turma
                       </span>
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate block">
                         {userRankings.turma.total} colegas
                       </span>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-emerald-200 text-emerald-700 dark:text-emerald-300 font-heading font-bold text-xs">
-                    {userRankings.turma.pos}º lugar
+                  <span className="px-1.5 py-0.5 rounded bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-heading font-bold text-xs shrink-0">
+                    {userRankings.turma.pos}º
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Constância Diária Heatmap */}
-            <div className="card-3d p-4">
-              <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-1.5">
-                <Calendar size={15} className="text-blue-600 dark:text-blue-400" /> Constância Diária
+            {/* 3. Constância Diária Heatmap */}
+            <div className="card-3d p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs">
+              <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white mb-2 flex items-center gap-1.5">
+                <Calendar size={14} className="text-blue-600 dark:text-blue-400" /> Constância Diária
               </h3>
               <StudyHeatmap activity={activity} />
             </div>
