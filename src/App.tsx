@@ -19,10 +19,10 @@ import { ScrollToTop } from './components/common/ScrollToTop'
 
 function AppRoutes() {
   return (
-    <div className="relative min-h-screen flex flex-col bg-aura-bg text-aura-text-primary font-sans antialiased pb-20 md:pb-0">
+    <div className="relative min-h-[100dvh] flex flex-col bg-aura-bg text-aura-text-primary font-sans antialiased pb-16 md:pb-0">
       <Navbar />
       <FirstLoginModal />
-      <main className="flex-1">
+      <main className="flex-1 flex flex-col">
         <Routes>
           {/* Rota pública de login */}
           <Route path="/login" element={<AuthPage />} />

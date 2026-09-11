@@ -57,6 +57,7 @@
 
   html, body {
     min-height: 100%;
+    overscroll-behavior-y: none;
     background-color: var(--bg-page);
     background-image: 
       radial-gradient(circle at 10% 12%, rgba(85, 168, 255, 0.15), transparent 28%),
@@ -78,7 +79,7 @@
   }
 
   #root {
-    min-height: 100vh;
+    min-height: 100dvh;
     display: flex;
     flex-direction: column;
   }

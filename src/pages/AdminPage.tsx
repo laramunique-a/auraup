@@ -824,7 +824,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex-1">
       {/* Header com Navegação de Abas */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-5 sm:mb-8 gap-4">
         <div>
