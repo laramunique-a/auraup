@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toast'
 import { 
   Save, Sparkles, Fingerprint, Lock, KeyRound, 
-  Eye, EyeOff, ShieldCheck, LogOut, CheckCircle2, AlertCircle 
+  Eye, EyeOff, ShieldCheck, LogOut, AlertCircle 
 } from 'lucide-react'
 
 const AVATARS = [

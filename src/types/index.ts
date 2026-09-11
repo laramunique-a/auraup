@@ -5,7 +5,7 @@ export interface Level {
   name: string
   min_xp: number
   color: string
-  icon: string
+  icon?: string
 }
 
 export interface User {

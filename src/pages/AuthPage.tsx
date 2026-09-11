@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Info, ShieldCheck, Sparkles } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, Sparkles } from 'lucide-react'
 
 export function AuthPage() {
   const [email, setEmail] = useState('')

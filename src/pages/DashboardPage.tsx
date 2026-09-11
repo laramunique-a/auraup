@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { supabase } from '../services/storage'
 import { useDecks } from '../hooks/useDecks'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
