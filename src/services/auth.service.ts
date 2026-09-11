@@ -109,17 +109,54 @@ function getLocalAccounts(): UserAccount[] {
     const raw = localStorage.getItem(LS_ACCOUNTS_KEY)
     if (raw) {
       const parsed: UserAccount[] = JSON.parse(raw)
+      let changed = false
+
       // Garante que a conta oficial do professor exista e esteja atualizada como admin
       const teacherIdx = parsed.findIndex(a => a.email.toLowerCase() === 'auraenglish7@gmail.com')
       if (teacherIdx === -1) {
         parsed.unshift(INITIAL_ACCOUNTS[0])
-        localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(parsed))
+        changed = true
       } else {
-        parsed[teacherIdx].role = 'admin'
-        parsed[teacherIdx].password = '@ura2026'
-        parsed[teacherIdx].is_active = true
+        if (parsed[teacherIdx].role !== 'admin' || parsed[teacherIdx].password !== '@ura2026') {
+          parsed[teacherIdx].role = 'admin'
+          parsed[teacherIdx].password = '@ura2026'
+          parsed[teacherIdx].is_active = true
+          changed = true
+        }
+      }
+
+      // Reset do aluno teste aluno@auraup.com para garantir comportamento de primeiro acesso
+      const studentIdx = parsed.findIndex(a => a.email.toLowerCase() === 'aluno@auraup.com')
+      const defaultStudent = INITIAL_ACCOUNTS.find(a => a.email.toLowerCase() === 'aluno@auraup.com')
+      if (studentIdx === -1 && defaultStudent) {
+        parsed.splice(1, 0, defaultStudent)
+        changed = true
+      } else if (studentIdx !== -1) {
+        // Restaura a senha padrão e a exigência de primeiro login
+        parsed[studentIdx].password = 'aura123'
+        parsed[studentIdx].must_change_password = true
+        parsed[studentIdx].is_active = true
+        changed = true
+      }
+
+      if (changed) {
         localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(parsed))
       }
+
+      // Se o usuário logado no navegador for aluno@auraup.com, restaura must_change_password
+      try {
+        const rawCurrent = localStorage.getItem('uply_user')
+        if (rawCurrent) {
+          const curr = JSON.parse(rawCurrent)
+          if (curr.email?.toLowerCase() === 'aluno@auraup.com') {
+            curr.must_change_password = true
+            localStorage.setItem('uply_user', JSON.stringify(curr))
+          }
+        }
+      } catch {
+        // ignore
+      }
+
       return parsed
     }
     localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(INITIAL_ACCOUNTS))
@@ -383,6 +420,7 @@ export const authService = {
     level_id?: string
     level?: any
     is_active?: boolean
+    must_change_password?: boolean
   }): Promise<User> {
     const accounts = getLocalAccounts()
     const idx = accounts.findIndex(a => a.id === userId)
@@ -416,6 +454,10 @@ export const authService = {
       accounts[idx].is_active = data.is_active
     }
 
+    if (data.must_change_password !== undefined) {
+      accounts[idx].must_change_password = data.must_change_password
+    }
+
     saveLocalAccounts(accounts)
 
     if (!isLocalMode && supabase) {
@@ -423,7 +465,8 @@ export const authService = {
         await supabase.from('profiles').update({
           full_name: accounts[idx].name,
           level_id: accounts[idx].level_id,
-          is_active: accounts[idx].is_active
+          is_active: accounts[idx].is_active,
+          must_change_password: accounts[idx].must_change_password
         }).eq('id', userId)
       } catch {
         // ignore

@@ -9,7 +9,7 @@ import {
   UserPlus, Users, Pencil, Trash2, Plus, Coins, Sparkles, 
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
-  ChevronDown
+  ChevronDown, KeyRound
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -45,6 +45,7 @@ export function AdminPage() {
   const [editPassword, setEditPassword] = useState('')
   const [editLevelId, setEditLevelId] = useState('')
   const [editIsActive, setEditIsActive] = useState(true)
+  const [editMustChangePassword, setEditMustChangePassword] = useState(false)
   const [showEditLevelDropdown, setShowEditLevelDropdown] = useState(false)
   const [savingUser, setSavingUser] = useState(false)
 
@@ -301,6 +302,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     setEditPassword('')
     setEditLevelId(u.level_id || u.level?.id || 'lvl_1')
     setEditIsActive(u.is_active !== false)
+    setEditMustChangePassword(u.must_change_password ?? false)
     setShowEditLevelDropdown(false)
     setActiveModal('editUser')
   }
@@ -327,7 +329,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
         newPassword: editPassword.trim() || undefined,
         level_id: editLevelId,
         level: selectedLvl,
-        is_active: editIsActive
+        is_active: editIsActive,
+        must_change_password: editMustChangePassword
       })
 
       // Atualiza lista local
@@ -1851,6 +1854,28 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 className="sr-only peer"
               />
               <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-slate-600 peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+
+          {/* Exigir Troca de Senha (1º Acesso) */}
+          <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-lg flex items-center justify-between">
+            <div>
+              <div className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <KeyRound size={13} className="text-amber-600 dark:text-amber-400" />
+                Exigir Troca de Senha no Próximo Login
+              </div>
+              <div className="text-[11px] text-amber-700 dark:text-amber-300/80 mt-0.5">
+                {editMustChangePassword ? 'O modal bloqueante de 1º acesso abrirá ao logar' : 'Aluno entrará direto no painel'}
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={editMustChangePassword} 
+                onChange={e => setEditMustChangePassword(e.target.checked)} 
+                className="sr-only peer"
+              />
+              <div className="w-10 h-5 bg-amber-200 peer-focus:outline-none rounded-full peer dark:bg-amber-900 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-amber-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-amber-800 peer-checked:bg-amber-600"></div>
             </label>
           </div>
 
