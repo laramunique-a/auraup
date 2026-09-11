@@ -820,10 +820,10 @@ function saveLocalAdminLevels(levelsList: any[]) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
       {/* Header com Navegação de Abas */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-5 sm:mb-8 gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <ShieldCheck size={22} />
             </div>
             <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
@@ -835,16 +835,55 @@ function saveLocalAdminLevels(levelsList: any[]) {
           </p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Button variant={activeTab === 'users' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('users')}>
-            <Users size={16} /> Alunos & Ligas
-          </Button>
-          <Button variant={activeTab === 'decks' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('decks')}>
-            <BookOpen size={16} /> Baralhos Oficiais
-          </Button>
-          <Button variant={activeTab === 'words' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('words')}>
-            <Sparkles size={16} /> Palavras do Dia
-          </Button>
+        {/* Barra de Abas em Linha Única Harmoniosa */}
+        <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-3 gap-1 shadow-2xs">
+          <button
+            type="button"
+            title="Alunos & Ligas"
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              activeTab === 'users'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <Users size={15} className="shrink-0" />
+            <span className="truncate">
+              Alunos<span className="hidden sm:inline"> & Ligas</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            title="Baralhos Oficiais"
+            onClick={() => setActiveTab('decks')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              activeTab === 'decks'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <BookOpen size={15} className="shrink-0" />
+            <span className="truncate">
+              Baralhos<span className="hidden sm:inline"> Oficiais</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            title="Palavras do Dia"
+            onClick={() => setActiveTab('words')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              activeTab === 'words'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <Sparkles size={15} className="shrink-0" />
+            <span className="truncate">
+              Palavras<span className="hidden sm:inline"> do Dia</span>
+            </span>
+          </button>
         </div>
       </header>
 
