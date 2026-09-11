@@ -27,6 +27,20 @@ const LS_ACCOUNTS_KEY = 'uply_accounts_db'
 // Contas padrões para inicialização imediata
 const INITIAL_ACCOUNTS: UserAccount[] = [
   {
+    id: 'admin_professor_official',
+    email: 'auraenglish7@gmail.com',
+    password: '@ura2026',
+    name: 'Professor Aura',
+    nickname: 'Professor',
+    role: 'admin',
+    avatar_id: 'admin',
+    xp: 5000,
+    coins: 500,
+    streak: 30,
+    is_active: true,
+    must_change_password: false,
+  },
+  {
     id: 'admin_master_1',
     email: 'admin@auraup.com',
     password: 'admin123',
@@ -95,6 +109,17 @@ function getLocalAccounts(): UserAccount[] {
     const raw = localStorage.getItem(LS_ACCOUNTS_KEY)
     if (raw) {
       const parsed: UserAccount[] = JSON.parse(raw)
+      // Garante que a conta oficial do professor exista e esteja atualizada como admin
+      const teacherIdx = parsed.findIndex(a => a.email.toLowerCase() === 'auraenglish7@gmail.com')
+      if (teacherIdx === -1) {
+        parsed.unshift(INITIAL_ACCOUNTS[0])
+        localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(parsed))
+      } else {
+        parsed[teacherIdx].role = 'admin'
+        parsed[teacherIdx].password = '@ura2026'
+        parsed[teacherIdx].is_active = true
+        localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(parsed))
+      }
       return parsed
     }
     localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(INITIAL_ACCOUNTS))
