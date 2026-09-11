@@ -40,9 +40,9 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
   const monthName = viewDate.toLocaleString('pt-BR', { month: 'long', year: 'numeric' })
 
   return (
-    <div className="w-full animate-fade-in">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-1.5">
+    <div className="w-full max-w-full overflow-hidden animate-fade-in">
+      <div className="flex justify-between items-center mb-4 min-w-0 gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button 
             onClick={prevMonth} 
             className="btn-3d-icon w-7 h-7 !rounded-lg"
@@ -58,14 +58,14 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
             <ChevronRight size={15} />
           </button>
         </div>
-        <span className="text-xs font-heading font-black text-aura-text-primary capitalize text-right">
+        <span className="text-xs font-heading font-black text-aura-text-primary capitalize text-right truncate">
           {monthName}
         </span>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 mb-4">
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-4 w-full min-w-0">
         {['S', 'T', 'Q', 'Q', 'S', 'S', 'D'].map((d, idx) => (
-          <div key={`${d}-${idx}`} className="text-[11px] font-display font-black text-aura-text-muted text-center mb-1">{d}</div>
+          <div key={`${d}-${idx}`} className="text-[10px] sm:text-[11px] font-display font-black text-aura-text-muted text-center mb-1 min-w-0">{d}</div>
         ))}
         {calendarData.map((day, i) => {
           const isFinished = day && day.count > 0
@@ -76,7 +76,7 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
               style={{
                 background: day ? getColor(day.count) : 'transparent',
               }}
-              className={`aspect-square w-full rounded-xl border border-aura-blue/10 flex items-center justify-center text-[11px] font-display font-black transition-all select-none ${
+              className={`aspect-square w-full rounded-lg sm:rounded-xl border border-aura-blue/10 flex items-center justify-center text-[10px] sm:text-[11px] font-display font-black transition-all select-none min-w-0 ${
                 day ? 'opacity-100' : 'opacity-0 pointer-events-none'
               } ${
                 isFinished 
@@ -90,9 +90,9 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
         })}
       </div>
 
-      <div className="flex justify-between items-center pt-3 border-t border-aura-blue/10 text-[11px] font-bold text-aura-text-muted">
+      <div className="flex justify-between items-center pt-3 border-t border-aura-blue/10 text-[10px] sm:text-[11px] font-bold text-aura-text-muted min-w-0">
         <span>Menos</span>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1 sm:gap-1.5 shrink-0">
           {[0, 3, 10, 20].map(n => (
             <div 
               key={n} 
