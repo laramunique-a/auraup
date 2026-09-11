@@ -495,8 +495,6 @@ export function DeckPage() {
               </div>
             </div>
           </div>
-
-          </div>
         </div>
       </Modal>
 
