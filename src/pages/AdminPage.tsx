@@ -182,6 +182,12 @@ function saveLocalAdminLevels(levelsList: any[]) {
     loadWordsOfTheDay()
   }, [])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [activeTab])
+
   async function loadUsers() {
     if (isLocalMode || !supabase) {
       setUsers(getLocalAdminUsers())
@@ -820,10 +826,10 @@ function saveLocalAdminLevels(levelsList: any[]) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
       {/* Header com Navegação de Abas */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
+      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-5 sm:mb-8 gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
               <ShieldCheck size={22} />
             </div>
             <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
@@ -835,24 +841,63 @@ function saveLocalAdminLevels(levelsList: any[]) {
           </p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <Button variant={activeTab === 'users' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('users')}>
-            <Users size={16} /> Alunos & Ligas
-          </Button>
-          <Button variant={activeTab === 'decks' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('decks')}>
-            <BookOpen size={16} /> Baralhos Oficiais
-          </Button>
-          <Button variant={activeTab === 'words' ? 'primary' : 'secondary'} size="sm" onClick={() => setActiveTab('words')}>
-            <Sparkles size={16} /> Palavras do Dia
-          </Button>
+        {/* Barra de Abas em Linha Única Harmoniosa */}
+        <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-3 gap-1 shadow-2xs">
+          <button
+            type="button"
+            title="Alunos & Ligas"
+            onClick={() => setActiveTab('users')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              activeTab === 'users'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <Users size={15} className="shrink-0" />
+            <span className="truncate">
+              Alunos<span className="hidden sm:inline"> & Ligas</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            title="Baralhos Oficiais"
+            onClick={() => setActiveTab('decks')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              activeTab === 'decks'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <BookOpen size={15} className="shrink-0" />
+            <span className="truncate">
+              Baralhos<span className="hidden sm:inline"> Oficiais</span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            title="Palavras do Dia"
+            onClick={() => setActiveTab('words')}
+            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              activeTab === 'words'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+            }`}
+          >
+            <Sparkles size={15} className="shrink-0" />
+            <span className="truncate">
+              Palavras<span className="hidden sm:inline"> do Dia</span>
+            </span>
+          </button>
         </div>
       </header>
 
-      {/* Grid de Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-        <AdminStatCard icon={<Users size={22} />} label="Alunos ativos" value={allStudents.length} color="blue" />
-        <AdminStatCard icon={<BookOpen size={22} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
-        <AdminStatCard icon={<Sparkles size={22} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
+      {/* Grid de Stats Compacto */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-5">
+        <AdminStatCard icon={<Users size={16} />} label="Alunos ativos" value={allStudents.length} color="blue" />
+        <AdminStatCard icon={<BookOpen size={16} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
+        <AdminStatCard icon={<Sparkles size={16} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
       </div>
 
       {activeTab === 'users' ? (
@@ -872,7 +917,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
             </div>
 
             <div className="card-3d border border-slate-200 dark:border-slate-700 shadow-xs rounded-xl bg-white dark:bg-slate-800 overflow-hidden">
-              <div className="w-full">
+              {/* Tabela para Telas Médias e Grandes (Desktop) */}
+              <div className="hidden md:block w-full">
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
@@ -972,6 +1018,96 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   </tbody>
                 </table>
               </div>
+
+              {/* Lista Otimizada para Mobile / PWA */}
+              <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+                {allStudents.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-sm font-medium">
+                    Nenhum aluno cadastrado ainda.
+                  </div>
+                ) : (
+                  allStudents.map((u) => (
+                    <div key={u.id} className="p-3.5 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-slate-700 flex items-center justify-center text-base shrink-0 border border-slate-200/60 dark:border-slate-600 shadow-xs">
+                            {AVATARS[u.avatar_id] || '👤'}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-heading font-bold text-slate-800 dark:text-white text-sm truncate leading-tight">
+                                {u.nickname || u.name}
+                              </span>
+                              {u.is_active === false && (
+                                <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
+                                  Inativo
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-normal truncate mt-0.5">{u.email}</div>
+                          </div>
+                        </div>
+
+                        {/* Botões de Ação Imediatos e Acessíveis no Mobile */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button 
+                            type="button"
+                            title="Premiar Aluno"
+                            onClick={() => {
+                              setSelectedUser(u)
+                              setAdjustXP(0); setAdjustCoins(0)
+                              setActiveModal('editBalance')
+                            }}
+                            className="w-8 h-8 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                          >
+                            <Sparkles size={14} className="text-amber-500" />
+                          </button>
+
+                          <button 
+                            type="button"
+                            title="Editar Aluno"
+                            onClick={() => handleOpenEditUser(u)}
+                            className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-slate-600 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                          >
+                            <Pencil size={14} />
+                          </button>
+
+                          <button 
+                            type="button"
+                            title="Excluir Aluno"
+                            onClick={() => {
+                              setUserToDelete(u)
+                              setActiveModal('deleteUser')
+                            }}
+                            className="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900 flex items-center justify-center cursor-pointer transition-colors active:scale-95"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Linha Inferior: Liga e Saldo */}
+                      <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-100/80 dark:border-slate-700/60">
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: u.level?.color || '#3B82F6' }} />
+                          {u.level?.name || 'Iniciante'}
+                        </span>
+
+                        <div className="inline-flex items-center gap-2.5 text-xs font-semibold">
+                          <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                            <Sparkles size={12} className="fill-amber-500 text-amber-500" />
+                            <span>{u.xp} XP</span>
+                          </div>
+                          <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                            <Coins size={12} className="fill-amber-500 text-amber-500" />
+                            <span>{u.coins}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </section>
 
@@ -1023,14 +1159,14 @@ function saveLocalAdminLevels(levelsList: any[]) {
       ) : activeTab === 'decks' ? (
         /* Gestão de Baralhos Padrões */
         <section>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.125rem', fontWeight: 900 }}>Baralhos Oficiais Administráveis</h2>
-            <Button variant="vibrant" size="sm" onClick={openCreateOfficialDeck}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+            <h2 className="text-lg font-heading font-extrabold text-slate-900 dark:text-white">Baralhos Oficiais Administráveis</h2>
+            <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
               <Plus size={16} /> Criar Baralho Padrão
             </Button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.5rem' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {officialDecks.map((deck) => (
               <div key={deck.id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1131,7 +1267,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
           {wordViewMode === 'grid' ? (
             /* Visualização 1: QUADROS (GRID) */
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {sortedWordsOfTheDay.map((w, idx) => (
                 <div key={w.id || idx} className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -1234,6 +1370,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       )}
 
       {/* Modal Criar/Editar Baralho Padrão (2 Páginas) */}
+      {/* Modal Criar/Editar Baralho Padrão (2 Páginas) */}
       <Modal 
         open={activeModal === 'officialDeck'} 
         onClose={() => setActiveModal(null)} 
@@ -1243,6 +1380,34 @@ function saveLocalAdminLevels(levelsList: any[]) {
             : `🎴 Cartões do Baralho: ${offName}`
         } 
         maxWidth={deckFormStep === 1 ? "540px" : "680px"}
+        footer={
+          deckFormStep === 1 ? (
+            <div className="w-full flex items-center justify-between gap-2">
+              <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>
+                Cancelar
+              </Button>
+              <div className="flex items-center gap-2">
+                {editingOfficialDeck && (
+                  <Button variant="secondary" size="md" loading={savingOfficialDeck} onClick={handleSaveOfficialDeck} disabled={!offName.trim()}>
+                    Salvar
+                  </Button>
+                )}
+                <Button variant="vibrant" size="md" onClick={() => setDeckFormStep(2)} disabled={!offName.trim()}>
+                  Cards <ArrowRight size={16} />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="w-full flex items-center justify-between gap-2">
+              <Button variant="ghost" size="md" onClick={() => setDeckFormStep(1)}>
+                <ArrowLeft size={16} /> Voltar
+              </Button>
+              <Button variant="vibrant" size="md" loading={savingOfficialDeck} onClick={handleSaveOfficialDeck} disabled={!offName.trim()}>
+                <Check size={16} /> {editingOfficialDeck ? 'Salvar' : 'Concluir'}
+              </Button>
+            </div>
+          )
+        }
       >
         <div className="space-y-4 py-2">
           {deckFormStep === 1 ? (
@@ -1256,7 +1421,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   placeholder="Ex: 50 Palavras Essenciais do Inglês"
                   value={offName}
                   onChange={e => setOffName(e.target.value)}
-                  autoFocus
                   className="input-gamified"
                 />
               </div>
@@ -1273,7 +1437,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-black uppercase text-slate-500 mb-2">
                     Nível
@@ -1309,23 +1473,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
                     <option value="published">Publicado (Visível na Loja)</option>
                     <option value="hidden">Oculto (Rascunho)</option>
                   </select>
-                </div>
-              </div>
-
-              <div className="flex gap-3 justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
-                <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>
-                  Cancelar
-                </Button>
-
-                <div className="flex gap-2">
-                  {editingOfficialDeck && (
-                    <Button variant="secondary" size="md" loading={savingOfficialDeck} onClick={handleSaveOfficialDeck} disabled={!offName.trim()}>
-                      Salvar Alterações
-                    </Button>
-                  )}
-                  <Button variant="vibrant" size="md" onClick={() => setDeckFormStep(2)} disabled={!offName.trim()}>
-                    Adicionar Cards <ArrowRight size={16} />
-                  </Button>
                 </div>
               </div>
             </div>
@@ -1564,15 +1711,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
               >
                 <Plus size={16} /> Adicionar Mais Um Card
               </Button>
-
-              <div className="flex gap-3 justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-700">
-                <Button variant="ghost" size="md" onClick={() => setDeckFormStep(1)}>
-                  <ArrowLeft size={16} /> Voltar
-                </Button>
-                <Button variant="vibrant" size="md" loading={savingOfficialDeck} onClick={handleSaveOfficialDeck} disabled={!offName.trim()}>
-                  <Check size={16} /> {editingOfficialDeck ? 'Salvar Alterações' : 'Concluir e Salvar'}
-                </Button>
-              </div>
             </div>
           )}
         </div>
@@ -1584,9 +1722,25 @@ function saveLocalAdminLevels(levelsList: any[]) {
         onClose={() => setActiveModal(null)}
         title={editingWord ? "✨ Editar Palavra do Dia" : "✨ Nova Palavra do Dia"}
         maxWidth="560px"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="vibrant" 
+              size="md" 
+              loading={savingWord} 
+              onClick={handleSaveWord} 
+              disabled={!wordWord.trim() || !wordTranslation.trim() || !wordDefinition.trim()}
+            >
+              {editingWord ? 'Salvar Alterações' : 'Cadastrar Palavra'}
+            </Button>
+          </div>
+        }
       >
         <div className="space-y-4 py-2">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-black uppercase text-slate-500 mb-2">
                 Palavra em Inglês
@@ -1595,7 +1749,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 placeholder="Ex: Resilience"
                 value={wordWord}
                 onChange={e => setWordWord(e.target.value)}
-                autoFocus
                 className="input-gamified"
               />
             </div>
@@ -1662,27 +1815,24 @@ function saveLocalAdminLevels(levelsList: any[]) {
               className="input-gamified"
             />
           </div>
-
-          <div className="flex gap-3 justify-end pt-3 border-t border-slate-200 dark:border-slate-700">
-            <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="vibrant" 
-              size="md" 
-              loading={savingWord} 
-              onClick={handleSaveWord} 
-              disabled={!wordWord.trim() || !wordTranslation.trim() || !wordDefinition.trim()}
-            >
-              {editingWord ? 'Salvar Alterações' : 'Cadastrar Palavra'}
-            </Button>
-          </div>
         </div>
       </Modal>
 
       {/* Outros Modals */}
-      <Modal open={activeModal === 'addUser'} onClose={() => setActiveModal(null)} title="✨ Novo Aluno">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <Modal 
+        open={activeModal === 'addUser'} 
+        onClose={() => setActiveModal(null)} 
+        title="✨ Novo Aluno"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>Cancelar</Button>
+            <Button variant="vibrant" size="md" loading={creating} onClick={handleCreateUser} disabled={!newEmail || !newName || !selectedLevelId}>
+              Cadastrar Agora
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
           <AdminField label="Nome Completo" value={newName} onChange={setNewName} placeholder="Ex: João Silva" />
           <AdminField label="E-mail" value={newEmail} onChange={setNewEmail} placeholder="aluno@email.com" type="email" />
           
@@ -1702,7 +1852,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               <button 
                 type="button"
                 onClick={() => setShowLevelDropdown(!showLevelDropdown)}
-                className="w-full rounded-lg p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
+                className="w-full rounded-xl p-3 text-base sm:text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
               >
                 <span>
                   {selectedLevelId ? (
@@ -1752,19 +1902,24 @@ function saveLocalAdminLevels(levelsList: any[]) {
               </p>
             )}
           </div>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>Cancelar</Button>
-            <Button variant="vibrant" size="md" loading={creating} onClick={handleCreateUser} disabled={!newEmail || !newName || !selectedLevelId}>
-              Cadastrar Agora
-            </Button>
-          </div>
         </div>
       </Modal>
 
       {/* Modal Editar Aluno */}
-      <Modal open={activeModal === 'editUser'} onClose={() => { setActiveModal(null); setEditingUser(null) }} title="📝 Editar Aluno">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <Modal 
+        open={activeModal === 'editUser'} 
+        onClose={() => { setActiveModal(null); setEditingUser(null) }} 
+        title="📝 Editar Aluno"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => { setActiveModal(null); setEditingUser(null) }}>Cancelar</Button>
+            <Button variant="vibrant" size="md" loading={savingUser} onClick={handleSaveEditUser} disabled={!editName || !editEmail}>
+              Salvar Alterações
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
           <AdminField 
             label="Nome Completo" 
             value={editName} 
@@ -1795,7 +1950,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               <button 
                 type="button"
                 onClick={() => setShowEditLevelDropdown(!showEditLevelDropdown)}
-                className="w-full rounded-lg p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
+                className="w-full rounded-xl p-3 text-base sm:text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
               >
                 <span>
                   {editLevelId ? (
@@ -1879,19 +2034,29 @@ function saveLocalAdminLevels(levelsList: any[]) {
               <div className="w-10 h-5 bg-amber-200 peer-focus:outline-none rounded-full peer dark:bg-amber-900 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-amber-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-amber-800 peer-checked:bg-amber-600"></div>
             </label>
           </div>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <Button variant="ghost" size="md" onClick={() => { setActiveModal(null); setEditingUser(null) }}>Cancelar</Button>
-            <Button variant="vibrant" size="md" loading={savingUser} onClick={handleSaveEditUser} disabled={!editName || !editEmail}>
-              Salvar Alterações
-            </Button>
-          </div>
         </div>
       </Modal>
 
       {/* Modal Excluir Aluno */}
-      <Modal open={activeModal === 'deleteUser'} onClose={() => { setActiveModal(null); setUserToDelete(null) }} title="🗑️ Excluir Aluno">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      <Modal 
+        open={activeModal === 'deleteUser'} 
+        onClose={() => { setActiveModal(null); setUserToDelete(null) }} 
+        title="🗑️ Excluir Aluno"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => { setActiveModal(null); setUserToDelete(null) }}>Cancelar</Button>
+            <button 
+              type="button"
+              disabled={deletingUser}
+              onClick={handleConfirmDeleteUser}
+              className="px-4 py-2 text-sm font-semibold rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+            >
+              {deletingUser ? 'Excluindo...' : 'Sim, Excluir Aluno'}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
           <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 rounded-xl flex items-start gap-3">
             <div className="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/60 flex items-center justify-center shrink-0 text-rose-600 dark:text-rose-300">
               <Trash2 size={18} />
@@ -1904,68 +2069,88 @@ function saveLocalAdminLevels(levelsList: any[]) {
               </p>
             </div>
           </div>
-
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-            <Button variant="ghost" size="md" onClick={() => { setActiveModal(null); setUserToDelete(null) }}>Cancelar</Button>
-            <button 
-              type="button"
-              disabled={deletingUser}
-              onClick={handleConfirmDeleteUser}
-              className="px-4 py-2 text-sm font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
-            >
-              {deletingUser ? 'Excluindo...' : 'Sim, Excluir Aluno'}
-            </button>
-          </div>
         </div>
       </Modal>
 
-      <Modal open={activeModal === 'editBalance'} onClose={() => setActiveModal(null)} title="🏆 Premiar Aluno">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Premiando <span style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{selectedUser?.name}</span></p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <AdminField label="Adicionar XP" value={adjustXP} onChange={setAdjustXP} type="number" />
-            <AdminField label="Adicionar Moedas" value={adjustCoins} onChange={setAdjustCoins} type="number" />
-          </div>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+      <Modal 
+        open={activeModal === 'editBalance'} 
+        onClose={() => setActiveModal(null)} 
+        title="🏆 Premiar Aluno"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
             <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>Cancelar</Button>
             <Button variant="vibrant" size="md" loading={updatingBalance} onClick={handleUpdateBalance}>Confirmar Recompensa</Button>
           </div>
+        }
+      >
+        <div className="space-y-4 py-1">
+          <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            Premiando <span className="font-extrabold text-slate-900 dark:text-white">{selectedUser?.name}</span>
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AdminField label="Adicionar XP" value={adjustXP} onChange={setAdjustXP} type="number" />
+            <AdminField label="Adicionar Moedas" value={adjustCoins} onChange={setAdjustCoins} type="number" />
+          </div>
         </div>
       </Modal>
 
-      <Modal open={activeModal === 'viewLeagueUsers'} onClose={() => setActiveModal(null)} title="👥 Alunos da Liga">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <Modal 
+        open={activeModal === 'viewLeagueUsers'} 
+        onClose={() => setActiveModal(null)} 
+        title="👥 Alunos da Liga"
+        footer={
+          <Button variant="vibrant" fullWidth size="md" onClick={() => setActiveModal(null)}>Fechar</Button>
+        }
+      >
+        <div className="space-y-3 py-1">
           {leagueStudents.length === 0 ? (
-            <p style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontWeight: 600 }}>Nenhum aluno nesta liga ainda. ✨</p>
+            <p className="text-center py-8 text-slate-400 font-medium">Nenhum aluno nesta liga ainda. ✨</p>
           ) : (
             leagueStudents.map(u => (
-              <div key={u.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <div style={{ fontSize: '1.5rem' }}>{AVATARS[u.avatar_id] || '👤'}</div>
-                  <div style={{ fontWeight: 700 }}>{u.nickname || u.name}</div>
+              <div key={u.id} className="card-3d p-3 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">{AVATARS[u.avatar_id] || '👤'}</div>
+                  <div className="font-bold text-sm text-slate-800 dark:text-white">{u.nickname || u.name}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 900, color: 'var(--warning)', fontSize: '1rem' }}>{u.xp} XP</div>
-                  <div style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '0.8125rem' }}>{u.coins} Moedas</div>
+                <div className="text-right">
+                  <div className="font-extrabold text-amber-600 dark:text-amber-400 text-sm">{u.xp} XP</div>
+                  <div className="font-semibold text-blue-600 dark:text-blue-400 text-xs">{u.coins} Moedas</div>
                 </div>
               </div>
             ))
           )}
-          <Button variant="vibrant" fullWidth size="md" onClick={() => setActiveModal(null)} style={{ marginTop: '1rem' }}>Fechar</Button>
         </div>
       </Modal>
 
-      <Modal open={activeModal === 'addLevel' || activeModal === 'editLevel'} onClose={() => setActiveModal(null)} title={editingLevel ? "📝 Editar Liga" : "🚀 Nova Liga"}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <Modal 
+        open={activeModal === 'addLevel' || activeModal === 'editLevel'} 
+        onClose={() => setActiveModal(null)} 
+        title={editingLevel ? "📝 Editar Liga" : "🚀 Nova Liga"}
+        footer={
+          <div className="w-full flex items-center justify-between gap-2">
+            {editingLevel ? (
+              <Button variant="danger" size="md" onClick={handleDeleteLevel}><Trash2 size={16} /> Excluir</Button>
+            ) : <div />}
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>Cancelar</Button>
+              <Button variant="vibrant" size="md" onClick={editingLevel ? handleUpdateLevel : handleCreateLevel}>
+                {editingLevel ? 'Salvar Alterações' : 'Criar Liga'}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
           <AdminField label="Nome da Liga" value={newLevelName} onChange={setNewLevelName} placeholder="Ex: Mestre" />
           <AdminField label="XP Necessário" value={newLevelXP} onChange={setNewLevelXP} type="number" />
           
           <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Cor da Liga</label>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2 uppercase">Cor da Liga</label>
+            <div className="flex gap-3 flex-wrap">
               {PRESET_COLORS.map(c => (
                 <button
                   key={c}
+                  type="button"
                   onClick={() => setNewLevelColor(c)}
                   style={{
                     width: '32px', height: '32px', borderRadius: '50%', background: c,
@@ -1975,18 +2160,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   }}
                 />
               ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-            {editingLevel && (
-              <Button variant="danger" onClick={handleDeleteLevel}><Trash2 size={18} /> Excluir</Button>
-            )}
-            <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto' }}>
-              <Button variant="ghost" onClick={() => setActiveModal(null)}>Cancelar</Button>
-              <Button variant="vibrant" onClick={editingLevel ? handleUpdateLevel : handleCreateLevel}>
-                {editingLevel ? 'Salvar Alterações' : 'Criar Liga'}
-              </Button>
             </div>
           </div>
         </div>
@@ -2006,13 +2179,13 @@ function AdminStatCard({ icon, label, value, color = 'blue' }: any) {
   const theme = colorMap[color] || colorMap.blue
 
   return (
-    <div className="card-3d p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl ${theme.bg} ${theme.text} ${theme.border} border flex items-center justify-center shrink-0 shadow-xs`}>
+    <div className="card-3d px-2.5 py-2 sm:px-4 sm:py-3 flex items-center gap-2 sm:gap-3 rounded-xl shadow-2xs">
+      <div className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg ${theme.bg} ${theme.text} ${theme.border} border flex items-center justify-center shrink-0`}>
         {icon}
       </div>
-      <div>
-        <div className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white leading-none">{value}</div>
-        <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{label}</div>
+      <div className="min-w-0">
+        <div className="text-sm sm:text-xl font-heading font-extrabold text-slate-900 dark:text-white leading-none">{value}</div>
+        <div className="text-[10px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5 leading-tight truncate">{label}</div>
       </div>
     </div>
   )
@@ -2027,7 +2200,7 @@ function AdminField({ label, value, onChange, placeholder, type = 'text' }: any)
         value={value} 
         onChange={e => onChange(e.target.value)} 
         placeholder={placeholder}
-        className="w-full rounded-lg p-2.5 sm:p-3 text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white shadow-2xs"
+        className="w-full rounded-xl p-3 text-base sm:text-sm font-medium border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-colors text-slate-900 dark:text-white shadow-2xs"
       />
     </div>
   )

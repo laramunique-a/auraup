@@ -68,29 +68,29 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
     return (
       <div 
         onClick={onClick}
-        className="card-3d-interactive flex items-center justify-between p-4 sm:p-5 gap-4 cursor-pointer"
+        className="card-3d-interactive flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 gap-3.5 sm:gap-4 cursor-pointer"
       >
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className={`w-11 h-11 rounded-xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0 shadow-xs`}>
+        <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
+          <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl ${theme.badgeBg} ${theme.badgeBorder} border flex items-center justify-center shrink-0 shadow-xs mt-0.5 sm:mt-0`}>
             <LevelIcon size={20} color={theme.iconColor} />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-[11px] font-heading font-semibold tracking-wide px-2.5 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
+              <span className={`text-[10px] sm:text-[11px] font-heading font-semibold tracking-wide px-2 py-0.5 rounded-md border ${theme.badgeBg} ${theme.badgeText} ${theme.badgeBorder}`}>
                 {theme.label}
               </span>
             </div>
-            <h3 className="font-heading font-semibold text-slate-800 dark:text-slate-100 text-base sm:text-lg truncate">{deck.name}</h3>
-            <div className="text-xs font-medium text-aura-text-muted flex items-center gap-3 mt-1">
+            <h3 className="font-heading font-semibold text-slate-800 dark:text-slate-100 text-base sm:text-lg leading-snug break-words">{deck.name}</h3>
+            <div className="text-xs font-medium text-aura-text-muted flex items-center flex-wrap gap-2.5 mt-1.5">
               <span className="flex items-center gap-1">
-                <Layers size={14} /> <span className="font-semibold text-slate-700 dark:text-slate-200">{stats?.total || 0}</span> cards
+                <Layers size={13} /> <span className="font-semibold text-slate-700 dark:text-slate-200">{stats?.total || 0}</span> cards
               </span>
               {hasDue ? (
-                <span className="text-aura-orange font-semibold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md">
+                <span className="text-aura-orange font-semibold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md text-[11px]">
                   🔥 <span className="font-bold">{stats?.due}</span> para revisar
                 </span>
               ) : (
-                <span className="text-aura-green font-medium flex items-center gap-1">
+                <span className="text-aura-green font-medium flex items-center gap-1 text-[11px]">
                   <CheckCircle2 size={13} /> Tudo em dia
                 </span>
               )}
@@ -98,7 +98,7 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
           </div>
         </div>
 
-        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-end gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 shrink-0" onClick={e => e.stopPropagation()}>
           <button 
             className="btn-3d-icon w-8 h-8 !rounded-lg text-aura-text-muted hover:text-aura-blue" 
             onClick={() => navigate(`/deck/${deck.id}`)}
@@ -120,14 +120,16 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
               variant="orange" 
               size="sm" 
               onClick={() => navigate(`/study/${deck.id}`)}
+              className="!py-1.5 !px-3 text-xs"
             >
-              <Play size={14} className="fill-white" /> Estudar
+              <Play size={13} className="fill-white" /> Estudar
             </Button>
           ) : (
             <Button
               variant="secondary"
               size="sm"
               onClick={() => navigate(`/study/${deck.id}`)}
+              className="!py-1.5 !px-3 text-xs"
             >
               Praticar
             </Button>

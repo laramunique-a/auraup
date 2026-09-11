@@ -82,6 +82,9 @@ export function DashboardPage() {
     return localStorage.getItem('uply_dashboard_sort') || 'newest'
   })
 
+  // Aba ativa no Mobile/PWA
+  const [mobileTab, setMobileTab] = useState<'decks' | 'word' | 'stats'>('decks')
+
   // Aprendizado Semanal e Histórico
   const [weeklyLearned, setWeeklyLearned] = useState(0)
   const [totalLearned, setTotalLearned] = useState(0)
@@ -258,11 +261,363 @@ export function DashboardPage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen space-y-8">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 min-h-screen space-y-6 sm:space-y-8">
       
-      {/* -------------------------------------------------------------------------- */}
-      {/* 1. HERO DE AVENTURA GAMIFICADO                                            */}
-      {/* -------------------------------------------------------------------------- */}
+      {/* ========================================================================== */}
+      {/* 📱 VERSÃO EXCLUSIVA MOBILE / PWA (< 768px)                                */}
+      {/* ========================================================================== */}
+      <div className="block md:hidden space-y-4 pb-8">
+        {/* Card de Missão Diária (Limpo, Moderno e Direto ao Ponto) */}
+        <section className="card-3d p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs space-y-3.5">
+          {/* Top: Status da Meta Diária */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 border ${
+                totalDue > 0 
+                  ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 border-amber-200/80 dark:border-amber-800/80' 
+                  : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200/80 dark:border-emerald-800/80'
+              }`}>
+                {totalDue > 0 ? '🎯' : '🏆'}
+              </div>
+              
+              <div className="min-w-0">
+                <span className="text-[10px] font-heading font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block leading-tight">
+                  {totalDue > 0 ? 'Meta de Hoje' : 'Status dos Estudos'}
+                </span>
+                <h2 className="text-sm font-heading font-extrabold text-slate-800 dark:text-white truncate">
+                  {totalDue > 0 ? `${totalDue} ${totalDue === 1 ? 'card pendente' : 'cards pendentes'}` : 'Tudo em dia por aqui! ✨'}
+                </h2>
+              </div>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <span className="inline-flex items-center gap-1 text-[10px] font-heading font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 border border-blue-200/70 dark:border-blue-900 px-2 py-0.5 rounded-md shadow-2xs">
+                🛡️ Nível {level}
+              </span>
+            </div>
+          </div>
+
+          {/* Barra de Progresso do Nível */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span>Progresso do Nível</span>
+              <span className="font-semibold text-amber-600 dark:text-amber-400">
+                Faltam {xpForNextLevel} XP ⭐
+              </span>
+            </div>
+            <div className="w-full h-2 bg-slate-100 dark:bg-slate-700/80 rounded-full overflow-hidden p-0.5 border border-slate-200/60 dark:border-slate-600/80">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.max(6, progressToNextLevel)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Botão de Ação Primário Direto */}
+          {totalDue > 0 ? (
+            <Button 
+              variant="orange" 
+              size="md" 
+              onClick={() => navigate('/study/all')}
+              className="w-full !py-2.5 text-xs font-heading font-bold shadow-xs active:scale-95 transition-transform"
+            >
+              <Flame size={15} className="fill-white shrink-0" />
+              Começar Revisão Diária ({totalDue})
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setMobileTab('decks')}
+              className="w-full !py-2 text-xs font-heading font-semibold"
+            >
+              Ver Coleção de Baralhos 📚
+            </Button>
+          )}
+        </section>
+
+        {/* 3. Segmented Controls / Abas do Mobile */}
+        <div className="flex p-1 bg-slate-100 dark:bg-slate-800/90 rounded-xl border border-slate-200/80 dark:border-slate-700 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => setMobileTab('decks')}
+            className={`flex-1 py-2 text-xs font-heading font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 ${
+              mobileTab === 'decks'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <LayoutGrid size={13} />
+            <span>Baralhos ({decks.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileTab('word')}
+            className={`flex-1 py-2 text-xs font-heading font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 ${
+              mobileTab === 'word'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <span>📖</span>
+            <span>Palavra</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMobileTab('stats')}
+            className={`flex-1 py-2 text-xs font-heading font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 select-none active:scale-95 ${
+              mobileTab === 'stats'
+                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
+            }`}
+          >
+            <Trophy size={13} />
+            <span>Desempenho</span>
+          </button>
+        </div>
+
+        {/* 4. Conteúdo Dinâmico por Aba no Mobile */}
+        {mobileTab === 'decks' && (
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-heading font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Coleção de Estudos
+              </span>
+              <div className="flex items-center gap-1.5">
+                <Button 
+                  variant="secondary" 
+                  size="sm" 
+                  onClick={() => document.getElementById('anki-dashboard-import')?.click()} 
+                  disabled={importing}
+                  className="text-xs !py-1 !px-2.5"
+                >
+                  <FileUp size={12} /> Importar
+                </Button>
+                <Button 
+                  variant="primary" 
+                  size="sm" 
+                  onClick={() => setShowCreate(true)}
+                  className="text-xs !py-1 !px-2.5"
+                >
+                  <Plus size={13} /> Novo
+                </Button>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="card-3d h-28 animate-pulse bg-slate-100/60" />
+                ))}
+              </div>
+            ) : decks.length === 0 ? (
+              <div className="card-3d p-8 text-center space-y-3">
+                <div className="w-12 h-12 mx-auto rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl">
+                  📚
+                </div>
+                <h3 className="text-base font-heading font-bold text-slate-800 dark:text-white">
+                  Nenhum baralho criado ainda
+                </h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  Crie seu primeiro baralho de flashcards para começar seus estudos com repetição espaçada!
+                </p>
+                <Button variant="orange" size="sm" onClick={() => setShowCreate(true)}>
+                  <Plus size={14} /> Criar Baralho
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {sortedDecks.map(deck => (
+                  <DeckCard
+                    key={deck.id}
+                    deck={deck}
+                    stats={statsMap[deck.id]}
+                    viewMode="list"
+                    onDelete={() => handleDelete(deck.id, deck.name)}
+                    onClick={() => navigate(statsMap[deck.id]?.due > 0 ? `/study/${deck.id}` : `/deck/${deck.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {mobileTab === 'word' && (
+          <div className="pt-1">
+            <section className="card-3d p-5 border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                <span className="text-xs font-heading font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-md border border-blue-200/80 dark:border-blue-800 flex items-center gap-1.5">
+                  <span>📖</span> Palavra do Dia
+                </span>
+                <span className="text-[11px] font-medium text-slate-400 capitalize flex items-center gap-1">
+                  <Calendar size={12} />
+                  {new Date().toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-heading font-bold text-slate-800 dark:text-white">
+                      {wordOfTheDay.word}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60">
+                        {wordOfTheDay.type}
+                      </span>
+                      <span className="text-xs font-heading font-bold text-blue-600 dark:text-blue-400">
+                        🇧🇷 {wordOfTheDay.translation}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => speakWord(wordOfTheDay.word)}
+                    disabled={isPlayingAudio}
+                    className="w-10 h-10 rounded-xl bg-blue-50 hover:bg-blue-100 dark:bg-slate-700 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900 flex items-center justify-center transition-all active:scale-95 shadow-xs cursor-pointer"
+                    title="Ouvir Pronúncia"
+                  >
+                    <Volume2 size={20} className={isPlayingAudio ? 'animate-pulse' : ''} />
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                  <span className="text-[10px] font-heading font-semibold uppercase tracking-wider text-slate-400 block mb-1">
+                    Definição
+                  </span>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                    {wordOfTheDay.definition}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 mb-1 text-[11px] font-heading font-semibold text-amber-600 dark:text-amber-400">
+                    <Sparkles size={12} />
+                    <span>Exemplo em Contexto</span>
+                  </div>
+                  <p className="text-xs font-medium text-slate-800 dark:text-white italic">
+                    "{wordOfTheDay.example}"
+                  </p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                    {wordOfTheDay.exampleTranslation}
+                  </p>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {mobileTab === 'stats' && (
+          <div className="space-y-4 pt-1">
+            {/* Métricas Rápidas */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="card-3d p-4 flex flex-col justify-between">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shadow-xs mb-2">
+                  <Calendar size={16} />
+                </div>
+                <div>
+                  <div className="text-2xl font-heading font-bold text-slate-800 dark:text-white">{weeklyLearned}</div>
+                  <div className="text-[11px] font-medium text-slate-500">Cards na Semana</div>
+                </div>
+              </div>
+
+              <div className="card-3d p-4 flex flex-col justify-between">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-xs mb-2">
+                  <Trophy size={16} />
+                </div>
+                <div>
+                  <div className="text-2xl font-heading font-bold text-slate-800 dark:text-white">{totalLearned}</div>
+                  <div className="text-[11px] font-medium text-slate-500">Total Dominado</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Colocação no Ranking */}
+            <div className="card-3d p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 space-y-3">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Trophy size={14} />
+                  </div>
+                  <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white">
+                    Sua Posição no Ranking
+                  </h3>
+                </div>
+                <button
+                  onClick={() => navigate('/ranking')}
+                  className="text-[11px] font-heading font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1"
+                >
+                  Ver Pódio <ArrowRight size={12} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2">
+                <div 
+                  onClick={() => navigate('/ranking')}
+                  className="p-3 rounded-lg border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-slate-800 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-md bg-blue-600 text-white flex items-center justify-center text-xs">
+                      <Globe size={14} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-heading font-semibold uppercase text-blue-600 dark:text-blue-400 block">
+                        Global
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {userRankings.global.total} alunos
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-blue-200 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs">
+                    {userRankings.global.pos}º lugar
+                  </span>
+                </div>
+
+                <div 
+                  onClick={() => navigate('/ranking')}
+                  className="p-3 rounded-lg border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-slate-800 flex items-center justify-between cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-md bg-emerald-600 text-white flex items-center justify-center text-xs">
+                      <Users size={14} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-heading font-semibold uppercase text-emerald-600 dark:text-emerald-400 block">
+                        Minha Turma
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        {userRankings.turma.total} colegas
+                      </span>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-900 border border-emerald-200 text-emerald-700 dark:text-emerald-300 font-heading font-bold text-xs">
+                    {userRankings.turma.pos}º lugar
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Constância Diária Heatmap */}
+            <div className="card-3d p-4">
+              <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-1.5">
+                <Calendar size={15} className="text-blue-600 dark:text-blue-400" /> Constância Diária
+              </h3>
+              <StudyHeatmap activity={activity} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ========================================================================== */}
+      {/* 💻 VERSÃO DESKTOP (>= 768px)                                              */}
+      {/* ========================================================================== */}
+      <div className="hidden md:block space-y-8">
+        {/* -------------------------------------------------------------------------- */}
+        {/* 1. HERO DE AVENTURA GAMIFICADO                                            */}
+        {/* -------------------------------------------------------------------------- */}
       <section className="card-3d p-6 sm:p-7 bg-white relative overflow-hidden">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           {/* Avatar e Boas-vindas */}
@@ -741,11 +1096,24 @@ export function DashboardPage() {
           </div>
         </aside>
       </div>
+      </div>
 
       {/* -------------------------------------------------------------------------- */}
       {/* MODALS                                                                     */}
       {/* -------------------------------------------------------------------------- */}
-      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="✨ Novo Baralho de Estudo">
+      <Modal 
+        open={showCreate} 
+        onClose={() => setShowCreate(false)} 
+        title="✨ Novo Baralho de Estudo"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancelar</Button>
+            <Button variant="orange" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
+              Criar Baralho 🚀
+            </Button>
+          </div>
+        }
+      >
         <div className="space-y-4 py-2">
           <div>
             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -755,22 +1123,27 @@ export function DashboardPage() {
               placeholder="Ex: Inglês — Vocabulário Essencial"
               value={deckName}
               onChange={e => setDeckName(e.target.value)}
-              autoFocus
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all"
+              className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-base text-slate-900 dark:text-white outline-none transition-all"
               onKeyDown={e => { if (e.key === 'Enter') handleCreate() }}
             />
-          </div>
-          <div className="flex gap-2.5 justify-end pt-2">
-            <Button variant="ghost" size="md" onClick={() => setShowCreate(false)}>Cancelar</Button>
-            <Button variant="orange" size="md" loading={creating} onClick={handleCreate} disabled={!deckName.trim()}>
-              Criar Baralho 🚀
-            </Button>
           </div>
         </div>
       </Modal>
 
-      <Modal open={showImportModal} onClose={() => !importing && setShowImportModal(false)} title="📥 Importar do Anki (.apkg)">
-        <div className="space-y-4">
+      <Modal 
+        open={showImportModal} 
+        onClose={() => !importing && setShowImportModal(false)} 
+        title="📥 Importar do Anki (.apkg)"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
+            <Button variant="primary" loading={importing} onClick={handleImportConfirm}>
+              Começar Importação ⚡
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
           <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
             O AuraUP vai converter seus cards, imagens e áudios do Anki automaticamente. Como deseja chamar este novo baralho?
           </p>
@@ -779,14 +1152,8 @@ export function DashboardPage() {
             onChange={e => setImportDeckName(e.target.value)}
             placeholder="Nome do baralho importado"
             disabled={importing}
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all"
+            className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-base text-slate-900 dark:text-white outline-none transition-all"
           />
-          <div className="flex gap-2.5 justify-end pt-2">
-            <Button variant="ghost" onClick={() => setShowImportModal(false)} disabled={importing}>Cancelar</Button>
-            <Button variant="primary" loading={importing} onClick={handleImportConfirm}>
-              Começar Importação ⚡
-            </Button>
-          </div>
         </div>
       </Modal>
 

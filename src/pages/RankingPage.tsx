@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Trophy, Flame, Users, Globe, Crown, Medal, Sparkles } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { useAuth } from '../contexts/AuthContext'
@@ -45,8 +45,14 @@ export function RankingPage() {
 
   const top3 = currentList.slice(0, 3)
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    document.documentElement.scrollTop = 0
+    document.body.scrollTop = 0
+  }, [tab])
+
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-8 min-h-screen">
       {/* Header */}
       <header className="text-center mb-8">
         <div className="w-14 h-14 mx-auto mb-3 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-xs">

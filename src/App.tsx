@@ -14,13 +14,15 @@ import { StorePage } from './pages/StorePage'
 import { AuthPage } from './pages/AuthPage'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { FirstLoginModal } from './components/auth/FirstLoginModal'
+import { MobileBottomNav } from './components/layout/MobileBottomNav'
+import { ScrollToTop } from './components/common/ScrollToTop'
 
 function AppRoutes() {
   return (
-    <div className="relative min-h-screen flex flex-col bg-aura-bg text-aura-text-primary font-sans antialiased">
+    <div className="relative min-h-screen flex flex-col bg-aura-bg text-aura-text-primary font-sans antialiased pb-20 md:pb-0">
       <Navbar />
       <FirstLoginModal />
-      <main className="flex-1 relative z-10">
+      <main className="flex-1">
         <Routes>
           {/* Rota pública de login */}
           <Route path="/login" element={<AuthPage />} />
@@ -90,6 +92,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+      <MobileBottomNav />
     </div>
   )
 }
@@ -97,6 +100,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <ThemeProvider>
         <AuthProvider>
           <EconomyProvider>

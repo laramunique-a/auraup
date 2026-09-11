@@ -168,7 +168,7 @@ export function DeckPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 min-h-screen">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 pb-24 sm:pb-12 min-h-screen">
       {/* Header */}
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-8">
         <div className="flex items-center gap-4 flex-1">
@@ -320,6 +320,22 @@ export function DeckPage() {
         onClose={() => { setShowCreate(false); setEditingCard(null); resetForm() }} 
         title={editingCard ? "✏️ Editar Card" : "✨ Criar Novo Card"}
         maxWidth="640px"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2.5">
+            <Button variant="ghost" size="md" onClick={() => { setShowCreate(false); setEditingCard(null); resetForm() }}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="primary" 
+              size="md" 
+              loading={saving} 
+              onClick={handleSaveCard} 
+              disabled={!((front.trim() || frontImage) && (back.trim() || backImage))}
+            >
+              {editingCard ? 'Salvar Alterações' : 'Criar Card'}
+            </Button>
+          </div>
+        }
       >
         <div className="flex flex-col gap-6">
           {/* Visual Hint Banner */}
@@ -478,22 +494,6 @@ export function DeckPage() {
                 )}
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-3 justify-end pt-2">
-            <Button variant="ghost" size="md" onClick={() => { setShowCreate(false); setEditingCard(null); resetForm() }}>
-              Cancelar
-            </Button>
-            <Button 
-              variant="primary" 
-              size="md" 
-              loading={saving} 
-              onClick={handleSaveCard} 
-              disabled={!((front.trim() || frontImage) && (back.trim() || backImage))}
-            >
-              {editingCard ? 'Salvar Alterações' : 'Criar Card'}
-            </Button>
           </div>
         </div>
       </Modal>
