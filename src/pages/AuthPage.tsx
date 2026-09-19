@@ -33,7 +33,6 @@ export function AuthPage() {
   }
 
   return (
-  return (
     <div className="fixed inset-0 h-[100dvh] w-full flex flex-col items-center justify-center p-3 sm:p-4 bg-slate-50 text-slate-900 overflow-hidden touch-none overscroll-none z-50">
       {/* Elementos visuais decorativos suaves */}
       <div 
