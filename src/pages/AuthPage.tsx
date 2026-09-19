@@ -45,12 +45,12 @@ export function AuthPage() {
       {/* Container Principal Centralizado (Trava de largura e altura) */}
       <div className="w-full max-w-[360px] sm:max-w-[380px] relative z-10 mx-auto animate-fade-in flex flex-col items-center my-auto shrink-0">
         
-        {/* Logo AuraUP Limpa */}
+        {/* Logo AuraUP Limpa com Animação Flutuante Suave */}
         <div className="text-center mb-3 flex flex-col items-center select-none">
           <img 
             src="/logo-login.png" 
             alt="AuraUP — Learn. Play. Level Up." 
-            className="h-20 sm:h-24 w-auto object-contain drop-shadow-xs" 
+            className="w-32 sm:w-36 h-auto object-contain drop-shadow-xs animate-float-smooth" 
           />
         </div>
 
