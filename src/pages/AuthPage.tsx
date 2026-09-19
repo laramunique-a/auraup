@@ -33,7 +33,8 @@ export function AuthPage() {
   }
 
   return (
-    <div className="h-screen w-full flex items-center justify-center p-3 sm:p-4 bg-slate-50 text-slate-900 relative overflow-hidden">
+  return (
+    <div className="fixed inset-0 h-[100dvh] w-full flex flex-col items-center justify-center p-3 sm:p-4 bg-slate-50 text-slate-900 overflow-hidden touch-none overscroll-none z-50">
       {/* Elementos visuais decorativos suaves */}
       <div 
         className="absolute -top-40 -right-40 w-96 h-96 rounded-full pointer-events-none"
@@ -44,12 +45,12 @@ export function AuthPage() {
         style={{ background: 'radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%)' }}
       />
 
-      <div className="w-full max-w-[410px] relative z-10 my-auto animate-fade-in flex flex-col justify-center">
+      <div className="w-full max-w-[400px] relative z-10 my-auto animate-fade-in flex flex-col justify-center max-h-full">
         {/* Logo Hero AuraUP com Animação Flutuante */}
-        <div className="text-center mb-3 flex flex-col items-center relative">
+        <div className="text-center mb-2.5 flex flex-col items-center relative shrink-0">
           {/* Brilho radial suave pulsante ao fundo */}
           <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full pointer-events-none blur-xl opacity-60 animate-pulse"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full pointer-events-none blur-xl opacity-60 animate-pulse"
             style={{ background: 'radial-gradient(circle, rgba(37, 99, 235, 0.20) 0%, rgba(245, 158, 11, 0.15) 50%, transparent 75%)' }}
           />
 
@@ -58,7 +59,7 @@ export function AuthPage() {
             <img 
               src="/logo-login.png" 
               alt="AuraUP — learn. play. level up." 
-              className="w-32 sm:w-36 h-auto object-contain mx-auto drop-shadow-sm animate-float-smooth transition-transform duration-500 group-hover:scale-105" 
+              className="w-28 sm:w-34 h-auto object-contain mx-auto drop-shadow-sm animate-float-smooth transition-transform duration-500 group-hover:scale-105" 
             />
           </div>
 
@@ -72,9 +73,9 @@ export function AuthPage() {
         </div>
 
         {/* Card do Formulário de Acesso Compacto e Sem Rolagem */}
-        <div className="card-3d p-5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-xs space-y-3.5">
-          <div className="border-b border-slate-100 pb-2.5">
-            <h1 className="text-lg sm:text-xl font-heading font-extrabold text-slate-800 tracking-tight leading-tight">
+        <div className="card-3d p-4.5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-xs space-y-3 shrink-0">
+          <div className="border-b border-slate-100 pb-2">
+            <h1 className="text-base sm:text-xl font-heading font-extrabold text-slate-800 tracking-tight leading-tight">
               Entre na sua Conta
             </h1>
             <p className="text-[11px] text-slate-500 font-medium mt-0.5">
@@ -82,7 +83,7 @@ export function AuthPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-2.5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 E-mail
@@ -126,7 +127,7 @@ export function AuthPage() {
             </div>
 
             {error && (
-              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 animate-shake">
+              <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 animate-shake">
                 <AlertCircle size={15} className="shrink-0" />
                 <span>{error}</span>
               </div>
@@ -145,7 +146,7 @@ export function AuthPage() {
           </form>
 
           {/* Aviso sobre cadastro fechado */}
-          <div className="p-2.5 px-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
+          <div className="p-2 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
             <ShieldCheck size={14} className="text-blue-600 shrink-0 mt-0.5" />
             <div className="text-[11px] leading-snug text-slate-500 font-normal">
               <strong className="text-slate-700 font-semibold">Cadastro Centralizado: </strong>
@@ -155,7 +156,7 @@ export function AuthPage() {
         </div>
 
         {/* Rodapé */}
-        <p className="text-center mt-2.5 text-[11px] font-medium text-slate-400 flex items-center justify-center gap-1.5">
+        <p className="text-center mt-2 text-[11px] font-medium text-slate-400 flex items-center justify-center gap-1.5 shrink-0">
           <Sparkles size={12} className="text-blue-600" />
           AuraUP — Learn. Play. Level Up.
         </p>
