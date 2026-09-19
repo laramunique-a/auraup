@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Button } from '../components/ui/Button'
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, Sparkles } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, Sparkles, ArrowRight, Loader2 } from 'lucide-react'
 
 export function AuthPage() {
   const [email, setEmail] = useState('')
@@ -26,140 +25,141 @@ export function AuthPage() {
       await signIn(email, password)
       navigate(from, { replace: true })
     } catch (err: any) {
-      setError(err.message || 'Falha ao realizar login.')
+      setError(err.message || 'Falha ao realizar login. Verifique seus dados.')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 h-[100dvh] w-full flex flex-col items-center justify-center p-3 sm:p-4 bg-slate-50 text-slate-900 overflow-hidden touch-none overscroll-none z-50">
-      {/* Elementos visuais decorativos suaves */}
+    <div className="min-h-[100dvh] w-full flex flex-col items-center justify-between p-4 sm:p-6 bg-slate-900 text-slate-100 relative overflow-hidden selection:bg-blue-500 selection:text-white">
+      {/* Luzes de Fundo (Aura Glow Effect) */}
       <div 
-        className="absolute -top-40 -right-40 w-96 h-96 rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, transparent 70%)' }}
+        className="absolute -top-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full pointer-events-none blur-[120px] opacity-40"
+        style={{ background: 'radial-gradient(circle, rgba(37, 99, 235, 0.4) 0%, rgba(99, 102, 241, 0.2) 50%, transparent 70%)' }}
       />
       <div 
-        className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full pointer-events-none"
-        style={{ background: 'radial-gradient(circle, rgba(245, 158, 11, 0.08) 0%, transparent 70%)' }}
+        className="absolute -bottom-32 left-1/2 -translate-x-1/2 w-[500px] h-[500px] rounded-full pointer-events-none blur-[120px] opacity-30"
+        style={{ background: 'radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%)' }}
       />
 
-      <div className="w-full max-w-[400px] relative z-10 my-auto animate-fade-in flex flex-col justify-center max-h-full">
-        {/* Logo Hero AuraUP com Animação Flutuante */}
-        <div className="text-center mb-2.5 flex flex-col items-center relative shrink-0">
-          {/* Brilho radial suave pulsante ao fundo */}
-          <div 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 rounded-full pointer-events-none blur-xl opacity-60 animate-pulse"
-            style={{ background: 'radial-gradient(circle, rgba(37, 99, 235, 0.20) 0%, rgba(245, 158, 11, 0.15) 50%, transparent 75%)' }}
+      {/* Espaçador Superior */}
+      <div className="w-full flex-1 max-h-8" />
+
+      {/* Container Principal Centralizado */}
+      <div className="w-full max-w-[390px] relative z-10 mx-auto animate-fade-in flex flex-col items-center my-auto">
+        
+        {/* Logo AuraUP em Destaque com Sombra Suave */}
+        <div className="text-center mb-5 flex flex-col items-center select-none group">
+          <img 
+            src="/logo-login.png" 
+            alt="AuraUP — Learn. Play. Level Up." 
+            className="h-24 sm:h-28 w-auto object-contain drop-shadow-[0_10px_25px_rgba(37,99,235,0.3)] transition-transform duration-500 group-hover:scale-105" 
           />
-
-          {/* Logo Ilustrada com Efeito de Flutuação e Interatividade */}
-          <div className="relative group select-none">
-            <img 
-              src="/logo-login.png" 
-              alt="AuraUP — learn. play. level up." 
-              className="w-28 sm:w-34 h-auto object-contain mx-auto drop-shadow-sm animate-float-smooth transition-transform duration-500 group-hover:scale-105" 
-            />
-          </div>
-
-          {/* Badge Informativa bem próxima da logo */}
-          <div className="mt-1">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/95 border border-slate-200 text-slate-600 text-[11px] font-heading font-semibold shadow-2xs">
-              <Sparkles size={11} className="text-amber-500 animate-pulse" />
-              Acesso Exclusivo à Plataforma
-            </span>
-          </div>
         </div>
 
-        {/* Card do Formulário de Acesso Compacto e Sem Rolagem */}
-        <div className="card-3d p-4.5 sm:p-6 bg-white border border-slate-200 rounded-xl shadow-xs space-y-3 shrink-0">
-          <div className="border-b border-slate-100 pb-2">
-            <h1 className="text-base sm:text-xl font-heading font-extrabold text-slate-800 tracking-tight leading-tight">
+        {/* Card do Formulário Estilo Glassmorphism Premium */}
+        <div className="w-full bg-slate-800/90 backdrop-blur-xl border border-slate-700/80 rounded-2xl sm:rounded-3xl p-6 sm:p-7 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.5)]">
+          <div className="mb-5 text-center">
+            <h1 className="text-xl sm:text-2xl font-heading font-extrabold text-white tracking-tight">
               Entre na sua Conta
             </h1>
-            <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-              Digite seu e-mail e senha para acessar seus baralhos e estudos.
+            <p className="text-xs text-slate-400 font-medium mt-1">
+              Acesse para continuar evoluindo seus baralhos
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-2.5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Campo E-mail */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                 E-mail
               </label>
-              <div className="relative">
-                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="relative group">
+                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="seu.email@auraup.com"
-                  className="w-full pl-9 pr-3.5 py-2 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium placeholder:text-slate-400 shadow-2xs"
+                  className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-700 bg-slate-900/60 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
                 />
               </div>
             </div>
 
+            {/* Campo Senha */}
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
                 Senha
               </label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="relative group">
+                <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-400 transition-colors" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Sua senha de acesso"
-                  className="w-full pl-9 pr-9 py-2 rounded-lg border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium placeholder:text-slate-400 shadow-2xs"
+                  className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-700 bg-slate-900/60 text-sm text-white placeholder:text-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-medium"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1 cursor-pointer transition-colors"
                   tabIndex={-1}
+                  aria-label={showPassword ? 'Ocultar senha' : 'Exibir senha'}
                 >
-                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
+            {/* Mensagem de Erro */}
             {error && (
-              <div className="p-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2 animate-shake">
-                <AlertCircle size={15} className="shrink-0" />
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2.5 animate-shake">
+                <AlertCircle size={16} className="shrink-0 text-rose-500" />
                 <span>{error}</span>
               </div>
             )}
 
-            <Button
+            {/* Botão Principal de Login */}
+            <button
               type="submit"
-              variant="primary"
-              size="sm"
-              fullWidth
-              loading={loading}
-              className="mt-1 h-9 text-xs sm:text-sm"
+              disabled={loading}
+              className="w-full mt-2 py-3.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 active:scale-[0.98] text-white font-heading font-bold text-sm shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Acessar Plataforma 🚀
-            </Button>
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  <span>Acessando...</span>
+                </>
+              ) : (
+                <>
+                  <span>Acessar Plataforma</span>
+                  <ArrowRight size={16} />
+                </>
+              )}
+            </button>
           </form>
 
           {/* Aviso sobre cadastro fechado */}
-          <div className="p-2 px-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2">
-            <ShieldCheck size={14} className="text-blue-600 shrink-0 mt-0.5" />
-            <div className="text-[11px] leading-snug text-slate-500 font-normal">
-              <strong className="text-slate-700 font-semibold">Cadastro Centralizado: </strong>
-              realizado exclusivamente pelo administrador. Caso ainda não tenha acesso, solicite à coordenação.
-            </div>
+          <div className="mt-4 p-3 rounded-xl bg-slate-900/50 border border-slate-700/60 text-xs text-slate-400 flex items-start gap-2.5">
+            <ShieldCheck size={16} className="text-blue-400 shrink-0 mt-0.5" />
+            <p className="text-[11px] leading-relaxed text-slate-400">
+              <strong className="text-slate-200 font-semibold">Acesso Restrito: </strong>
+              cadastro gerido pela coordenação. Caso não tenha conta, solicite ao administrador.
+            </p>
           </div>
         </div>
-
-        {/* Rodapé */}
-        <p className="text-center mt-2 text-[11px] font-medium text-slate-400 flex items-center justify-center gap-1.5 shrink-0">
-          <Sparkles size={12} className="text-blue-600" />
-          AuraUP — Learn. Play. Level Up.
-        </p>
       </div>
+
+      {/* Rodapé Elegante */}
+      <footer className="w-full py-3 text-center text-xs font-medium text-slate-500 flex items-center justify-center gap-1.5 relative z-10 shrink-0">
+        <Sparkles size={13} className="text-amber-400 animate-pulse" />
+        <span>AuraUP — Learn. Play. Level Up.</span>
+      </footer>
     </div>
   )
 }
+
