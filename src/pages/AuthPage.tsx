@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, Sparkles, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Sparkles, ArrowRight, Loader2 } from 'lucide-react'
 
 export function AuthPage() {
   const [email, setEmail] = useState('')
@@ -138,15 +138,6 @@ export function AuthPage() {
               )}
             </button>
           </form>
-
-          {/* Aviso sobre cadastro fechado */}
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 flex items-start gap-2">
-            <ShieldCheck size={15} className="text-blue-600 shrink-0 mt-0.5" />
-            <p className="text-[11px] leading-snug text-slate-500 font-normal">
-              <strong className="text-slate-700 font-semibold">Acesso Restrito: </strong>
-              cadastro gerido pela coordenação. Dúvidas? Fale com o administrador.
-            </p>
-          </div>
         </div>
       </div>
 
