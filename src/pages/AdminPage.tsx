@@ -87,64 +87,7 @@ const DEFAULT_LOCAL_LEVELS = [
   { id: 'lvl_4', name: 'Nível 4: Mastery', min_xp: 3000, color: '#8B5CF6' },
 ]
 
-const DEFAULT_LOCAL_STUDENTS: User[] = [
-  {
-    id: 'user_1',
-    name: 'Lucas Andrade',
-    nickname: 'Lucas',
-    email: 'lucas.andrade@email.com',
-    role: 'user',
-    avatar_id: 'avatar_3',
-    xp: 2850,
-    coins: 140,
-    streak: 14,
-    level_id: 'lvl_3',
-    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
-    is_active: true
-  },
-  {
-    id: 'user_2',
-    name: 'Beatriz Lima',
-    nickname: 'Bia',
-    email: 'beatriz.lima@email.com',
-    role: 'user',
-    avatar_id: 'avatar_1',
-    xp: 2420,
-    coins: 95,
-    streak: 10,
-    level_id: 'lvl_3',
-    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
-    is_active: true
-  },
-  {
-    id: 'user_3',
-    name: 'Carlos Eduardo',
-    nickname: 'Cadu',
-    email: 'carlos.edu@email.com',
-    role: 'user',
-    avatar_id: 'avatar_5',
-    xp: 1200,
-    coins: 45,
-    streak: 7,
-    level_id: 'lvl_2',
-    level: { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' },
-    is_active: true
-  },
-  {
-    id: 'user_4',
-    name: 'Mariana Costa',
-    nickname: 'Mari',
-    email: 'mariana.costa@email.com',
-    role: 'user',
-    avatar_id: 'avatar_4',
-    xp: 450,
-    coins: 20,
-    streak: 3,
-    level_id: 'lvl_1',
-    level: { id: 'lvl_1', name: 'Nível 1: Hello', min_xp: 0, color: '#FF8A00' },
-    is_active: true
-  }
-]
+const DEFAULT_LOCAL_STUDENTS: User[] = []
 
 function getLocalAdminUsers(): User[] {
   try {

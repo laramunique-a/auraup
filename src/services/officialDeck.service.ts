@@ -35,7 +35,7 @@ const INITIAL_OFFICIAL_DECKS: OfficialDeck[] = [
     description: 'Vocabulário fundamental e indispensável para quem está começando.',
     category: 'Iniciante',
     level: 'Todos',
-    is_published: true,
+    is_published: false,
     created_at: new Date().toISOString(),
     cards: [
       { front: 'Hello', back: 'Olá', front_audio: true },
@@ -61,7 +61,7 @@ const INITIAL_OFFICIAL_DECKS: OfficialDeck[] = [
     description: 'Gírias e expressões nativas usadas em conversas reais.',
     category: 'Intermediário',
     level: 'Intermediário',
-    is_published: true,
+    is_published: false,
     created_at: new Date().toISOString(),
     cards: [
       { front: 'What’s up?', back: 'E aí? / Como vai?', front_audio: true },
@@ -79,7 +79,7 @@ const INITIAL_OFFICIAL_DECKS: OfficialDeck[] = [
     description: 'Frases práticas para embarque, hotel, táxi e restaurantes.',
     category: 'Iniciante',
     level: 'Iniciante',
-    is_published: true,
+    is_published: false,
     created_at: new Date().toISOString(),
     cards: [
       { front: 'Where is the gate?', back: 'Onde fica o portão de embarque?', front_audio: true },
@@ -96,7 +96,7 @@ const INITIAL_OFFICIAL_DECKS: OfficialDeck[] = [
     description: 'Termos corporativos, reuniões e comunicação profissional.',
     category: 'Avançado',
     level: 'Avançado',
-    is_published: true,
+    is_published: false,
     created_at: new Date().toISOString(),
     cards: [
       { front: 'Deadline', back: 'Prazo final', front_audio: true },

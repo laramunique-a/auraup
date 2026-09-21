@@ -53,55 +53,6 @@ const INITIAL_ACCOUNTS: UserAccount[] = [
     streak: 10,
     is_active: true,
     must_change_password: false,
-  },
-  {
-    id: 'student_default_1',
-    email: 'aluno@auraup.com',
-    password: 'aura123',
-    name: 'Estudante Aura',
-    nickname: 'Estudante',
-    role: 'user',
-    avatar_id: 'avatar_1',
-    xp: 500,
-    coins: 30,
-    streak: 1,
-    level_id: 'lvl_2',
-    level: { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' },
-    is_active: true,
-    must_change_password: true, // Obriga troca de senha no primeiro acesso
-  },
-  {
-    id: 'user_1',
-    email: 'lucas.andrade@email.com',
-    password: 'aura123',
-    name: 'Lucas Andrade',
-    nickname: 'Lucas',
-    role: 'user',
-    avatar_id: 'avatar_3',
-    xp: 2850,
-    coins: 140,
-    streak: 14,
-    level_id: 'lvl_3',
-    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
-    is_active: true,
-    must_change_password: false,
-  },
-  {
-    id: 'user_2',
-    email: 'beatriz.lima@email.com',
-    password: 'aura123',
-    name: 'Beatriz Lima',
-    nickname: 'Bia',
-    role: 'user',
-    avatar_id: 'avatar_1',
-    xp: 2420,
-    coins: 95,
-    streak: 10,
-    level_id: 'lvl_3',
-    level: { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
-    is_active: true,
-    must_change_password: false,
-  }
 ]
 
 function getLocalAccounts(): UserAccount[] {
@@ -125,36 +76,8 @@ function getLocalAccounts(): UserAccount[] {
         }
       }
 
-      // Reset do aluno teste aluno@auraup.com para garantir comportamento de primeiro acesso
-      const studentIdx = parsed.findIndex(a => a.email.toLowerCase() === 'aluno@auraup.com')
-      const defaultStudent = INITIAL_ACCOUNTS.find(a => a.email.toLowerCase() === 'aluno@auraup.com')
-      if (studentIdx === -1 && defaultStudent) {
-        parsed.splice(1, 0, defaultStudent)
-        changed = true
-      } else if (studentIdx !== -1) {
-        // Restaura a senha padrão e a exigência de primeiro login
-        parsed[studentIdx].password = 'aura123'
-        parsed[studentIdx].must_change_password = true
-        parsed[studentIdx].is_active = true
-        changed = true
-      }
-
       if (changed) {
         localStorage.setItem(LS_ACCOUNTS_KEY, JSON.stringify(parsed))
-      }
-
-      // Se o usuário logado no navegador for aluno@auraup.com, restaura must_change_password
-      try {
-        const rawCurrent = localStorage.getItem('uply_user')
-        if (rawCurrent) {
-          const curr = JSON.parse(rawCurrent)
-          if (curr.email?.toLowerCase() === 'aluno@auraup.com') {
-            curr.must_change_password = true
-            localStorage.setItem('uply_user', JSON.stringify(curr))
-          }
-        }
-      } catch {
-        // ignore
       }
 
       return parsed
