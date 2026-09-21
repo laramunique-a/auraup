@@ -71,10 +71,10 @@ export function FirstLoginModal() {
             Primeiro Acesso Obrigatório
           </span>
           <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-slate-900 dark:text-white mt-2 tracking-tight">
-            Defina sua Senha Pessoal
+            Defina sua senha!
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-            Olá, <strong className="text-slate-800 dark:text-slate-200">{user.nickname || user.name}</strong>! Por segurança, substitua a senha provisória pela sua senha definitiva.
+            Olá, <strong className="text-slate-800 dark:text-slate-200">{user.nickname || user.name}</strong>! Por segurança, defina uma nova senha.
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export function FirstLoginModal() {
                 value={newPassword}
                 onChange={e => setNewPassword(e.target.value)}
                 placeholder="Digite sua nova senha"
-                className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80"
               />
               <button
                 type="button"
@@ -119,7 +119,7 @@ export function FirstLoginModal() {
                 value={confirmPassword}
                 onChange={e => setConfirmPassword(e.target.value)}
                 placeholder="Repita sua nova senha"
-                className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm text-slate-800 dark:text-white outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition-all font-medium placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80"
               />
             </div>
           </div>

@@ -4,7 +4,7 @@ import { useEconomy } from '../contexts/EconomyContext'
 import { useDecks } from '../hooks/useDecks'
 import { Button } from '../components/ui/Button'
 import { Coins, Sparkles, Star, ShoppingCart, Check, Layers, BookOpen, Plus } from 'lucide-react'
-import { useToast } from '../components/ui/Toast'
+import { Toast, useToast } from '../components/ui/Toast'
 import { PageHeader } from '../components/common/PageHeader'
 import { officialDeckService, type OfficialDeck } from '../services/officialDeck.service'
 
@@ -12,7 +12,7 @@ export function StorePage() {
   const { user } = useAuth()
   const { coins } = useEconomy()
   const { decks, reload } = useDecks()
-  const { show } = useToast()
+  const { toast, show } = useToast()
   
   const [officialDecks, setOfficialDecks] = useState<OfficialDeck[]>([])
   const [loading, setLoading] = useState(true)
@@ -75,6 +75,7 @@ export function StorePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+      {toast && <Toast message={toast.message} type={toast.type} />}
       <PageHeader
         icon={ShoppingCart}
         title={<>Loja de <span className="text-blue-600 dark:text-blue-400">Decks Oficiais</span></>}

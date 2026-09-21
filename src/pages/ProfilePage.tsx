@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
-import { useToast } from '../components/ui/Toast'
+import { Toast, useToast } from '../components/ui/Toast'
 import { PageHeader } from '../components/common/PageHeader'
 import { 
   Save, Sparkles, Fingerprint, Lock, KeyRound, 
@@ -19,7 +19,7 @@ const AVATARS = [
 
 export function ProfilePage() {
   const { user, updateUser, changePassword } = useAuth()
-  const { show } = useToast()
+  const { toast, show } = useToast()
   
   // Perfil
   const [nickname, setNickname] = useState(user?.nickname || user?.name || '')
@@ -46,7 +46,7 @@ export function ProfilePage() {
         name: nickname.trim(),
         avatar_id: selectedAvatar,
       })
-      show('Perfil atualizado com sucesso! ✨', 'success')
+      show('Alterações salvas!', 'success')
     } catch (err: any) {
       show(err.message || 'Erro ao atualizar perfil.', 'error')
     } finally {
@@ -89,6 +89,8 @@ export function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 space-y-5 flex-1">
+      {toast && <Toast message={toast.message} type={toast.type} />}
+
       {/* Header Padronizado */}
       <PageHeader
         icon={Fingerprint}
@@ -140,7 +142,7 @@ export function ProfilePage() {
             value={nickname}
             onChange={e => setNickname(e.target.value)}
             placeholder="Ex: Pedro, Sarah, Aluno Pro"
-            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-sm text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400"
+            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-xs sm:text-sm text-slate-900 dark:text-white outline-none transition-all placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80"
           />
         </div>
 
@@ -152,7 +154,7 @@ export function ProfilePage() {
           onClick={handleUpdateProfile}
           className="mt-1"
         >
-          <Save size={17} /> Salvar Alterações de Perfil
+          <Save size={17} /> Salvar alterações
         </Button>
       </section>
 
@@ -163,7 +165,7 @@ export function ProfilePage() {
             <Lock size={18} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">Segurança & Senha</h2>
+            <h2 className="text-base font-bold text-slate-800 dark:text-white leading-tight">Senha</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Altere sua senha de acesso à plataforma a qualquer momento</p>
           </div>
         </div>
@@ -181,7 +183,7 @@ export function ProfilePage() {
                 value={currentPassword}
                 onChange={e => setCurrentPassword(e.target.value)}
                 placeholder="Digite sua senha atual"
-                className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+                className="w-full pl-10 pr-10 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80"
               />
               <button
                 type="button"
@@ -208,7 +210,7 @@ export function ProfilePage() {
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   placeholder="Nova senha"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80"
                 />
               </div>
             </div>
@@ -226,7 +228,7 @@ export function ProfilePage() {
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="Repita a nova senha"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-slate-400"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80"
                 />
               </div>
             </div>
