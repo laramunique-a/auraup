@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Mail, Lock, Eye, EyeOff, AlertCircle, Sparkles, ArrowRight, Loader2 } from 'lucide-react'
@@ -9,12 +9,59 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isInputFocused, setIsInputFocused] = useState(false)
+  const [keyboardOpen, setKeyboardOpen] = useState(false)
 
   const { signIn } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
   const from = (location.state as any)?.from?.pathname || '/'
+
+  // Garante que a tela desloque suavemente para cima logo no 1º clique (quando o teclado do celular abre)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+
+    const handleViewportChange = () => {
+      const isKeyboard = vv.height < window.innerHeight * 0.85
+      setKeyboardOpen(isKeyboard)
+
+      const activeEl = document.activeElement
+      if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+        setTimeout(() => {
+          (activeEl as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }, 50)
+      }
+    }
+
+    vv.addEventListener('resize', handleViewportChange)
+    vv.addEventListener('scroll', handleViewportChange)
+    return () => {
+      vv.removeEventListener('resize', handleViewportChange)
+      vv.removeEventListener('scroll', handleViewportChange)
+    }
+  }, [])
+
+  const handleInputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    const target = e.currentTarget
+    setIsInputFocused(true)
+
+    // Múltiplos disparos para sincronizar perfeitamente com a animação de abertura do teclado no iOS/Android
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 300)
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 500)
+  }
+
+  const handleInputBlur = () => {
+    setIsInputFocused(false)
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -32,7 +79,9 @@ export function AuthPage() {
   }
 
   return (
-    <div className="fixed inset-0 h-[100dvh] w-screen flex flex-col items-center justify-between p-4 bg-[#F4F8FC] text-slate-900 overflow-hidden touch-none overscroll-none select-none z-50">
+    <div className={`fixed inset-0 min-h-[100dvh] h-[100dvh] w-full flex flex-col items-center justify-between p-4 bg-[#F4F8FC] text-slate-900 overflow-y-auto overflow-x-hidden select-none z-50 transition-[padding] duration-200 ${
+      isInputFocused || keyboardOpen ? 'pb-72 sm:pb-4' : 'pb-4'
+    }`}>
       {/* Elementos visuais decorativos suaves no fundo claro */}
       <div 
         className="absolute -top-24 left-1/2 -translate-x-1/2 w-[450px] h-[450px] rounded-full pointer-events-none blur-[90px] opacity-60"
@@ -43,7 +92,7 @@ export function AuthPage() {
       <div className="w-full flex-1 max-h-6" />
 
       {/* Container Principal Centralizado (Trava de largura e altura) */}
-      <div className="w-full max-w-[360px] sm:max-w-[380px] relative z-10 mx-auto animate-fade-in flex flex-col items-center my-auto shrink-0">
+      <div className="w-full max-w-[360px] sm:max-w-[380px] relative z-10 mx-auto animate-fade-in flex flex-col items-center my-auto shrink-0 py-2">
         
         {/* Logo AuraUP Limpa com Animação Flutuante Suave */}
         <div className="text-center mb-3 flex flex-col items-center select-none">
@@ -78,8 +127,10 @@ export function AuthPage() {
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="seu.email@auraup.com"
-                  className="w-full pl-9 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-800 font-medium placeholder:text-slate-400 bg-transparent outline-none rounded-xl"
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  placeholder="seu.email@email.com"
+                  className="w-full pl-9 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-800 font-medium placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80 bg-transparent outline-none rounded-xl"
                 />
               </div>
             </div>
@@ -96,8 +147,10 @@ export function AuthPage() {
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
                   placeholder="Sua senha de acesso"
-                  className="w-full pl-9 pr-10 py-2.5 text-xs sm:text-sm text-slate-800 font-medium placeholder:text-slate-400 bg-transparent outline-none rounded-xl"
+                  className="w-full pl-9 pr-10 py-2.5 text-xs sm:text-sm text-slate-800 font-medium placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80 bg-transparent outline-none rounded-xl"
                 />
                 <button
                   type="button"
