@@ -232,24 +232,35 @@ export function RankingPage() {
   const currentList = useMemo(() => {
     if (isAdmin) return []
 
-    const rawList = tab === 'global' ? GLOBAL_RANKING_MOCK : CLASS_RANKING_MOCK
-    const userName = user?.nickname || user?.name || 'Você'
-    const userAvatar = AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'
+    const students = getStudentsFromStorage()
+    const filtered = tab === 'class'
+      ? students.filter((s: any) => s.level_id === user?.level_id)
+      : students
 
-    const updated = rawList.map(item => {
-      if (item.isCurrentUser) {
-        return {
-          ...item,
-          name: userName,
-          avatar: userAvatar,
-          xp: Math.max(item.xp, userXp),
-          streak: Math.max(item.streak, userStreak),
-        }
-      }
-      return item
-    })
+    const entries: RankEntry[] = filtered.map((s: any): RankEntry => ({
+      id: s.id,
+      name: s.nickname || s.name || 'Aluno',
+      avatar: AVATARS[s.avatar_id] || '🦊',
+      xp: s.id === user?.id ? Math.max(s.xp || 0, userXp) : (s.xp || 0),
+      streak: s.id === user?.id ? Math.max(s.streak || 0, userStreak) : (s.streak || 0),
+      posicao: 0,
+      isCurrentUser: s.id === user?.id,
+    }))
 
-    return updated
+    // Se o aluno logado não estiver na lista, adiciona-o
+    if (user && user.role !== 'admin' && !entries.some(e => e.id === user.id)) {
+      entries.push({
+        id: user.id,
+        name: user.nickname || user.name || 'Você',
+        avatar: AVATARS[user.avatar_id] || '🦊',
+        xp: userXp,
+        streak: userStreak,
+        posicao: 0,
+        isCurrentUser: true,
+      })
+    }
+
+    return entries
       .sort((a, b) => b.xp - a.xp)
       .map((item, idx) => ({
         ...item,
@@ -336,79 +347,101 @@ export function RankingPage() {
       )}
 
       {/* ── Visão Admin: Global ────────────────────────────────────────────── */}
+      {/* ── Visão Admin: Global ────────────────────────────────────────────── */}
       {isAdmin && tab === 'global' && (
         <>
-          {/* Podium */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">
-            {(() => {
-              const allStudents = getStudentsFromStorage()
-                .sort((a: any, b: any) => b.xp - a.xp)
-                .slice(0, 3)
-                .map((s: any, idx: number): RankEntry => ({
-                  id: s.id,
-                  name: s.nickname || s.name || 'Aluno',
-                  avatar: AVATARS[s.avatar_id] || '🦊',
-                  xp: s.xp || 0,
-                  streak: s.streak || 0,
-                  posicao: idx + 1,
-                }))
-              return (
-                <>
-                  {allStudents[1] ? <PodiumCard entry={allStudents[1]} place={2} /> : <div />}
-                  {allStudents[0] ? <PodiumCard entry={allStudents[0]} place={1} /> : <div />}
-                  {allStudents[2] ? <PodiumCard entry={allStudents[2]} place={3} /> : <div />}
-                </>
-              )
-            })()}
-          </div>
+          {(() => {
+            const allStudents = getStudentsFromStorage()
+              .sort((a: any, b: any) => b.xp - a.xp)
 
-          {/* Lista completa */}
-          <div className="card-3d p-5 sm:p-6 rounded-xl">
-            <h2 className="text-base font-heading font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-              <Medal size={17} className="text-blue-600 dark:text-blue-400" /> Tabela de Classificação — Global
-            </h2>
-            <div className="flex flex-col gap-2">
-              {getStudentsFromStorage()
-                .sort((a: any, b: any) => b.xp - a.xp)
-                .map((s: any, idx: number) => (
-                  <LeaderboardRow
-                    key={s.id}
-                    item={{
-                      id: s.id,
-                      name: s.nickname || s.name || 'Aluno',
-                      avatar: AVATARS[s.avatar_id] || '🦊',
-                      xp: s.xp || 0,
-                      streak: s.streak || 0,
-                      posicao: idx + 1,
-                    }}
-                  />
-                ))}
-            </div>
-          </div>
+            if (allStudents.length === 0) {
+              return (
+                <div className="card-3d p-8 sm:p-12 rounded-xl flex flex-col items-center text-center gap-3">
+                  <Users size={40} className="text-slate-300 dark:text-slate-600" />
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">Nenhum aluno cadastrado no ranking ainda.</p>
+                </div>
+              )
+            }
+
+            const top3Admin = allStudents.slice(0, 3).map((s: any, idx: number): RankEntry => ({
+              id: s.id,
+              name: s.nickname || s.name || 'Aluno',
+              avatar: AVATARS[s.avatar_id] || '🦊',
+              xp: s.xp || 0,
+              streak: s.streak || 0,
+              posicao: idx + 1,
+            }))
+
+            return (
+              <>
+                {/* Podium */}
+                <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">
+                  {top3Admin[1] ? <PodiumCard entry={top3Admin[1]} place={2} /> : <div />}
+                  {top3Admin[0] ? <PodiumCard entry={top3Admin[0]} place={1} /> : <div />}
+                  {top3Admin[2] ? <PodiumCard entry={top3Admin[2]} place={3} /> : <div />}
+                </div>
+
+                {/* Lista completa */}
+                <div className="card-3d p-5 sm:p-6 rounded-xl">
+                  <h2 className="text-base font-heading font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                    <Medal size={17} className="text-blue-600 dark:text-blue-400" /> Tabela de Classificação — Global
+                  </h2>
+                  <div className="flex flex-col gap-2">
+                    {allStudents.map((s: any, idx: number) => (
+                      <LeaderboardRow
+                        key={s.id}
+                        item={{
+                          id: s.id,
+                          name: s.nickname || s.name || 'Aluno',
+                          avatar: AVATARS[s.avatar_id] || '🦊',
+                          xp: s.xp || 0,
+                          streak: s.streak || 0,
+                          posicao: idx + 1,
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )
+          })()}
         </>
       )}
 
       {/* ── Visão Aluno ────────────────────────────────────────────────────── */}
       {!isAdmin && (
         <>
-          {/* Podium Top 3 */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">
-            {top3[1] && <PodiumCard entry={top3[1] as RankEntry} place={2} />}
-            {top3[0] && <PodiumCard entry={top3[0] as RankEntry} place={1} />}
-            {top3[2] && <PodiumCard entry={top3[2] as RankEntry} place={3} />}
-          </div>
-
-          {/* Full Leaderboard List */}
-          <div className="card-3d p-5 sm:p-6 rounded-xl">
-            <h2 className="text-base font-heading font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-              <Medal size={17} className="text-blue-600 dark:text-blue-400" /> Tabela de Classificação
-            </h2>
-            <div className="flex flex-col gap-2">
-              {currentList.map((item) => (
-                <LeaderboardRow key={item.id} item={item as RankEntry} />
-              ))}
+          {currentList.length === 0 ? (
+            <div className="card-3d p-8 sm:p-12 rounded-xl flex flex-col items-center text-center gap-3">
+              <Trophy size={40} className="text-slate-300 dark:text-slate-600" />
+              <p className="text-slate-500 dark:text-slate-400 text-sm">
+                Nenhum aluno classificado neste ranking ainda.
+              </p>
             </div>
-          </div>
+          ) : (
+            <>
+              {/* Podium Top 3 */}
+              {top3.length > 0 && (
+                <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">
+                  {top3[1] && <PodiumCard entry={top3[1] as RankEntry} place={2} />}
+                  {top3[0] && <PodiumCard entry={top3[0] as RankEntry} place={1} />}
+                  {top3[2] && <PodiumCard entry={top3[2] as RankEntry} place={3} />}
+                </div>
+              )}
+
+              {/* Full Leaderboard List */}
+              <div className="card-3d p-5 sm:p-6 rounded-xl">
+                <h2 className="text-base font-heading font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                  <Medal size={17} className="text-blue-600 dark:text-blue-400" /> Tabela de Classificação
+                </h2>
+                <div className="flex flex-col gap-2">
+                  {currentList.map((item) => (
+                    <LeaderboardRow key={item.id} item={item as RankEntry} />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

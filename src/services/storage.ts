@@ -22,6 +22,61 @@ export const isLocalMode = true
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// ─── Migração / Reset Automático de Lançamento ──────────────────────────────
+const STORAGE_RESET_VERSION_KEY = 'auraup_launch_clean_v2026_1'
+
+export function ensureCleanLaunchData(): void {
+  try {
+    if (localStorage.getItem(STORAGE_RESET_VERSION_KEY) === 'done') {
+      return
+    }
+
+    // 1. Zera turmas antigas
+    localStorage.setItem('uply_admin_levels', JSON.stringify([]))
+
+    // 2. Zera alunos da lista administrativa
+    localStorage.setItem('uply_admin_users', JSON.stringify([]))
+
+    // 3. Limpa contas de alunos legados, mantendo apenas o professor oficial
+    const ADMIN_ACCOUNT = {
+      id: 'admin_professor_official',
+      email: 'auraenglish7@gmail.com',
+      password: '@ura2026',
+      name: 'Professor Aura',
+      nickname: 'Professor',
+      role: 'admin',
+      avatar_id: 'admin',
+      xp: 0,
+      coins: 0,
+      streak: 0,
+      is_active: true,
+      must_change_password: false,
+    }
+    localStorage.setItem('uply_accounts_db', JSON.stringify([ADMIN_ACCOUNT]))
+
+    // 4. Força todos os baralhos oficiais pré-cadastrados para ocultos (is_published = false)
+    const rawDecks = localStorage.getItem('uply_official_decks')
+    if (rawDecks) {
+      try {
+        const decks = JSON.parse(rawDecks)
+        if (Array.isArray(decks)) {
+          const hiddenDecks = decks.map(d => ({ ...d, is_published: false }))
+          localStorage.setItem('uply_official_decks', JSON.stringify(hiddenDecks))
+        }
+      } catch {
+        localStorage.removeItem('uply_official_decks')
+      }
+    }
+
+    localStorage.setItem(STORAGE_RESET_VERSION_KEY, 'done')
+  } catch (err) {
+    console.warn('[AuraUP] Auto-reset storage check:', err)
+  }
+}
+
+// Executa na carga do bundle
+ensureCleanLaunchData()
+
 // Helpers para localStorage
 export function lsGet<T>(key: string): T[] {
   try {

@@ -80,12 +80,7 @@ export function AdminPage() {
 const LS_ADMIN_USERS = 'uply_admin_users'
 const LS_ADMIN_LEVELS = 'uply_admin_levels'
 
-const DEFAULT_LOCAL_LEVELS = [
-  { id: 'lvl_1', name: 'Nível 1: Hello', min_xp: 0, color: '#FF8A00' },
-  { id: 'lvl_2', name: 'Nível 2: Connections', min_xp: 500, color: '#00E676' },
-  { id: 'lvl_3', name: 'Nível 3: Discovery', min_xp: 1500, color: '#00A3FF' },
-  { id: 'lvl_4', name: 'Nível 4: Mastery', min_xp: 3000, color: '#8B5CF6' },
-]
+const DEFAULT_LOCAL_LEVELS: any[] = []
 
 const DEFAULT_LOCAL_STUDENTS: User[] = []
 
