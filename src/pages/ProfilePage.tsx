@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toast'
@@ -21,7 +20,6 @@ const AVATARS = [
 export function ProfilePage() {
   const { user, updateUser, changePassword } = useAuth()
   const { show } = useToast()
-  const navigate = useNavigate()
   
   // Perfil
   const [nickname, setNickname] = useState(user?.nickname || user?.name || '')
