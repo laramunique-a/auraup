@@ -53,6 +53,7 @@ const INITIAL_ACCOUNTS: UserAccount[] = [
     streak: 10,
     is_active: true,
     must_change_password: false,
+  },
 ]
 
 function getLocalAccounts(): UserAccount[] {
