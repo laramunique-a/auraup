@@ -75,8 +75,8 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
   return (
     <div className="w-full max-w-xl mx-auto flex flex-col items-center">
       {/* Cena 3D do Flashcard */}
-      <div className="card-scene min-h-[300px] sm:min-h-[380px] md:min-h-[420px] relative w-full">
-        <div className={`card-wrapper ${flipped ? 'flipped' : ''} min-h-[300px] sm:min-h-[380px] md:min-h-[420px]`}>
+      <div className="card-scene min-h-[340px] sm:min-h-[390px] md:min-h-[420px] relative w-full">
+        <div className={`card-wrapper ${flipped ? 'flipped' : ''} min-h-[340px] sm:min-h-[390px] md:min-h-[420px]`}>
           
           {/* Frente do Card */}
           <div
@@ -96,12 +96,12 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
             </div>
             
             {/* Body Content */}
-            <div className="flex flex-col items-center gap-3 my-auto w-full text-center overflow-y-auto max-h-[calc(100%-55px)] py-2">
+            <div className="flex-1 flex flex-col items-center justify-center gap-2.5 sm:gap-3.5 w-full text-center py-2 min-h-0">
               {card.front_image && (
                 <img 
                   src={card.front_image} 
                   alt="Ilustração frente"
-                  className="max-w-full max-h-32 sm:max-h-40 object-contain rounded-xl shadow-xs border border-slate-200 dark:border-slate-700 shrink-0" 
+                  className="max-w-full max-h-28 sm:max-h-36 md:max-h-40 object-contain rounded-xl shadow-xs border border-slate-200 dark:border-slate-700 shrink-0" 
                 />
               )}
               
@@ -117,7 +117,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                     e.stopPropagation()
                     speak(card.front.trim(), 'en-US') 
                   }}
-                  className="rounded-lg text-xs font-heading font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+                  className="rounded-xl text-xs font-heading font-semibold px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
                   title="Ouvir pronúncia em inglês"
                 >
                   <Volume2 size={14} /> Ouvir Pronúncia 🔊
@@ -125,10 +125,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
               )}
             </div>
 
-            {/* Bottom Indicator */}
-            <div className="text-slate-400 dark:text-slate-500 text-[11px] sm:text-xs font-medium flex items-center gap-1.5 pt-1 shrink-0">
-              <RotateCcw size={13} /> Toque no card para ver a resposta
-            </div>
+            <div className="h-2 shrink-0" />
           </div>
 
           {/* Verso do Card */}
@@ -144,12 +141,12 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
             </div>
 
             {/* Body Content */}
-            <div className="flex flex-col items-center gap-3 my-auto w-full text-center overflow-y-auto max-h-[calc(100%-55px)] py-2">
+            <div className="flex-1 flex flex-col items-center justify-center gap-2.5 sm:gap-3.5 w-full text-center py-2 min-h-0">
               {card.back_image && (
                 <img 
                   src={card.back_image} 
                   alt="Ilustração verso"
-                  className="max-w-full max-h-32 sm:max-h-40 object-contain rounded-xl shadow-xs border border-slate-200 dark:border-slate-700 shrink-0" 
+                  className="max-w-full max-h-28 sm:max-h-36 md:max-h-40 object-contain rounded-xl shadow-xs border border-slate-200 dark:border-slate-700 shrink-0" 
                 />
               )}
 
@@ -165,7 +162,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
                     e.stopPropagation()
                     speak(card.back.trim(), 'en-US') 
                   }}
-                  className="rounded-lg text-xs font-heading font-semibold px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 mt-1 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
+                  className="rounded-xl text-xs font-heading font-semibold px-3.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer shrink-0"
                   title="Ouvir pronúncia em inglês"
                 >
                   <Volume2 size={14} /> Ouvir Pronúncia 🔊

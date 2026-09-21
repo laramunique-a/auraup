@@ -135,7 +135,7 @@ export function StudyPage() {
 
         <div className="card-3d p-5 sm:p-8 max-w-lg w-full text-center relative z-10 animate-pop-in space-y-4 sm:space-y-6 my-auto">
           {/* Troféu 3D comemorativo */}
-          <div className="w-18 h-18 sm:w-24 sm:h-24 mx-auto bg-gradient-to-tr from-amber-400 to-amber-200 rounded-2xl sm:rounded-3xl flex items-center justify-center text-4xl sm:text-5xl shadow-3d-orange animate-float-smooth border-2 border-white">
+          <div className="w-20 h-20 sm:w-24 sm:h-24 aspect-square mx-auto bg-gradient-to-tr from-amber-400 to-amber-200 rounded-3xl flex items-center justify-center text-4xl sm:text-5xl shadow-3d-orange animate-float-smooth border-2 border-white shrink-0">
             🏆
           </div>
           

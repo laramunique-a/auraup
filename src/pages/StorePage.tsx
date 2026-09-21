@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { useEconomy } from '../contexts/EconomyContext'
 import { useDecks } from '../hooks/useDecks'
 import { Button } from '../components/ui/Button'
 import { Coins, Sparkles, Star, ShoppingCart, Check, Layers, BookOpen, Plus } from 'lucide-react'
@@ -8,6 +9,7 @@ import { officialDeckService, type OfficialDeck } from '../services/officialDeck
 
 export function StorePage() {
   const { user } = useAuth()
+  const { coins } = useEconomy()
   const { decks, reload } = useDecks()
   const { show } = useToast()
   
@@ -71,31 +73,31 @@ export function StorePage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-3 sm:py-8 flex-1">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <ShoppingCart size={18} />
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+      <header className="card-3d p-4 sm:p-6 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 shadow-2xs mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 mb-1.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
+              <ShoppingCart size={20} />
             </div>
-            <h1 className="text-xl sm:text-2xl font-heading font-bold text-slate-800 dark:text-white">
+            <h1 className="text-xl sm:text-2xl font-heading font-bold text-slate-800 dark:text-white tracking-tight">
               Loja de <span className="text-blue-600 dark:text-blue-400">Decks Oficiais</span>
             </h1>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-normal">
+          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-normal leading-relaxed">
             Adicione baralhos <span className="font-semibold text-slate-700 dark:text-slate-200">prontos e testados</span> à sua conta com <span className="font-semibold text-blue-600 dark:text-blue-400">1 clique</span>. ✨
           </p>
         </div>
 
-        <div className="card-3d px-4 py-2 flex items-center gap-3 rounded-lg">
-          <div className="w-8 h-8 rounded-md bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200 shadow-xs">
-            <Coins size={16} className="fill-amber-500 text-amber-500" />
-          </div>
-          <div>
-            <div className="text-lg font-heading font-bold text-slate-800 dark:text-white leading-none">
-              {user?.coins || 0}
+        <div className="flex items-center gap-3 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200/90 dark:border-amber-800/80 shadow-2xs w-full sm:w-auto justify-between sm:justify-start shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-700/60 shadow-2xs shrink-0">
+              <Coins size={16} className="fill-amber-500 text-amber-500" />
             </div>
-            <div className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">Suas moedas</div>
+            <div className="text-xs font-heading font-semibold text-amber-900 dark:text-amber-300">Suas moedas</div>
+          </div>
+          <div className="text-base sm:text-lg font-heading font-extrabold text-amber-700 dark:text-amber-400 leading-none">
+            {coins}
           </div>
         </div>
       </header>
