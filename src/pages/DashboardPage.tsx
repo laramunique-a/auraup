@@ -634,6 +634,25 @@ export function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* 3. Calendário de Dias Estudados (Heatmap) Adaptado para Mobile / PWA */}
+            <section className="card-3d p-3.5 sm:p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs space-y-3 w-full min-w-0">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 flex items-center justify-center shrink-0 text-xs">
+                    📅
+                  </div>
+                  <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white truncate">
+                    Dias Estudados (Heatmap)
+                  </h3>
+                </div>
+                <span className="text-[10px] font-heading font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800 shrink-0">
+                  Frequência
+                </span>
+              </div>
+
+              <StudyHeatmap activity={activity} />
+            </section>
           </div>
         )}
       </div>

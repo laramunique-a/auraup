@@ -6,7 +6,7 @@ import { useToast } from '../components/ui/Toast'
 import { PageHeader } from '../components/common/PageHeader'
 import { 
   Save, Sparkles, Fingerprint, Lock, KeyRound, 
-  Eye, EyeOff, ShieldCheck, LogOut, AlertCircle 
+  Eye, EyeOff, ShieldCheck, AlertCircle 
 } from 'lucide-react'
 
 const AVATARS = [
@@ -19,7 +19,7 @@ const AVATARS = [
 ]
 
 export function ProfilePage() {
-  const { user, updateUser, changePassword, signOut } = useAuth()
+  const { user, updateUser, changePassword } = useAuth()
   const { show } = useToast()
   const navigate = useNavigate()
   
@@ -89,11 +89,6 @@ export function ProfilePage() {
     }
   }
 
-  async function handleLogout() {
-    await signOut()
-    navigate('/login', { replace: true })
-  }
-
   return (
     <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 space-y-5 flex-1">
       {/* Header Padronizado */}
@@ -101,16 +96,6 @@ export function ProfilePage() {
         icon={Fingerprint}
         title={<>Meu <span className="text-blue-600 dark:text-blue-400">Perfil</span></>}
         subtitle="Personalize seu avatar, apelido e gerencie a segurança de acesso."
-        actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleLogout}
-            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200/80 w-full sm:w-auto justify-center"
-          >
-            <LogOut size={16} /> Sair da Conta
-          </Button>
-        }
       />
 
       {/* 1. SEÇÃO: Identidade de Estudo */}
