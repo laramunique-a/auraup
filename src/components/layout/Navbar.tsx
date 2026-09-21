@@ -104,7 +104,8 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 shadow-[0_1px_4px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition-colors pt-[env(safe-area-inset-top,0px)]">
+    <>
+      <header className="sticky top-0 z-40 w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-b border-slate-200/80 dark:border-slate-800 shadow-[0_1px_4px_rgba(0,0,0,0.03)] dark:shadow-[0_1px_4px_rgba(0,0,0,0.2)] transition-colors pt-[env(safe-area-inset-top,0px)]">
       <div className="max-w-6xl mx-auto px-3.5 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2.5 sm:gap-4">
         {/* Logo e Nome AuraUP */}
         <div className="flex items-center shrink-0">
@@ -250,6 +251,7 @@ export function Navbar() {
     </header>
 
     <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+    </>
   )
 }
 
