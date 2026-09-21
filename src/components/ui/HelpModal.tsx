@@ -64,6 +64,15 @@ const EMAIL_CONFIGURED =
   EMAILJS_TEMPLATE_ID !== 'YOUR_TEMPLATE_ID' &&
   EMAILJS_PUBLIC_KEY  !== 'YOUR_PUBLIC_KEY'
 
+const MAX_IMAGES = 4
+const MAX_FILE_SIZE = 3 * 1024 * 1024 // 3 MB
+
+interface AttachedImage {
+  id: string
+  name: string
+  dataUrl: string
+}
+
 type FeedbackType = 'bug' | 'suggestion'
 type SendStatus   = 'idle' | 'sending' | 'success' | 'error'
 
@@ -76,18 +85,16 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [type,      setType]      = useState<FeedbackType>('bug')
-  const [message,   setMessage]   = useState('')
-  const [imageB64,  setImageB64]  = useState<string | null>(null)
-  const [imageName, setImageName] = useState<string | null>(null)
-  const [status,    setStatus]    = useState<SendStatus>('idle')
-  const [errorMsg,  setErrorMsg]  = useState('')
+  const [type,     setType]     = useState<FeedbackType>('bug')
+  const [message,  setMessage]  = useState('')
+  const [images,   setImages]   = useState<AttachedImage[]>([])
+  const [status,   setStatus]   = useState<SendStatus>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
 
   const reset = useCallback(() => {
     setType('bug')
     setMessage('')
-    setImageB64(null)
-    setImageName(null)
+    setImages([])
     setStatus('idle')
     setErrorMsg('')
   }, [])
@@ -99,20 +106,52 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
   }
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 3 * 1024 * 1024) { setErrorMsg('Imagem muito grande. Máximo: 3 MB.'); return }
-    setErrorMsg('')
-    setImageName(file.name)
-    const reader = new FileReader()
-    reader.onload = () => setImageB64(reader.result as string)
-    reader.readAsDataURL(file)
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    const remainingSlots = MAX_IMAGES - images.length
+    if (remainingSlots <= 0) {
+      setErrorMsg(`Limite máximo de ${MAX_IMAGES} imagens atingido.`)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    const selectedFiles = Array.from(files).slice(0, remainingSlots)
+    if (files.length > remainingSlots) {
+      setErrorMsg(`Você pode anexar no máximo ${MAX_IMAGES} imagens no total.`)
+    } else {
+      setErrorMsg('')
+    }
+
+    for (const file of selectedFiles) {
+      if (file.size > MAX_FILE_SIZE) {
+        setErrorMsg(`"${file.name}" excede o tamanho máximo de 3 MB.`)
+        continue
+      }
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = reader.result as string
+        setImages(prev => {
+          if (prev.length >= MAX_IMAGES) return prev
+          return [
+            ...prev,
+            {
+              id: Math.random().toString(36).substring(2, 9),
+              name: file.name,
+              dataUrl,
+            },
+          ]
+        })
+      }
+      reader.readAsDataURL(file)
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  function removeImage() {
-    setImageB64(null)
-    setImageName(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
+  function removeImage(id: string) {
+    setImages(prev => prev.filter(img => img.id !== id))
+    setErrorMsg('')
   }
 
   async function handleSend() {
@@ -131,8 +170,14 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
         // await emailjs.send(
         //   EMAILJS_SERVICE_ID,
         //   EMAILJS_TEMPLATE_ID,
-        //   { from_name: fromName, from_email: fromEmail, type: typeLabel,
-        //     message: message.trim(), image_url: imageB64 || '(sem imagem)' },
+        //   {
+        //     from_name: fromName,
+        //     from_email: fromEmail,
+        //     type: typeLabel,
+        //     message: message.trim(),
+        //     images_count: images.length,
+        //     image_urls: images.map(img => img.dataUrl).join('\n\n') || '(sem imagem)',
+        //   },
         //   EMAILJS_PUBLIC_KEY,
         // )
         throw new Error('SDK do EmailJS não instalado. Siga o Passo 5 nos comentários do HelpModal.tsx.')
@@ -141,7 +186,7 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
         const subject = encodeURIComponent(`[AuraUP] ${typeLabel} — ${fromName}`)
         const body    = encodeURIComponent(
           `Tipo: ${typeLabel}\nUsuário: ${fromName} <${fromEmail}>\n\n${message.trim()}` +
-          (imageB64 ? '\n\n[Imagem — disponível apenas via EmailJS]' : '')
+          (images.length > 0 ? `\n\n[${images.length} imagem(ns) anexada(s) — visualização disponível via EmailJS]` : '')
         )
         window.open(`mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`, '_blank')
         setStatus('success')
@@ -201,18 +246,18 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
                 <div className="grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setType('bug')}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-heading font-bold transition-all cursor-pointer active:scale-95 ${
-                      type === 'bug'
-                        ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300'
-                        : 'bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}>
+                    type === 'bug'
+                      ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300'
+                      : 'bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}>
                     <Bug size={14} /> Reportar Bug
                   </button>
                   <button type="button" onClick={() => setType('suggestion')}
                     className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-xs font-heading font-bold transition-all cursor-pointer active:scale-95 ${
-                      type === 'suggestion'
-                        ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
-                        : 'bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}>
+                    type === 'suggestion'
+                      ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
+                      : 'bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                  }`}>
                     <Lightbulb size={14} /> Sugestão
                   </button>
                 </div>
@@ -221,37 +266,75 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
               {/* Mensagem */}
               <div>
                 <label htmlFor="help-message" className="block text-xs font-heading font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wide">Mensagem</label>
-                <textarea id="help-message" rows={5} value={message} onChange={e => setMessage(e.target.value)}
+                <textarea id="help-message" rows={4} value={message} onChange={e => setMessage(e.target.value)}
                   placeholder={type === 'bug' ? 'Descreva o problema e como reproduzi-lo...' : 'Descreva sua sugestão de melhoria...'}
                   disabled={status === 'sending'}
                   className="w-full resize-none text-sm px-3.5 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-400 transition-all disabled:opacity-60 font-sans leading-relaxed"
                 />
               </div>
 
-              {/* Imagem */}
+              {/* Imagens */}
               <div>
-                <label className="block text-xs font-heading font-semibold text-slate-600 dark:text-slate-400 mb-2 uppercase tracking-wide">Imagem (opcional)</label>
-                {imageB64 ? (
-                  <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60">
-                    <img src={imageB64} alt="Preview" className="w-14 h-14 object-cover rounded-lg border border-slate-200 dark:border-slate-600 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{imageName}</p>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Imagem selecionada</p>
-                    </div>
-                    <button type="button" onClick={removeImage} aria-label="Remover imagem"
-                      className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center hover:bg-rose-200 transition-colors cursor-pointer shrink-0">
-                      <Trash2 size={13} />
-                    </button>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-heading font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+                    Imagens (opcional)
+                  </label>
+                  <span className="text-[11px] font-heading font-medium text-slate-400 dark:text-slate-500">
+                    {images.length}/{MAX_IMAGES}
+                  </span>
+                </div>
+
+                {images.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    {images.map(img => (
+                      <div key={img.id} className="flex items-center gap-2.5 p-2 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/60">
+                        <img src={img.dataUrl} alt="Preview" className="w-11 h-11 object-cover rounded-lg border border-slate-200 dark:border-slate-600 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">{img.name}</p>
+                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400">Anexada</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(img.id)}
+                          aria-label={`Remover imagem ${img.name}`}
+                          className="w-7 h-7 rounded-lg bg-rose-100 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center hover:bg-rose-200 dark:hover:bg-rose-900 transition-colors cursor-pointer shrink-0"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <button type="button" onClick={() => fileInputRef.current?.click()} disabled={status === 'sending'}
-                    className="w-full flex flex-col items-center justify-center gap-2 px-4 py-5 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-500 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
-                    <ImageIcon size={22} />
-                    <span className="text-xs font-heading font-semibold">Clique para adicionar uma imagem</span>
-                    <span className="text-[11px]">PNG, JPG ou WEBP — máx. 3 MB</span>
+                )}
+
+                {images.length < MAX_IMAGES && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={status === 'sending'}
+                    className={`w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-400 hover:border-blue-400 hover:text-blue-500 dark:hover:border-blue-500 dark:hover:text-blue-400 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                      images.length > 0 ? 'py-2.5 px-3 text-xs font-heading font-semibold' : 'flex-col py-4 px-4 gap-1.5'
+                    }`}
+                  >
+                    <ImageIcon size={images.length > 0 ? 16 : 20} />
+                    <span className="text-xs font-heading font-semibold">
+                      {images.length > 0 ? '+ Adicionar mais imagens' : 'Clique para adicionar imagens'}
+                    </span>
+                    {images.length === 0 && (
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                        PNG, JPG ou WEBP — até {MAX_IMAGES} imagens (máx. 3 MB cada)
+                      </span>
+                    )}
                   </button>
                 )}
-                <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handleImageChange} />
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleImageChange}
+                />
               </div>
 
               {!EMAIL_CONFIGURED && (
