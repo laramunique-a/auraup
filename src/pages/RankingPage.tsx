@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Trophy, Flame, Users, Globe, Crown, Medal, Sparkles } from 'lucide-react'
-import { Button } from '../components/ui/Button'
+import { PageHeader } from '../components/common/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
 import { GLOBAL_RANKING_MOCK, CLASS_RANKING_MOCK } from '../mockData'
@@ -52,38 +52,42 @@ export function RankingPage() {
   }, [tab])
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-3 sm:py-8 flex-1">
-      {/* Header */}
-      <header className="text-center mb-8">
-        <div className="w-14 h-14 mx-auto mb-3 bg-blue-600 text-white rounded-2xl flex items-center justify-center shadow-xs">
-          <Trophy size={28} />
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white mb-1 tracking-tight">
-          Liga dos <span className="text-blue-600 dark:text-blue-400">Campeões</span>
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium text-xs sm:text-sm">
-          Suba no ranking <strong className="text-slate-800 dark:text-white">estudando diariamente</strong> e acumulando <strong className="text-blue-600 dark:text-blue-400">XP</strong>! ✨
-        </p>
-      </header>
+    <div className="max-w-4xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+      {/* Header Padronizado */}
+      <PageHeader
+        icon={Trophy}
+        title={<>Liga dos <span className="text-blue-600 dark:text-blue-400">Campeões</span></>}
+        subtitle={<>Suba no ranking <strong className="text-slate-800 dark:text-white">estudando diariamente</strong> e acumulando <strong className="text-blue-600 dark:text-blue-400">XP</strong>! ✨</>}
+        actions={
+          <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-2 gap-1 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setTab('global')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+                tab === 'global'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <Globe size={15} className="shrink-0" />
+              <span>Ranking Global</span>
+            </button>
 
-      {/* Tabs */}
-      <div className="flex items-center justify-center gap-2.5 mb-8">
-        <Button
-          variant={tab === 'global' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setTab('global')}
-        >
-          <Globe size={16} /> Ranking Global
-        </Button>
-
-        <Button
-          variant={tab === 'class' ? 'primary' : 'secondary'}
-          size="sm"
-          onClick={() => setTab('class')}
-        >
-          <Users size={16} /> Minha Turma
-        </Button>
-      </div>
+            <button
+              type="button"
+              onClick={() => setTab('class')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-3 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+                tab === 'class'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <Users size={15} className="shrink-0" />
+              <span>Minha Turma</span>
+            </button>
+          </div>
+        }
+      />
 
       {/* Podium Top 3 */}
       <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">

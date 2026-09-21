@@ -3,6 +3,7 @@ import { supabase, isLocalMode, generateId } from '../services/storage'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { Toast, useToast } from '../components/ui/Toast'
+import { PageHeader } from '../components/common/PageHeader'
 import { useSpeech } from '../hooks/useSpeech'
 import { compressImage } from '../lib/utils'
 import { 
@@ -824,74 +825,64 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 flex-1">
-      {/* Header com Navegação de Abas */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-5 sm:mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs shrink-0">
-              <ShieldCheck size={22} />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
-              Painel <span className="text-blue-600 dark:text-blue-400">Admin</span>
-            </h1>
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+      {/* Header Padronizado */}
+      <PageHeader
+        icon={ShieldCheck}
+        title={<>Painel <span className="text-blue-600 dark:text-blue-400">Admin</span></>}
+        subtitle={<>Gerencie o ecossistema <strong className="text-slate-700 dark:text-slate-300">AuraUP</strong>, <strong className="text-blue-600 dark:text-blue-400">baralhos oficiais</strong> e <strong className="text-amber-600 dark:text-amber-400">palavras do dia</strong>.</>}
+        actions={
+          <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-3 gap-1 shadow-2xs">
+            <button
+              type="button"
+              title="Alunos & Ligas"
+              onClick={() => setActiveTab('users')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+                activeTab === 'users'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <Users size={15} className="shrink-0" />
+              <span className="truncate">
+                Alunos<span className="hidden sm:inline"> & Ligas</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              title="Baralhos Oficiais"
+              onClick={() => setActiveTab('decks')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+                activeTab === 'decks'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <BookOpen size={15} className="shrink-0" />
+              <span className="truncate">
+                Baralhos<span className="hidden sm:inline"> Oficiais</span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              title="Palavras do Dia"
+              onClick={() => setActiveTab('words')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+                activeTab === 'words'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <Sparkles size={15} className="shrink-0" />
+              <span className="truncate">
+                Palavras<span className="hidden sm:inline"> do Dia</span>
+              </span>
+            </button>
           </div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
-            Gerencie o ecossistema <strong className="text-slate-700 dark:text-slate-300">AuraUP</strong>, <strong className="text-blue-600 dark:text-blue-400">baralhos oficiais</strong> e <strong className="text-amber-600 dark:text-amber-400">palavras do dia</strong>.
-          </p>
-        </div>
-
-        {/* Barra de Abas em Linha Única Harmoniosa */}
-        <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-3 gap-1 shadow-2xs">
-          <button
-            type="button"
-            title="Alunos & Ligas"
-            onClick={() => setActiveTab('users')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
-              activeTab === 'users'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
-            }`}
-          >
-            <Users size={15} className="shrink-0" />
-            <span className="truncate">
-              Alunos<span className="hidden sm:inline"> & Ligas</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            title="Baralhos Oficiais"
-            onClick={() => setActiveTab('decks')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
-              activeTab === 'decks'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
-            }`}
-          >
-            <BookOpen size={15} className="shrink-0" />
-            <span className="truncate">
-              Baralhos<span className="hidden sm:inline"> Oficiais</span>
-            </span>
-          </button>
-
-          <button
-            type="button"
-            title="Palavras do Dia"
-            onClick={() => setActiveTab('words')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
-              activeTab === 'words'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
-            }`}
-          >
-            <Sparkles size={15} className="shrink-0" />
-            <span className="truncate">
-              Palavras<span className="hidden sm:inline"> do Dia</span>
-            </span>
-          </button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Grid de Stats Compacto */}
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-5">

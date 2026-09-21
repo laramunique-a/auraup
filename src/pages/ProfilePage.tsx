@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { Button } from '../components/ui/Button'
 import { useToast } from '../components/ui/Toast'
+import { PageHeader } from '../components/common/PageHeader'
 import { 
   Save, Sparkles, Fingerprint, Lock, KeyRound, 
   Eye, EyeOff, ShieldCheck, LogOut, AlertCircle 
@@ -94,32 +95,23 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-3 sm:px-6 py-3 sm:py-8 space-y-5 flex-1">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <Fingerprint size={20} />
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-heading font-extrabold text-slate-900 dark:text-white">
-              Meu <span className="text-blue-600 dark:text-blue-400">Perfil</span>
-            </h1>
-          </div>
-          <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">
-            Personalize seu avatar, apelido e gerencie a segurança de acesso.
-          </p>
-        </div>
-
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleLogout}
-          className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200"
-        >
-          <LogOut size={16} /> Sair da Conta
-        </Button>
-      </header>
+    <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 space-y-5 flex-1">
+      {/* Header Padronizado */}
+      <PageHeader
+        icon={Fingerprint}
+        title={<>Meu <span className="text-blue-600 dark:text-blue-400">Perfil</span></>}
+        subtitle="Personalize seu avatar, apelido e gerencie a segurança de acesso."
+        actions={
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleLogout}
+            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200/80 w-full sm:w-auto justify-center"
+          >
+            <LogOut size={16} /> Sair da Conta
+          </Button>
+        }
+      />
 
       {/* 1. SEÇÃO: Identidade de Estudo */}
       <section className="card-3d p-6 sm:p-7 flex flex-col gap-5 rounded-2xl">
