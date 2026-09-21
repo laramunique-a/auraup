@@ -2,7 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useEconomy } from '../../contexts/EconomyContext'
-import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame, Coins, User } from 'lucide-react'
+import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame, Coins, User, HelpCircle } from 'lucide-react'
+import { HelpModal } from '../ui/HelpModal'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -67,6 +68,7 @@ export function Navbar() {
   const navigate = useNavigate()
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -216,6 +218,20 @@ export function Navbar() {
                         type="button"
                         onClick={() => {
                           setMenuOpen(false)
+                          setHelpOpen(true)
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-heading font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left cursor-pointer"
+                      >
+                        <HelpCircle size={14} className="text-violet-500 dark:text-violet-400 shrink-0" />
+                        <span>Ajuda &amp; Feedback</span>
+                      </button>
+
+                      <div className="my-0.5 h-px bg-slate-100 dark:bg-slate-700" />
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false)
                           handleLogout()
                         }}
                         className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-heading font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left cursor-pointer"
@@ -232,6 +248,8 @@ export function Navbar() {
         </div>
       </div>
     </header>
+
+    <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
   )
 }
 
