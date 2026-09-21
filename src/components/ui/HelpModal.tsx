@@ -1,22 +1,76 @@
 /**
  * HelpModal — Modal de Ajuda / Feedback
- *
+ * ============================================================
  * Permite ao usuário reportar bugs ou enviar sugestões com texto e imagem.
+ * O envio cai diretamente no e-mail do administrador via EmailJS (sem backend).
  *
- * ─── Integração de E-mail (EmailJS) ──────────────────────────────────────────
- * Para que o envio caia diretamente no e-mail do administrador, configure o EmailJS:
+ * ─── PASSO A PASSO: CONFIGURAR EMAILJS ───────────────────────────────────────
  *
- * 1. Crie uma conta gratuita em https://www.emailjs.com/
- * 2. Adicione um "Email Service" (Gmail, Outlook, etc.) → anote o SERVICE_ID.
- * 3. Crie um "Email Template" com as variáveis abaixo e anote o TEMPLATE_ID:
- *      {{from_name}}    — nome do usuário que enviou
- *      {{from_email}}   — e-mail do usuário
- *      {{type}}         — "Bug" ou "Sugestão"
- *      {{message}}      — texto da mensagem
- *      {{image_url}}    — URL/Base64 da imagem (se houver)
- * 4. Copie sua "Public Key" em Account → API Keys.
- * 5. Instale o SDK: npm install @emailjs/browser
- * 6. Preencha as constantes EMAILJS_* abaixo com os seus IDs.
+ * PASSO 1 — Criar conta gratuita
+ *   Acesse https://www.emailjs.com/ e crie sua conta.
+ *   O plano gratuito permite 200 envios/mês (suficiente para feedbacks).
+ *
+ * PASSO 2 — Conectar seu Gmail
+ *   • No painel, vá em: Email Services → Add New Service
+ *   • Escolha Gmail
+ *   • Clique em "Connect Account" → faça login com auraenglish7@gmail.com
+ *   • Dê o nome "AuraUP" ao serviço e clique em "Create Service"
+ *   • Anote o SERVICE_ID gerado (ex: service_abc1234)
+ *
+ * PASSO 3 — Criar o Template de e-mail
+ *   • Vá em: Email Templates → Create New Template
+ *   • Preencha os campos:
+ *       To Email  → auraenglish7@gmail.com
+ *       From Name → {{from_name}}
+ *       Reply To  → {{from_email}}
+ *       Subject   → [AuraUP] {{type}} — {{from_name}}
+ *   • No corpo (Body), cole:
+ *
+ *       Novo feedback recebido pelo AuraUP:
+ *
+ *       Tipo: {{type}}
+ *       Usuário: {{from_name}}
+ *       E-mail: {{from_email}}
+ *
+ *       --- Mensagem ---
+ *       {{message}}
+ *
+ *       --- Imagem ---
+ *       {{image_url}}
+ *
+ *   • Clique em Save e anote o TEMPLATE_ID (ex: template_xyz5678)
+ *
+ * PASSO 4 — Pegar sua Public Key
+ *   • Clique no seu nome (canto superior direito) → Account → aba "API Keys"
+ *   • Copie a Public Key (ex: user_AbCdEfGhIjKlMnOpQ)
+ *
+ * PASSO 5 — Instalar o SDK
+ *   No terminal, dentro da pasta do projeto:
+ *     npm install @emailjs/browser
+ *
+ * PASSO 6 — Preencher as constantes abaixo
+ *   Substitua os valores 'YOUR_*' pelos IDs reais que você anotou nos passos anteriores:
+ *     EMAILJS_SERVICE_ID  → SERVICE_ID do passo 2
+ *     EMAILJS_TEMPLATE_ID → TEMPLATE_ID do passo 3
+ *     EMAILJS_PUBLIC_KEY  → Public Key do passo 4
+ *
+ * PASSO 7 — Ativar o código de envio
+ *   Na função handleSend() abaixo, localize o bloco comentado com:
+ *     "Descomente após instalar o SDK"
+ *   Remova os comentários (//) e delete a linha com throw new Error(...)
+ *
+ * PASSO 8 — Testar antes de fazer deploy
+ *   • Rode o app localmente (npm run dev)
+ *   • Abra o menu Ajuda & Feedback
+ *   • Escreva uma mensagem e clique em Enviar
+ *   • Verifique o Gmail de auraenglish7@gmail.com
+ *   • No painel do EmailJS → Email Logs, você vê todos os envios com status
+ *
+ * ⚠️  SEGURANÇA: A Public Key é exposta no front-end (comportamento intencional
+ *   do EmailJS — ela só autoriza ENVIO, não leitura). Para evitar spam, ative as
+ *   "Allowed Origins" no painel do EmailJS com o domínio da Vercel:
+ *   https://seu-app.vercel.app
+ *
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -26,35 +80,37 @@ import { X, Send, Bug, Lightbulb, Image as ImageIcon, Trash2, Loader2, CheckCirc
 import { useAuth } from '../../contexts/AuthContext'
 
 // ─── EmailJS Config ───────────────────────────────────────────────────────────
-// Preencha com seus dados do EmailJS após criar a conta
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID'   // ex: 'service_abc123'
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID'  // ex: 'template_xyz456'
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY'    // ex: 'user_xxxxxxxxxxxxxxxx'
+// Preencha com seus dados reais após seguir o passo a passo acima (Passos 2, 3 e 4)
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID'   // Passo 2 — ex: 'service_abc1234'
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID'  // Passo 3 — ex: 'template_xyz5678'
+const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY'    // Passo 4 — ex: 'user_AbCdEfGhIjKlMnOpQ'
 const ADMIN_EMAIL         = 'auraenglish7@gmail.com'
 
 const EMAIL_CONFIGURED =
-  EMAILJS_SERVICE_ID !== 'YOUR_SERVICE_ID' &&
+  EMAILJS_SERVICE_ID  !== 'YOUR_SERVICE_ID' &&
   EMAILJS_TEMPLATE_ID !== 'YOUR_TEMPLATE_ID' &&
-  EMAILJS_PUBLIC_KEY !== 'YOUR_PUBLIC_KEY'
+  EMAILJS_PUBLIC_KEY  !== 'YOUR_PUBLIC_KEY'
 
+// ─── Tipos ───────────────────────────────────────────────────────────────────
 type FeedbackType = 'bug' | 'suggestion'
-type SendStatus = 'idle' | 'sending' | 'success' | 'error'
+type SendStatus   = 'idle' | 'sending' | 'success' | 'error'
 
 interface HelpModalProps {
   open: boolean
   onClose: () => void
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 export function HelpModal({ open, onClose }: HelpModalProps) {
   const { user } = useAuth()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [type, setType]       = useState<FeedbackType>('bug')
-  const [message, setMessage] = useState('')
-  const [imageB64, setImageB64] = useState<string | null>(null)
+  const [type,      setType]      = useState<FeedbackType>('bug')
+  const [message,   setMessage]   = useState('')
+  const [imageB64,  setImageB64]  = useState<string | null>(null)
   const [imageName, setImageName] = useState<string | null>(null)
-  const [status, setStatus]   = useState<SendStatus>('idle')
-  const [errorMsg, setErrorMsg] = useState('')
+  const [status,    setStatus]    = useState<SendStatus>('idle')
+  const [errorMsg,  setErrorMsg]  = useState('')
 
   const reset = useCallback(() => {
     setType('bug')
@@ -110,8 +166,10 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
 
     try {
       if (EMAIL_CONFIGURED) {
-        // ── Envio via EmailJS SDK ──────────────────────────────────────────
-        // Descomente após instalar o SDK: npm install @emailjs/browser
+        // ── Envio via EmailJS SDK (Passo 7) ───────────────────────────────
+        // Após instalar o SDK (Passo 5), descomente as linhas abaixo e
+        // delete a linha com throw new Error(...)
+        //
         // const emailjs = (await import('@emailjs/browser')).default
         // await emailjs.send(
         //   EMAILJS_SERVICE_ID,
@@ -125,11 +183,12 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
         //   },
         //   EMAILJS_PUBLIC_KEY,
         // )
-        throw new Error('EmailJS configurado mas SDK não instalado. Veja os comentários no HelpModal.tsx.')
+        throw new Error('SDK do EmailJS não instalado. Siga o Passo 5 e 7 nos comentários do HelpModal.tsx.')
       } else {
         // ── Fallback: mailto (abre o cliente de e-mail do sistema) ─────────
+        // Usado enquanto o EmailJS não estiver configurado.
         const subject = encodeURIComponent(`[AuraUP] ${typeLabel} — ${fromName}`)
-        const body = encodeURIComponent(
+        const body    = encodeURIComponent(
           `Tipo: ${typeLabel}\nUsuário: ${fromName} <${fromEmail}>\n\n${message.trim()}` +
           (imageB64 ? '\n\n[Imagem anexada — disponível apenas via EmailJS]' : '')
         )
@@ -177,7 +236,7 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
         {/* ── Body ────────────────────────────────────────────────────────── */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 overscroll-contain custom-scrollbar flex flex-col gap-5">
 
-          {/* Sucesso */}
+          {/* Tela de sucesso */}
           {status === 'success' ? (
             <div className="flex flex-col items-center justify-center gap-4 py-10 text-center">
               <CheckCircle2 size={52} className="text-emerald-500" />
@@ -299,21 +358,16 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
                 />
               </div>
 
-              {/* Aviso EmailJS não configurado */}
+              {/* Aviso: EmailJS não configurado */}
               {!EMAIL_CONFIGURED && (
                 <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                  <strong>⚠️ Integração de e-mail não configurada.</strong> O botão "Enviar" abrirá seu cliente de e-mail como alternativa.
-                  Para envio direto, configure o EmailJS seguindo as instruções no arquivo <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">HelpModal.tsx</code>.
+                  <strong>⚠️ E-mail direto não configurado.</strong> O botão "Enviar" abrirá seu cliente de e-mail como alternativa.
+                  Para ativar o envio direto, siga os 8 passos nos comentários do arquivo <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">HelpModal.tsx</code>.
                 </div>
               )}
 
-              {/* Erro */}
-              {status === 'error' && errorMsg && (
-                <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5">
-                  ⚠️ {errorMsg}
-                </p>
-              )}
-              {status !== 'error' && errorMsg && (
+              {/* Mensagem de erro */}
+              {errorMsg && (
                 <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold flex items-center gap-1.5">
                   ⚠️ {errorMsg}
                 </p>
