@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Trophy, Flame, Users, Globe, Crown, Medal, Sparkles } from 'lucide-react'
+import { Trophy, Flame, Users, Globe, Crown, Medal, Sparkles, ShieldCheck } from 'lucide-react'
 import { PageHeader } from '../components/common/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
@@ -15,9 +15,21 @@ export function RankingPage() {
   const [tab, setTab] = useState<'global' | 'class'>('global')
   const { user } = useAuth()
   const { xp: userXp, streak: userStreak } = useEconomy()
+  const isAdmin = user?.role === 'admin'
 
   const currentList = useMemo(() => {
     const rawList = tab === 'global' ? GLOBAL_RANKING_MOCK : CLASS_RANKING_MOCK
+
+    // Se o usuário logado for administrador, o perfil NÃO compete nem aparece no ranking dos alunos
+    if (isAdmin) {
+      return rawList
+        .filter(item => !item.isCurrentUser)
+        .sort((a, b) => b.xp - a.xp)
+        .map((item, idx) => ({
+          ...item,
+          posicao: idx + 1,
+        }))
+    }
 
     const userName = user?.nickname || user?.name || 'Você'
     const userAvatar = AVATARS[user?.avatar_id || 'avatar_1'] || '🦊'
@@ -41,7 +53,7 @@ export function RankingPage() {
         ...item,
         posicao: idx + 1,
       }))
-  }, [tab, user, userXp, userStreak])
+  }, [tab, user, userXp, userStreak, isAdmin])
 
   const top3 = currentList.slice(0, 3)
 
@@ -57,7 +69,13 @@ export function RankingPage() {
       <PageHeader
         icon={Trophy}
         title={<>Liga dos <span className="text-blue-600 dark:text-blue-400">Campeões</span></>}
-        subtitle={<>Suba no ranking <strong className="text-slate-800 dark:text-white">estudando diariamente</strong> e acumulando <strong className="text-blue-600 dark:text-blue-400">XP</strong>! ✨</>}
+        subtitle={
+          isAdmin ? (
+            <>Classificação em <strong className="text-blue-600 dark:text-blue-400">tempo real</strong> dos estudantes. (Perfil de administrador não pontua nos rankings de alunos).</>
+          ) : (
+            <>Suba no ranking <strong className="text-slate-800 dark:text-white">estudando diariamente</strong> e acumulando <strong className="text-blue-600 dark:text-blue-400">XP</strong>! ✨</>
+          )
+        }
         actions={
           <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-2 gap-1 shadow-2xs">
             <button
@@ -88,6 +106,15 @@ export function RankingPage() {
           </div>
         }
       />
+
+      {isAdmin && (
+        <div className="mb-6 p-3 sm:p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-xs sm:text-sm text-amber-900 dark:text-amber-200 flex items-center gap-2.5">
+          <ShieldCheck size={18} className="text-amber-600 dark:text-amber-400 shrink-0" />
+          <p className="leading-snug">
+            <strong className="font-bold">Modo Professor/Admin:</strong> Você pode estudar, criar cards e testar todas as funcionalidades livremente, mas seu perfil não pontua nesta lista para não competir com os estudantes.
+          </p>
+        </div>
+      )}
 
       {/* Podium Top 3 */}
       <div className="grid grid-cols-3 gap-3 sm:gap-5 mb-8 items-end max-w-2xl mx-auto">

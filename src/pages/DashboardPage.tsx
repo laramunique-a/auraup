@@ -144,6 +144,19 @@ export function DashboardPage() {
 
   // Cálculo dinâmico e em tempo real da colocação do usuário nos dois rankings
   const userRankings = useMemo(() => {
+    const isAdmin = user?.role === 'admin'
+
+    // Se for admin, o perfil não compete nos rankings dos alunos
+    if (isAdmin) {
+      const totalGlobal = GLOBAL_RANKING_MOCK.filter(item => !item.isCurrentUser).length
+      const totalClass = CLASS_RANKING_MOCK.filter(item => !item.isCurrentUser).length
+      return {
+        isAdmin: true,
+        global: { pos: null, total: totalGlobal },
+        turma: { pos: null, total: totalClass },
+      }
+    }
+
     // 1. Ranking Global
     const globalList = GLOBAL_RANKING_MOCK.map(item => {
       if (item.isCurrentUser) {
@@ -169,10 +182,11 @@ export function DashboardPage() {
     const totalClass = classList.length
 
     return {
+      isAdmin: false,
       global: { pos: globalPos, total: totalGlobal },
       turma: { pos: classPos, total: totalClass },
     }
-  }, [liveXP])
+  }, [liveXP, user?.role])
 
   function speakWord(word: string) {
     if ('speechSynthesis' in window) {
@@ -576,7 +590,7 @@ export function DashboardPage() {
                     <Trophy size={13} />
                   </div>
                   <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white truncate">
-                    Sua Posição no Ranking
+                    {userRankings.isAdmin ? 'Ranking de Alunos' : 'Sua Posição no Ranking'}
                   </h3>
                 </div>
                 <button
@@ -606,9 +620,15 @@ export function DashboardPage() {
                       </span>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs shrink-0 shadow-2xs">
-                    {userRankings.global.pos}º lugar
-                  </span>
+                  {userRankings.isAdmin ? (
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-heading font-semibold text-[11px] shrink-0 shadow-2xs">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-heading font-bold text-xs shrink-0 shadow-2xs">
+                      {userRankings.global.pos}º lugar
+                    </span>
+                  )}
                 </div>
 
                 <div 
@@ -621,16 +641,22 @@ export function DashboardPage() {
                     </div>
                     <div className="min-w-0">
                       <span className="text-[10px] font-heading font-bold uppercase text-emerald-600 dark:text-emerald-400 block leading-tight">
-                        Minha Turma
+                        Turmas
                       </span>
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
-                        {userRankings.turma.total} colegas
+                        {userRankings.turma.total} alunos
                       </span>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-heading font-bold text-xs shrink-0 shadow-2xs">
-                    {userRankings.turma.pos}º lugar
-                  </span>
+                  {userRankings.isAdmin ? (
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-heading font-semibold text-[11px] shrink-0 shadow-2xs">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-heading font-bold text-xs shrink-0 shadow-2xs">
+                      {userRankings.turma.pos}º lugar
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1070,9 +1096,11 @@ export function DashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-sm font-heading font-bold text-slate-800 dark:text-white leading-tight">
-                    Sua Colocação
+                    {userRankings.isAdmin ? 'Ranking de Alunos' : 'Sua Colocação'}
                   </h2>
-                  <p className="text-[11px] text-slate-400 font-medium">Liga dos Campeões</p>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    {userRankings.isAdmin ? 'Classificação dos estudantes' : 'Liga dos Campeões'}
+                  </p>
                 </div>
               </div>
 
@@ -1107,9 +1135,15 @@ export function DashboardPage() {
                 </div>
 
                 <div className="text-right">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-heading font-extrabold text-sm shadow-2xs">
-                    {userRankings.global.pos}º lugar
-                  </span>
+                  {userRankings.isAdmin ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-heading font-semibold text-xs shadow-2xs">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 font-heading font-extrabold text-sm shadow-2xs">
+                      {userRankings.global.pos}º lugar
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -1124,18 +1158,24 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
-                      Minha Turma
+                      Turmas
                     </span>
                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                      Entre {userRankings.turma.total} colegas
+                      Entre {userRankings.turma.total} alunos
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-heading font-extrabold text-sm shadow-2xs">
-                    {userRankings.turma.pos}º lugar
-                  </span>
+                  {userRankings.isAdmin ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-heading font-semibold text-xs shadow-2xs">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-heading font-extrabold text-sm shadow-2xs">
+                      {userRankings.turma.pos}º lugar
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
