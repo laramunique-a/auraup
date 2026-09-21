@@ -3,7 +3,6 @@ import { Trophy, Flame, Users, Globe, Crown, Medal, Sparkles, ShieldCheck, Chevr
 import { PageHeader } from '../components/common/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
-import { GLOBAL_RANKING_MOCK, CLASS_RANKING_MOCK } from '../mockData'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
