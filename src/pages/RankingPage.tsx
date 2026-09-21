@@ -116,7 +116,7 @@ function LeaderboardRow({ item }: { item: RankEntry }) {
 
 // ─── Componente auxiliar: TurmaSection (para admin) ──────────────────────────
 function TurmaSection({ group }: { group: TurmaGroup }) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const top3 = group.entries.slice(0, 3)
 
   return (
