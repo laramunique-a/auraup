@@ -64,7 +64,7 @@ export function RankingPage() {
   }, [tab])
 
   return (
-    <div className="max-w-4xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1 w-full">
       {/* Header Padronizado */}
       <PageHeader
         icon={Trophy}

@@ -88,7 +88,7 @@ export function ProfilePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 space-y-5 flex-1">
+    <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 space-y-5 flex-1 w-full">
       {toast && <Toast message={toast.message} type={toast.type} />}
 
       {/* Header Padronizado */}

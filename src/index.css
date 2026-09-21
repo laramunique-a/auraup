@@ -55,11 +55,14 @@
     padding: 0;
   }
 
-  html, body {
-    width: 100%;
-    max-width: 100vw;
+  html {
     min-height: 100%;
-    overscroll-behavior-y: none;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
     background-color: var(--bg-page);
     background-image: 
       radial-gradient(circle at 10% 12%, rgba(85, 168, 255, 0.15), transparent 28%),
@@ -70,14 +73,13 @@
     font-family: 'Plus Jakarta Sans', 'Nunito', -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
-    scroll-behavior: smooth;
-    overflow-x: hidden;
   }
 
   #root {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -86,10 +88,10 @@
     letter-spacing: -0.02em;
   }
 
-  #root {
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
+  @media (max-width: 768px) {
+    body {
+      overscroll-behavior-y: none;
+    }
   }
 }
 

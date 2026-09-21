@@ -825,7 +825,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
 
   return (
-    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1 w-full">
       {/* Header Padronizado */}
       <PageHeader
         icon={ShieldCheck}

@@ -74,7 +74,7 @@ export function StorePage() {
   })
 
   return (
-    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1">
+    <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1 w-full">
       {toast && <Toast message={toast.message} type={toast.type} />}
       <PageHeader
         icon={ShoppingCart}
