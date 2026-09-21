@@ -15,6 +15,22 @@ export function MobileBottomNav() {
 
   const navItems = [
     {
+      to: '/profile',
+      label: 'Perfil',
+      icon: User,
+      isActive: location.pathname === '/profile',
+    },
+    ...(isAdmin
+      ? [
+          {
+            to: '/admin',
+            label: 'Admin',
+            icon: Shield,
+            isActive: location.pathname === '/admin',
+          },
+        ]
+      : []),
+    {
       to: '/',
       label: 'Estudos',
       icon: LayoutGrid,
@@ -32,22 +48,7 @@ export function MobileBottomNav() {
       icon: ShoppingBag,
       isActive: location.pathname === '/store',
     },
-    {
-      to: '/profile',
-      label: 'Perfil',
-      icon: User,
-      isActive: location.pathname === '/profile',
-    },
   ]
-
-  if (isAdmin) {
-    navItems.push({
-      to: '/admin',
-      label: 'Admin',
-      icon: Shield,
-      isActive: location.pathname === '/admin',
-    })
-  }
 
   return (
     <nav 
