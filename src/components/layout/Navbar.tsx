@@ -1,7 +1,8 @@
+import { useState, useRef, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { useEconomy } from '../../contexts/EconomyContext'
-import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame, Coins } from 'lucide-react'
+import { LayoutGrid, Shield, Trophy, ShoppingBag, Rocket, UserCheck, Compass, Sparkles, LogOut, Flame, Coins, User } from 'lucide-react'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -64,6 +65,29 @@ export function Navbar() {
   const { streak, coins } = useEconomy()
   const location = useLocation()
   const navigate = useNavigate()
+
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
+  }, [menuOpen])
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   const isStudy = location.pathname.startsWith('/study')
   if (!user || location.pathname === '/login' || isStudy) return null
@@ -142,37 +166,67 @@ export function Navbar() {
                 </span>
               </Link>
 
-              {/* Avatar do Usuário */}
-              <Link 
-                to="/profile" 
-                title="Meu Perfil"
-                className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-blue-400/40 transition-all active:scale-95 cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-sm shadow-2xs">
-                  {isAdmin ? '👑' : (AVATARS[user.avatar_id] || '🦊')}
-                </div>
-                
-                <div className="hidden md:flex flex-col text-left pr-1">
-                  <span className="text-xs font-heading font-semibold text-slate-800 dark:text-slate-200 leading-tight">
-                    {isAdmin ? user.name : (user.nickname || user.name)}
-                  </span>
-                  <span className={`text-[10px] font-semibold flex items-center gap-1 ${userLevelInfo.badgeText}`}>
-                    <LevelIcon size={11} color={userLevelInfo.iconColor} />
-                    {userLevelInfo.title}
-                  </span>
-                </div>
-              </Link>
+              {/* Avatar do Usuário com Dropdown */}
+              <div className="relative" ref={menuRef}>
+                <button 
+                  type="button"
+                  onClick={() => setMenuOpen(prev => !prev)}
+                  title="Menu do Usuário"
+                  aria-expanded={menuOpen}
+                  className="flex items-center gap-2 p-0.5 rounded-full hover:ring-2 hover:ring-blue-400/40 transition-all active:scale-95 cursor-pointer select-none"
+                >
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-sm shadow-2xs">
+                    {isAdmin ? '👑' : (AVATARS[user.avatar_id] || '🦊')}
+                  </div>
+                  
+                  <div className="hidden md:flex flex-col text-left pr-1">
+                    <span className="text-xs font-heading font-semibold text-slate-800 dark:text-slate-200 leading-tight">
+                      {isAdmin ? user.name : (user.nickname || user.name)}
+                    </span>
+                    <span className={`text-[10px] font-semibold flex items-center gap-1 ${userLevelInfo.badgeText}`}>
+                      <LevelIcon size={11} color={userLevelInfo.iconColor} />
+                      {userLevelInfo.title}
+                    </span>
+                  </div>
+                </button>
 
-              {/* Botão de Logout Desktop */}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="hidden md:flex btn-3d-icon w-8 h-8 !rounded-lg text-slate-400 hover:text-rose-600 hover:border-rose-300 transition-all items-center justify-center"
-                title="Sair da Conta"
-                aria-label="Sair da Conta"
-              >
-                <LogOut size={15} />
-              </button>
+                {/* Dropdown Menu com Opção de Sair da Conta */}
+                {menuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-1.5 z-50 animate-pop-in">
+                    <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="text-xs font-heading font-bold text-slate-900 dark:text-white truncate">
+                        {user.nickname || user.name}
+                      </div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                        {user.email}
+                      </div>
+                    </div>
+
+                    <div className="py-1 space-y-0.5">
+                      <Link
+                        to="/profile"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-heading font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <User size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                        <span>Meu Perfil</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false)
+                          handleLogout()
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-heading font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors text-left cursor-pointer"
+                      >
+                        <LogOut size={14} className="shrink-0" />
+                        <span>Sair da Conta</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
