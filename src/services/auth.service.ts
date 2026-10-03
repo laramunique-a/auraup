@@ -332,6 +332,89 @@ export const authService = {
     is_active?: boolean
     must_change_password?: boolean
   }): Promise<User> {
+    if (!isLocalMode && supabase) {
+      if (data.newPassword && data.newPassword.trim().length > 0) {
+        const val = validatePassword(data.newPassword.trim())
+        if (!val.valid) throw new Error(val.error)
+        try {
+          await supabase.rpc('admin_update_user_password', {
+            target_user_id: userId,
+            new_password: data.newPassword.trim()
+          })
+        } catch (rpcErr) {
+          console.warn('Não foi possível alterar a senha no auth.users via RPC:', rpcErr)
+        }
+      }
+
+      const updates: Record<string, any> = {
+        updated_at: new Date().toISOString()
+      }
+      if (data.name !== undefined) {
+        updates.full_name = data.name.trim()
+        updates.nickname = data.name.trim().split(' ')[0]
+      }
+      if (data.email !== undefined) {
+        updates.email = data.email.trim().toLowerCase()
+      }
+      if (data.level_id !== undefined) {
+        updates.level_id = data.level_id
+      }
+      if (data.is_active !== undefined) {
+        updates.is_active = data.is_active
+      }
+      if (data.must_change_password !== undefined) {
+        updates.must_change_password = data.must_change_password
+      }
+
+      const { data: updatedProfile, error: profileError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId)
+        .select('*, level:levels(*)')
+        .single()
+
+      if (profileError) {
+        throw new Error(profileError.message || 'Erro ao atualizar dados do aluno no Supabase.')
+      }
+
+      // Sincroniza local caso o usuário exista no cache do navegador
+      const accounts = getLocalAccounts()
+      const idx = accounts.findIndex(a => a.id === userId)
+      if (idx !== -1) {
+        if (data.email) accounts[idx].email = data.email.trim().toLowerCase()
+        if (data.name) {
+          accounts[idx].name = data.name.trim()
+          accounts[idx].nickname = data.name.trim().split(' ')[0]
+        }
+        if (data.newPassword && data.newPassword.trim().length > 0) {
+          accounts[idx].password = data.newPassword.trim()
+        }
+        if (data.level_id) accounts[idx].level_id = data.level_id
+        if (data.level) accounts[idx].level = data.level
+        if (data.is_active !== undefined) accounts[idx].is_active = data.is_active
+        if (data.must_change_password !== undefined) accounts[idx].must_change_password = data.must_change_password
+        saveLocalAccounts(accounts)
+      }
+
+      return {
+        id: updatedProfile.id,
+        email: updatedProfile.email,
+        name: updatedProfile.full_name || updatedProfile.nickname || updatedProfile.email?.split('@')[0],
+        nickname: updatedProfile.nickname || updatedProfile.full_name?.split(' ')[0],
+        role: updatedProfile.role || 'user',
+        avatar_id: updatedProfile.avatar_id || 'avatar_1',
+        xp: updatedProfile.xp || 0,
+        coins: updatedProfile.coins || 0,
+        streak: updatedProfile.streak || 0,
+        level_id: updatedProfile.level_id,
+        level: updatedProfile.level || data.level,
+        is_active: updatedProfile.is_active,
+        must_change_password: updatedProfile.must_change_password,
+        created_at: updatedProfile.created_at,
+      } as User
+    }
+
+    // Modo local offline
     const accounts = getLocalAccounts()
     const idx = accounts.findIndex(a => a.id === userId)
     if (idx === -1) throw new Error('Aluno não encontrado.')
@@ -370,19 +453,6 @@ export const authService = {
 
     saveLocalAccounts(accounts)
 
-    if (!isLocalMode && supabase) {
-      try {
-        await supabase.from('profiles').update({
-          full_name: accounts[idx].name,
-          level_id: accounts[idx].level_id,
-          is_active: accounts[idx].is_active,
-          must_change_password: accounts[idx].must_change_password
-        }).eq('id', userId)
-      } catch {
-        // ignore
-      }
-    }
-
     return toUser(accounts[idx])
   },
 
@@ -395,10 +465,9 @@ export const authService = {
     saveLocalAccounts(filtered)
 
     if (!isLocalMode && supabase) {
-      try {
-        await supabase.from('profiles').delete().eq('id', userId)
-      } catch {
-        // ignore
+      const { error } = await supabase.from('profiles').delete().eq('id', userId)
+      if (error) {
+        throw new Error(error.message || 'Erro ao excluir aluno no banco de dados.')
       }
     }
   },

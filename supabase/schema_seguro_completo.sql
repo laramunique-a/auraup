@@ -400,3 +400,24 @@ BEGIN
   WHERE id = user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ==============================================================================
+-- 11. RPC: ADMIN REDEFINIR SENHA DE ALUNO (admin_update_user_password)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.admin_update_user_password(
+  target_user_id UUID,
+  new_password TEXT
+)
+RETURNS VOID AS $$
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Apenas administradores podem redefinir a senha de outros usuários.';
+  END IF;
+
+  UPDATE auth.users
+  SET encrypted_password = crypt(new_password, gen_salt('bf')),
+      updated_at = NOW()
+  WHERE id = target_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+

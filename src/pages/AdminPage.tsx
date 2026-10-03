@@ -336,6 +336,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       show('Dados do aluno atualizados com sucesso!', 'success')
       setActiveModal(null)
       setEditingUser(null)
+      await loadUsers()
     } catch (err: any) {
       show(err.message || 'Erro ao atualizar aluno.', 'error')
     } finally {
@@ -356,6 +357,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       show(`Aluno ${getStudentDisplayName(userToDelete)} excluído com sucesso.`, 'success')
       setActiveModal(null)
       setUserToDelete(null)
+      await loadUsers()
     } catch (err: any) {
       show(err.message || 'Erro ao excluir aluno.', 'error')
     } finally {
