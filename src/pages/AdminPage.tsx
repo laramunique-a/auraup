@@ -25,6 +25,10 @@ const AVATARS: Record<string, string> = {
   admin: '👑',
 }
 
+function getStudentDisplayName(u: any): string {
+  return u?.name || u?.full_name || u?.nickname || u?.email?.split('@')[0] || 'Aluno'
+}
+
 export function AdminPage() {
   const { toast, show } = useToast()
   const { speak } = useSpeech()
@@ -130,7 +134,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
   async function loadUsers() {
     if (isLocalMode || !supabase) {
-      setUsers(getLocalAdminUsers())
+      const local = getLocalAdminUsers()
+      setUsers(local.map(u => ({ ...u, name: u.name || (u as any).full_name || u.nickname })))
       return
     }
     try {
@@ -140,12 +145,18 @@ function saveLocalAdminLevels(levelsList: any[]) {
         .order('created_at', { ascending: false })
       
       if (error || !data || data.length === 0) {
-        setUsers(getLocalAdminUsers())
+        const local = getLocalAdminUsers()
+        setUsers(local.map(u => ({ ...u, name: u.name || (u as any).full_name || u.nickname })))
         return
       }
-      setUsers(data)
+      const mapped = data.map((p: any) => ({
+        ...p,
+        name: p.full_name || p.name || p.nickname || p.email?.split('@')[0],
+      }))
+      setUsers(mapped)
     } catch {
-      setUsers(getLocalAdminUsers())
+      const local = getLocalAdminUsers()
+      setUsers(local.map(u => ({ ...u, name: u.name || (u as any).full_name || u.nickname })))
     }
   }
 
@@ -275,7 +286,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
   function handleOpenEditUser(u: User) {
     setEditingUser(u)
-    setEditName(u.name || u.nickname || '')
+    setEditName(getStudentDisplayName(u))
     setEditEmail(u.email)
     setEditPassword('')
     setEditLevelId(u.level_id || u.level?.id || 'lvl_1')
@@ -342,7 +353,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       saveLocalAdminUsers(currentList)
       setUsers(prev => prev.filter(u => u.id !== userToDelete.id))
 
-      show(`Aluno ${userToDelete.name || userToDelete.email} excluído com sucesso.`, 'success')
+      show(`Aluno ${getStudentDisplayName(userToDelete)} excluído com sucesso.`, 'success')
       setActiveModal(null)
       setUserToDelete(null)
     } catch (err: any) {
@@ -926,7 +937,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-heading font-semibold text-slate-800 dark:text-white leading-tight text-xs sm:text-sm">{u.nickname || u.name}</span>
+                                <span className="font-heading font-semibold text-slate-800 dark:text-white leading-tight text-xs sm:text-sm">{getStudentDisplayName(u)}</span>
                                 {u.is_active === false && (
                                   <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
                                     Inativo
@@ -1017,7 +1028,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="font-heading font-bold text-slate-800 dark:text-white text-sm truncate leading-tight">
-                              {u.nickname || u.name}
+                              {getStudentDisplayName(u)}
                             </span>
                             {u.is_active === false && (
                               <span className="text-[9px] uppercase font-bold tracking-wider px-1 py-0.5 rounded bg-rose-50 text-rose-600 border border-rose-200 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-900">
@@ -2012,7 +2023,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
             <div>
               <h4 className="text-sm font-bold text-rose-900 dark:text-rose-200">Atenção: Ação Irreversível</h4>
               <p className="text-xs text-rose-700 dark:text-rose-300 mt-1 leading-relaxed">
-                Você está prestes a excluir o aluno <strong className="font-semibold text-rose-950 dark:text-white">{userToDelete?.name || userToDelete?.nickname}</strong> ({userToDelete?.email}).
+                Você está prestes a excluir o aluno <strong className="font-semibold text-rose-950 dark:text-white">{getStudentDisplayName(userToDelete)}</strong> ({userToDelete?.email}).
                 Todos os dados de progresso e histórico deste aluno serão removidos da plataforma.
               </p>
             </div>
@@ -2033,7 +2044,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       >
         <div className="space-y-4 py-1">
           <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-            Premiando <span className="font-extrabold text-slate-900 dark:text-white">{selectedUser?.name}</span>
+            Premiando <span className="font-extrabold text-slate-900 dark:text-white">{getStudentDisplayName(selectedUser)}</span>
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <AdminField label="Adicionar XP" value={adjustXP} onChange={setAdjustXP} type="number" />
@@ -2058,7 +2069,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               <div key={u.id} className="card-3d p-3 flex justify-between items-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                 <div className="flex items-center gap-3">
                   <div className="text-2xl">{AVATARS[u.avatar_id] || '👤'}</div>
-                  <div className="font-bold text-sm text-slate-800 dark:text-white">{u.nickname || u.name}</div>
+                  <div className="font-bold text-sm text-slate-800 dark:text-white">{getStudentDisplayName(u)}</div>
                 </div>
                 <div className="text-right">
                   <div className="font-extrabold text-amber-600 dark:text-amber-400 text-sm">{u.xp} XP</div>
