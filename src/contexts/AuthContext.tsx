@@ -33,6 +33,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [user])
 
+  // Valida ativamente a validade da conta ao iniciar o app e ao focar a tela
+  useEffect(() => {
+    let isCancelled = false
+
+    async function checkSession() {
+      if (!user) return
+      try {
+        const isValid = await authService.validateSession(user.id)
+        if (!isValid && !isCancelled) {
+          await authService.signOut()
+          setUser(null)
+          localStorage.removeItem('uply_user')
+        }
+      } catch (err) {
+        console.error('Erro ao validar validade da conta:', err)
+      }
+    }
+
+    checkSession()
+
+    const handleFocus = () => {
+      checkSession()
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkSession()
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      isCancelled = true
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [user?.id])
+
   async function signIn(email: string, password: string): Promise<User> {
     setLoading(true)
     try {

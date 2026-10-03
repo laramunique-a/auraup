@@ -166,26 +166,36 @@ export const authService = {
       }
 
       const u = data.user
-      const { data: profile } = await supabase
+      const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('*, level:levels(*)')
         .eq('id', u.id)
-        .single()
+        .maybeSingle()
+
+      if (profileErr || !profile) {
+        await supabase.auth.signOut()
+        throw new Error('Esta conta de aluno não existe mais ou foi excluída pela administração.')
+      }
+
+      if (profile.is_active === false) {
+        await supabase.auth.signOut()
+        throw new Error('Este acesso está desativado. Entre em contato com a administração.')
+      }
 
       const user: User = {
         id: u.id,
         email: u.email!,
-        name: profile?.full_name || u.user_metadata?.name || email.split('@')[0],
-        nickname: profile?.nickname || email.split('@')[0],
-        role: profile?.role || 'user',
-        avatar_id: profile?.avatar_id || 'avatar_1',
-        xp: profile?.xp || 0,
-        coins: profile?.coins || 0,
-        streak: profile?.streak || 0,
-        level_id: profile?.level_id,
-        level: profile?.level,
-        is_active: profile?.is_active ?? true,
-        must_change_password: profile?.must_change_password ?? false,
+        name: profile.full_name || u.user_metadata?.name || email.split('@')[0],
+        nickname: profile.nickname || email.split('@')[0],
+        role: profile.role || 'user',
+        avatar_id: profile.avatar_id || 'avatar_1',
+        xp: profile.xp || 0,
+        coins: profile.coins || 0,
+        streak: profile.streak || 0,
+        level_id: profile.level_id,
+        level: profile.level,
+        is_active: profile.is_active,
+        must_change_password: profile.must_change_password ?? false,
       }
 
       localStorage.setItem('uply_user', JSON.stringify(user))
@@ -464,7 +474,22 @@ export const authService = {
     const filtered = accounts.filter(a => a.id !== userId)
     saveLocalAccounts(filtered)
 
+    const currentUser = this.getCurrentUser()
+    if (currentUser?.id === userId) {
+      localStorage.removeItem('uply_user')
+      localStorage.removeItem('uply_economy_state')
+    }
+
     if (!isLocalMode && supabase) {
+      // 1. Tenta excluir da tabela auth.users via RPC para revogar totalmente qualquer login
+      try {
+        const { error: rpcErr } = await supabase.rpc('admin_delete_user', { target_user_id: userId })
+        if (!rpcErr) return
+      } catch {
+        // ignora se RPC ainda não foi criada no banco
+      }
+
+      // 2. Se a RPC não estiver instalada, exclui da tabela profiles
       const { error } = await supabase.from('profiles').delete().eq('id', userId)
       if (error) {
         throw new Error(error.message || 'Erro ao excluir aluno no banco de dados.')
@@ -473,10 +498,38 @@ export const authService = {
   },
 
   /**
+   * Valida se a sessão do usuário ainda é válida (conta existe e não está desativada)
+   */
+  async validateSession(userId: string): Promise<boolean> {
+    if (isLocalMode || !supabase) {
+      const accounts = getLocalAccounts()
+      const account = accounts.find(a => a.id === userId)
+      return !!account && account.is_active !== false
+    }
+
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, is_active')
+        .eq('id', userId)
+        .maybeSingle()
+
+      if (error || !profile || profile.is_active === false) {
+        return false
+      }
+      return true
+    } catch {
+      // Em caso de instabilidade de rede temporária, preserva
+      return true
+    }
+  },
+
+  /**
    * Encerra a sessão ativa
    */
   async signOut(): Promise<void> {
     localStorage.removeItem('uply_user')
+    localStorage.removeItem('uply_economy_state')
     if (!isLocalMode && supabase) {
       try {
         await supabase.auth.signOut()
