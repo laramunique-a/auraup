@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { supabase, isLocalMode, generateId } from '../services/storage'
+import { createClient } from '@supabase/supabase-js'
+import { supabase, isLocalMode, generateId, supabaseUrl, supabaseAnonKey } from '../services/storage'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { Toast, useToast } from '../components/ui/Toast'
@@ -205,25 +206,57 @@ function saveLocalAdminLevels(levelsList: any[]) {
       const selectedLvl = levels.find(l => l.id === selectedLevelId)
       const initialXP = selectedLvl ? (selectedLvl.min_xp || 0) : 0
 
-      const { data, error } = await supabase.functions.invoke('create-user', {
-        body: { 
-          email: newEmail.trim(), 
-          password: newInitialPassword.trim() || 'aura123', 
-          name: newName.trim(),
+      let createdUserId: string | null = null
+
+      try {
+        const { data, error } = await supabase.functions.invoke('create-user', {
+          body: { 
+            email: newEmail.trim(), 
+            password: newInitialPassword.trim() || 'aura123', 
+            name: newName.trim(),
+            level_id: selectedLevelId || undefined,
+            xp: initialXP,
+            must_change_password: true
+          }
+        })
+        if (!error && !data?.error && data?.user?.id) {
+          createdUserId = data.user.id
+        }
+      } catch {
+        // Fallback para criação direta se a Edge Function não estiver instalada
+      }
+
+      if (!createdUserId) {
+        // Criação usando cliente temporário com persistSession: false para não afetar a sessão do admin
+        const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: { persistSession: false, autoRefreshToken: false }
+        })
+        const { data: signUpData, error: signUpErr } = await tempClient.auth.signUp({
+          email: newEmail.trim(),
+          password: newInitialPassword.trim() || 'aura123',
+          options: {
+            data: {
+              name: newName.trim(),
+            }
+          }
+        })
+        if (signUpErr) throw signUpErr
+        if (signUpData?.user?.id) {
+          createdUserId = signUpData.user.id
+        }
+      }
+
+      if (createdUserId) {
+        await supabase.from('profiles').upsert({ 
+          id: createdUserId,
+          email: newEmail.trim(),
+          full_name: newName.trim(),
+          nickname: newName.trim().split(' ')[0],
+          role: 'user',
           level_id: selectedLevelId || undefined,
           xp: initialXP,
           must_change_password: true
-        }
-      })
-
-      if (error) throw error
-      if (data?.error) throw new Error(data.error)
-
-      if (data?.user?.id) {
-        await supabase.from('profiles').update({ 
-          xp: initialXP,
-          must_change_password: true
-        }).eq('id', data.user.id)
+        })
       }
 
       setActiveModal(null)
@@ -307,7 +340,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
       const currentList = getLocalAdminUsers().filter(u => u.id !== userToDelete.id)
       saveLocalAdminUsers(currentList)
-      setUsers(currentList)
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id))
 
       show(`Aluno ${userToDelete.name || userToDelete.email} excluído com sucesso.`, 'success')
       setActiveModal(null)
@@ -582,12 +615,24 @@ function saveLocalAdminLevels(levelsList: any[]) {
         return
       }
 
-      const { error } = await supabase.rpc('add_user_reward', {
-        user_id: selectedUser.id,
-        xp_to_add: xpToAdd,
-        coins_to_add: coinsToAdd
-      })
-      if (error) throw error
+      try {
+        const { error } = await supabase.rpc('add_user_reward', {
+          user_id: selectedUser.id,
+          xp_to_add: xpToAdd,
+          coins_to_add: coinsToAdd
+        })
+        if (error) {
+          await supabase.from('profiles').update({
+            xp: Math.max(0, (selectedUser.xp || 0) + xpToAdd),
+            coins: Math.max(0, (selectedUser.coins || 0) + coinsToAdd)
+          }).eq('id', selectedUser.id)
+        }
+      } catch {
+        await supabase.from('profiles').update({
+          xp: Math.max(0, (selectedUser.xp || 0) + xpToAdd),
+          coins: Math.max(0, (selectedUser.coins || 0) + coinsToAdd)
+        }).eq('id', selectedUser.id)
+      }
       show('Saldo atualizado com sucesso!', 'success')
       setActiveModal(null)
       await loadUsers()
