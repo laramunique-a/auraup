@@ -5,6 +5,7 @@ import { useDecks } from '../hooks/useDecks'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
 import { profileService } from '../services/profile.service'
+import { reviewService } from '../services/review.service'
 import { FlashCard } from '../components/study/FlashCard'
 import { Button } from '../components/ui/Button'
 import { ArrowLeft, Home, Clock, Target, BookOpen } from 'lucide-react'
@@ -71,6 +72,8 @@ export function StudyPage() {
 
     if (current && user) {
       recordReviewLocally(current.deck_id, rating)
+      reviewService.logActivity(user.id, 1)
+
       let xp = 0; let coins = 0
       if (rating === 3) { xp = 10; coins = 2 }
       else if (rating === 2) { xp = 5; coins = 1 }
@@ -94,6 +97,7 @@ export function StudyPage() {
     if (sessionDone && user) {
       refreshStats()
       recordActivity()
+      reviewService.logActivity(user.id, 1)
       profileService.updateStreak(user.id)
     }
   }, [sessionDone, refreshStats, user, recordActivity])

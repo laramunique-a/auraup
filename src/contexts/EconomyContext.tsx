@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { reviewService } from '../services/review.service'
 
 export interface EconomyState {
   xp: number
@@ -111,6 +112,17 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
       const today = getTodayString()
       const yesterday = getYesterdayString()
       const lastActive = localStorage.getItem(LAST_ACTIVE_KEY)
+
+      // Registra presença no Heatmap para o dia de hoje
+      try {
+        const rawUser = localStorage.getItem('uply_user')
+        if (rawUser) {
+          const u = JSON.parse(rawUser)
+          if (u?.id) {
+            reviewService.logActivity(u.id, 1)
+          }
+        }
+      } catch {}
 
       if (lastActive === today) {
         // Já acessou hoje, mantém o streak atual garantindo ao menos 1

@@ -43,60 +43,125 @@ async function localGetGlobalDueCardIds(userId: string, cardIds: string[]): Prom
   return localGetDueCardIds('all', userId, cardIds)
 }
 
-async function localLogActivity(userId: string) {
-  // Em modo local, guardamos tudo em uma chave mestre para evitar perdas se o ID mudar
-  const globalKey = LS_ACTIVITY + '_global'
-  const userKey = LS_ACTIVITY + '_' + userId
+async function logActivity(userId: string, count: number = 1): Promise<Record<string, number>> {
+  if (!userId) return {}
   const today = getStudyDayKey()
-  
-  const activity = lsGetItem<Record<string, number>>(globalKey) || {}
-  
-  // Se houver dados no ID específico, migramos para o global
-  const legacyActivity = lsGetItem<Record<string, number>>(userKey) || {}
-  const merged = { ...legacyActivity, ...activity }
-  
-  merged[today] = (merged[today] || 0) + 1
-  lsSetItem(globalKey, merged)
-  
-  // Limpamos o legado para não duplicar na próxima migração
-  if (Object.keys(legacyActivity).length > 0) {
-    lsSetItem(userKey, {})
-  }
-}
-
-async function localGetActivity(userId: string): Promise<Record<string, number>> {
   const globalKey = LS_ACTIVITY + '_global'
   const userKey = LS_ACTIVITY + '_' + userId
-  
-  let global = lsGetItem<Record<string, number>>(globalKey) || {}
+
+  // 1. Atualiza dados no localStorage (Instantâneo no PWA e Web)
+  const currentMap = lsGetItem<Record<string, number>>(globalKey) || {}
   const userSpecific = lsGetItem<Record<string, number>>(userKey) || {}
-  
-  // Migração automática na leitura
-  if (Object.keys(userSpecific).length > 0) {
-    global = { ...userSpecific, ...global }
-    lsSetItem(globalKey, global)
-    lsSetItem(userKey, {}) // Consumido
+  const merged = { ...userSpecific, ...currentMap }
+  merged[today] = (merged[today] || 0) + count
+  lsSetItem(globalKey, merged)
+  lsSetItem(userKey, merged)
+
+  // 2. Dispara evento para atualizar o Heatmap na tela em tempo real
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('uply_activity_sync', { detail: { date: today, count: merged[today] } }))
   }
 
-  // Tentar encontrar QUALQUER outra chave de atividade legada (ex: de outros IDs gerados)
-  const allKeys: string[] = []
-  for (let i = 0; i < localStorage.length; i++) {
-    const k = localStorage.key(i)
-    if (k?.startsWith(LS_ACTIVITY) && k !== globalKey && k !== userKey) {
-      allKeys.push(k)
+  // 3. Sincroniza com Supabase se disponível
+  if (!isLocalMode && supabase) {
+    try {
+      const { data: existing, error: selectErr } = await supabase
+        .from('activity')
+        .select('id, count')
+        .eq('user_id', userId)
+        .eq('date', today)
+        .maybeSingle()
+
+      if (!selectErr && existing) {
+        await supabase
+          .from('activity')
+          .update({ count: Math.max(existing.count || 0, merged[today]) })
+          .eq('id', existing.id)
+      } else {
+        await supabase
+          .from('activity')
+          .upsert({ user_id: userId, date: today, count: merged[today] }, { onConflict: 'user_id,date' })
+      }
+    } catch (e) {
+      console.warn('[ActivitySync] Salvo localmente, pendente nuvem:', e)
     }
   }
 
-  for (const k of allKeys) {
+  return merged
+}
+
+async function getActivity(userId: string): Promise<Record<string, number>> {
+  if (!userId) return {}
+  const globalKey = LS_ACTIVITY + '_global'
+  const userKey = LS_ACTIVITY + '_' + userId
+
+  // 1. Recupera do cache local
+  const global = lsGetItem<Record<string, number>>(globalKey) || {}
+  const userSpecific = lsGetItem<Record<string, number>>(userKey) || {}
+  const merged: Record<string, number> = { ...userSpecific, ...global }
+
+  // 2. Garante que se houver registro de ofensiva/data ativa, o dia tenha ao menos 1
+  try {
+    const lastActive = localStorage.getItem('uply_last_active_date')
+    if (lastActive && /^\d{4}-\d{2}-\d{2}$/.test(lastActive)) {
+      merged[lastActive] = Math.max(merged[lastActive] || 0, 1)
+    }
+  } catch {}
+
+  // 3. Recupera de revisões locais antigas (uply_reviews)
+  try {
+    const localReviews = lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId || !r.user_id)
+    for (const r of localReviews) {
+      if (r.last_reviewed) {
+        const d = r.last_reviewed.split('T')[0]
+        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+          merged[d] = (merged[d] || 0) + 1
+        }
+      }
+    }
+  } catch {}
+
+  // 4. Se estiver em modo Supabase, faz merge bidirecional com a tabela activity e reviews da nuvem
+  if (!isLocalMode && supabase) {
     try {
-      const otherData = JSON.parse(localStorage.getItem(k) || '{}')
-      global = { ...otherData, ...global }
-      localStorage.removeItem(k) // Migrado
-    } catch {}
+      const { data: cloudActivity } = await supabase
+        .from('activity')
+        .select('date, count')
+        .eq('user_id', userId)
+
+      if (cloudActivity && Array.isArray(cloudActivity)) {
+        for (const row of cloudActivity) {
+          if (row.date) {
+            merged[row.date] = Math.max(merged[row.date] || 0, row.count || 0)
+          }
+        }
+      }
+
+      // Consulta também a tabela reviews para recuperar datas de estudo passadas
+      const { data: cloudReviews } = await supabase
+        .from('reviews')
+        .select('last_reviewed')
+        .eq('user_id', userId)
+
+      if (cloudReviews && Array.isArray(cloudReviews)) {
+        for (const r of cloudReviews) {
+          if (r.last_reviewed) {
+            const d = r.last_reviewed.split('T')[0]
+            if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+              merged[d] = Math.max(merged[d] || 0, 1)
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Activity] Usando dados locais como fallback:', e)
+    }
   }
 
-  lsSetItem(globalKey, global)
-  return global
+  // Atualiza cache local unificado
+  lsSetItem(globalKey, merged)
+  lsSetItem(userKey, merged)
+  return merged
 }
 
 async function localSaveReview(
@@ -110,7 +175,7 @@ async function localSaveReview(
   const now = new Date().toISOString()
 
   // Log activity
-  await localLogActivity(userId)
+  await logActivity(userId, 1)
 
   if (existing) {
     const updated = { ...existing, ...sm2, last_reviewed: now }
@@ -178,59 +243,13 @@ async function supabaseGetGlobalDueCardIds(userId: string, cardIds: string[]): P
   return supabaseGetDueCardIds('all', userId, cardIds)
 }
 
-async function supabaseLogActivity(userId: string) {
-  const today = getStudyDayKey()
-  try {
-    const { data: existing, error: selectErr } = await supabase!
-      .from('activity')
-      .select('id, count')
-      .eq('user_id', userId)
-      .eq('date', today)
-      .maybeSingle()
-
-    if (selectErr) throw selectErr
-
-    if (existing) {
-      const { error: updateErr } = await supabase!
-        .from('activity')
-        .update({ count: (existing.count || 0) + 1 })
-        .eq('id', existing.id)
-      if (updateErr) throw updateErr
-    } else {
-      const { error: insertErr } = await supabase!
-        .from('activity')
-        .insert({ user_id: userId, date: today, count: 1 })
-      if (insertErr) throw insertErr
-    }
-  } catch (e) {
-    console.error('Failed to log sync activity', e)
-    // Fallback to local
-    localLogActivity(userId)
-  }
-}
-
-async function supabaseGetActivity(userId: string): Promise<Record<string, number>> {
-  try {
-    const { data } = await supabase!
-      .from('activity')
-      .select('date, count')
-      .eq('user_id', userId)
-    
-    const result: Record<string, number> = {}
-    data?.forEach((r: any) => { result[r.date] = r.count })
-    return result
-  } catch {
-    return localGetActivity(userId)
-  }
-}
-
 async function supabaseSaveReview(userId: string, cardId: string, rating: Rating): Promise<Review> {
   const existing = await supabaseGetReview(cardId, userId)
   const sm2 = calculateSM2(rating, existing || {})
   const now = new Date().toISOString()
 
   // Log activity
-  await supabaseLogActivity(userId)
+  await logActivity(userId, 1)
 
   if (existing) {
     const { data, error } = await supabase!
@@ -263,5 +282,6 @@ export const reviewService = {
   getDueCardIds: isLocalMode ? localGetDueCardIds : supabaseGetDueCardIds,
   getGlobalDueCardIds: isLocalMode ? localGetGlobalDueCardIds : supabaseGetGlobalDueCardIds,
   saveReview: isLocalMode ? localSaveReview : supabaseSaveReview,
-  getActivity: isLocalMode ? localGetActivity : supabaseGetActivity,
+  logActivity,
+  getActivity,
 }

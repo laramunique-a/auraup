@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDecks } from '../hooks/useDecks'
 import { Button } from '../components/ui/Button'
@@ -135,12 +135,32 @@ export function DashboardPage() {
     localStorage.setItem('uply_dashboard_sort', sortBy)
   }, [sortBy])
 
-  useEffect(() => {
+  const loadActivityData = useCallback(() => {
     if (!user?.id) return
     reviewService.getActivity(user.id).then(data => {
       setActivity(data)
     })
   }, [user?.id])
+
+  useEffect(() => {
+    loadActivityData()
+
+    const handleSync = () => loadActivityData()
+    window.addEventListener('uply_activity_sync', handleSync)
+    window.addEventListener('uply_economy_sync', handleSync)
+    window.addEventListener('focus', handleSync)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') handleSync()
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      window.removeEventListener('uply_activity_sync', handleSync)
+      window.removeEventListener('uply_economy_sync', handleSync)
+      window.removeEventListener('focus', handleSync)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [loadActivityData])
 
   // Cálculo dinâmico e em tempo real da colocação do usuário nos dois rankings
   const userRankings = useMemo(() => {

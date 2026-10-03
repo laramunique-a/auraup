@@ -75,15 +75,18 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
         ))}
         {calendarData.map((day, i) => {
           const isFinished = Boolean(day && day.count > 0)
+          const isToday = Boolean(day && day.date === getStudyDayKey())
           return (
             <div
               key={day ? day.date : `empty-${i}`}
-              title={day ? `${day.date}: ${day.count} cards estudados` : ''}
+              title={day ? `${day.date}: ${day.count} atividade(s) realizada(s)` : ''}
               style={{
                 background: isFinished && day ? getColor(day.count) : undefined,
               }}
               className={`aspect-square w-full rounded-lg sm:rounded-xl border flex items-center justify-center text-[10px] sm:text-[11px] font-heading font-extrabold transition-all select-none min-w-0 ${
                 day ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              } ${
+                isToday ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-slate-900 font-black' : ''
               } ${
                 isFinished && day
                   ? (day.count > 10 ? 'text-white border-blue-600 shadow-xs' : 'text-blue-950 dark:text-blue-100 border-blue-300 dark:border-blue-700 shadow-2xs') 
