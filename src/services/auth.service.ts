@@ -40,20 +40,6 @@ const INITIAL_ACCOUNTS: UserAccount[] = [
     is_active: true,
     must_change_password: false,
   },
-  {
-    id: 'admin_master_1',
-    email: 'admin@auraup.com',
-    password: 'admin123',
-    name: 'Comandante Admin',
-    nickname: 'Admin',
-    role: 'admin',
-    avatar_id: 'admin',
-    xp: 3500,
-    coins: 150,
-    streak: 10,
-    is_active: true,
-    must_change_password: false,
-  },
 ]
 
 function getLocalAccounts(): UserAccount[] {
