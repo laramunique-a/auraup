@@ -284,15 +284,14 @@ export function StudyPage() {
         </span>
       </header>
 
-      {/* Título entre a barra de desempenho e o card */}
-      <div className="max-w-xl mx-auto w-full text-center pt-1.5 pb-0 sm:pt-2.5 shrink-0">
-        <h1 className="text-base sm:text-xl font-heading font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-          Você se lembra dessa?
-        </h1>
-      </div>
+      {/* Área Central: Título + Flashcard 3D agrupados */}
+      <main className="flex-1 flex flex-col items-center justify-center my-1.5 sm:my-3 w-full">
+        <div className="w-full max-w-xl text-center mb-2 sm:mb-3.5 shrink-0">
+          <h1 className="text-base sm:text-xl font-heading font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+            Você se lembra dessa?
+          </h1>
+        </div>
 
-      {/* Flashcard 3D */}
-      <main className="flex-1 flex items-center justify-center my-1.5 sm:my-3.5 w-full">
         {current && (
           <FlashCard
             key={current.id}
