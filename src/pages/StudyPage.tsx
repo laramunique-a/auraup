@@ -243,6 +243,18 @@ export function StudyPage() {
   return (
     <div className="min-h-[100dvh] bg-aura-bg flex flex-col justify-between p-3.5 sm:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] pt-[calc(env(safe-area-inset-top,0px)+8px)] relative overflow-x-hidden">
       
+      {/* Logo AuraUP no Desktop/Web (canto superior direito discreto e harmonioso) */}
+      <div className="hidden md:flex items-center gap-2 absolute top-3.5 right-5 lg:top-5 lg:right-8 select-none pointer-events-none opacity-80 transition-opacity">
+        <img 
+          src="/logo.png" 
+          alt="AuraUP" 
+          className="h-6 lg:h-7 w-auto object-contain drop-shadow-2xs" 
+        />
+        <span className="font-heading font-extrabold text-sm tracking-tight text-slate-800 dark:text-slate-200">
+          Aura<span className="text-blue-600 dark:text-blue-400">UP</span>
+        </span>
+      </div>
+
       {/* XP Floating Toast (Animação de Recompensa) */}
       {floatingXP && (
         <div 
@@ -283,6 +295,20 @@ export function StudyPage() {
           <span className="font-bold">{Math.min(reviewed + 1, total)}</span> / {total}
         </span>
       </header>
+
+      {/* Logo AuraUP no PWA/Mobile (entre a barra de desempenho e o título) */}
+      <div className="flex md:hidden items-center justify-center pt-1.5 pb-0.5 shrink-0 select-none pointer-events-none">
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs">
+          <img 
+            src="/logo.png" 
+            alt="AuraUP" 
+            className="h-3.5 w-auto object-contain" 
+          />
+          <span className="font-heading font-extrabold text-[11px] tracking-tight text-slate-700 dark:text-slate-300">
+            Aura<span className="text-blue-600 dark:text-blue-400">UP</span>
+          </span>
+        </div>
+      </div>
 
       {/* Área Central: Título + Flashcard 3D agrupados */}
       <main className="flex-1 flex flex-col items-center justify-center my-1.5 sm:my-3 w-full">
