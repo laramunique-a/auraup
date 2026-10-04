@@ -106,11 +106,9 @@ export function StudyPage() {
     return () => { if (window.speechSynthesis) window.speechSynthesis.cancel() }
   }, [])
 
-  // Cálculo de progresso tátil estilo Duolingo (garante feedback visual imediato a cada card)
+  // Cálculo de progresso tátil (garante avanço exato e fluido a cada card concluído)
   const progressPercent = total > 0 
-    ? total <= 50
-      ? Math.min(100, Math.max(reviewed > 0 ? (reviewed / total) * 100 : 4, 4))
-      : Math.min(100, Math.max(4, (Math.log10(reviewed + 1) / Math.log10(total + 1)) * 100 * 1.35))
+    ? Math.min(100, Math.max(reviewed > 0 ? (reviewed / total) * 100 : 3, 3))
     : 0
 
   if (loading) return (

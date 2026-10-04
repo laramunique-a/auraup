@@ -46,14 +46,23 @@ export function useStudySession(deckId: string) {
 
         const reviewMap = new Map(reviews.map(r => [r.card_id, r]))
 
-        const dueCards: StudyCard[] = allCards
+        let dueCards: StudyCard[] = allCards
           .filter(c => dueIds.includes(c.id))
           .map(c => ({
             ...c,
             review: reviewMap.get(c.id)
           }))
         
-        // Initial queue
+        // Se o usuário entrou para estudar este baralho e não há cards estritamente "vencidos",
+        // carrega todas as cartas do baralho para permitir estudo/revisão contínua a qualquer momento!
+        if (dueCards.length === 0 && allCards.length > 0) {
+          dueCards = allCards.map(c => ({
+            ...c,
+            review: reviewMap.get(c.id)
+          }))
+        }
+
+        // Fila inicial de estudo (mantém a ordem das cartas desde o número 1 para baralhos específicos)
         let finalQueue: StudyCard[] = []
         
         if (isGlobal) {
@@ -64,10 +73,10 @@ export function useStudySession(deckId: string) {
           }, {} as Record<string, StudyCard[]>)
           
           Object.values(grouped).forEach(deckCards => {
-            finalQueue.push(...[...deckCards].sort(() => Math.random() - 0.5))
+            finalQueue.push(...deckCards)
           })
         } else {
-          finalQueue = [...dueCards].sort(() => Math.random() - 0.5)
+          finalQueue = [...dueCards]
         }
 
         setTotal(finalQueue.length)
@@ -99,8 +108,9 @@ export function useStudySession(deckId: string) {
     const clickCount = (sessionClicks[current.id] || 0) + 1
     const remaining = queue.slice(1)
 
-    const isNew = !current.review || current.review.repetitions === 0
-    const shouldGraduate = rating === 3 || (rating === 2 && (!isNew || clickCount >= 2))
+    // Qualquer nota positiva (1 = Difícil, 2 = Bom, 3 = Fácil) gradua a carta e avança a barra de desempenho
+    // Apenas a nota 0 (De novo) recoloca a carta na fila para repetição na mesma sessão
+    const shouldGraduate = rating >= 1
 
     if (shouldGraduate) {
       await reviewService.saveReview(user.id, current.id, rating)

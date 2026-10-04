@@ -218,25 +218,32 @@ async function supabaseGetReviewsForDeck(_deckId: string, userId: string): Promi
 }
 
 async function supabaseGetDueCardIds(_deckId: string, userId: string, cardIds: string[]): Promise<string[]> {
+  if (!cardIds || cardIds.length === 0) return []
   const today = getStudyDayKey()
-  const { data } = await supabase!
-    .from('reviews')
-    .select('card_id')
-    .eq('user_id', userId)
-    .in('card_id', cardIds)
-    .lte('due_date', today)
 
-  const reviewedDue = new Set((data || []).map((r: { card_id: string }) => r.card_id))
-  const { data: allReviewed } = await supabase!
-    .from('reviews')
-    .select('card_id')
-    .eq('user_id', userId)
-    .in('card_id', cardIds)
+  try {
+    let query = supabase!
+      .from('reviews')
+      .select('card_id, due_date')
+      .eq('user_id', userId)
 
-  const allReviewedIds = new Set((allReviewed || []).map((r: { card_id: string }) => r.card_id))
-  const newCards = cardIds.filter(id => !allReviewedIds.has(id))
+    if (cardIds.length <= 100) {
+      query = query.in('card_id', cardIds)
+    }
 
-  return [...newCards, ...Array.from(reviewedDue)]
+    const { data, error } = await query
+    if (error) throw error
+
+    const reviewMap = new Map((data || []).map((r: any) => [r.card_id, r]))
+    return cardIds.filter(id => {
+      const rev = reviewMap.get(id)
+      if (!rev) return true // Card nunca revisado (novo)
+      return !rev.due_date || rev.due_date <= today
+    })
+  } catch (err) {
+    console.warn('[ReviewService] Erro ao buscar due cards, utilizando todos como fallback:', err)
+    return cardIds
+  }
 }
 
 async function supabaseGetGlobalDueCardIds(userId: string, cardIds: string[]): Promise<string[]> {
