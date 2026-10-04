@@ -61,7 +61,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
   }
 
   const ratingOptions: { value: Rating; label: string; sub: string; btnClass: string; icon: any }[] = [
-    { value: 0, label: 'De novo', sub: estimates[0], btnClass: 'btn-3d-red', icon: <RotateCcw size={16} /> },
+    { value: 0, label: 'Não Lembrei', sub: estimates[0], btnClass: 'btn-3d-red', icon: <RotateCcw size={16} /> },
     { value: 1, label: 'Difícil', sub: estimates[1], btnClass: 'btn-3d-orange', icon: <AlertCircle size={16} /> },
     { value: 2, label: 'Bom', sub: estimates[2], btnClass: 'btn-3d-blue', icon: <Check size={16} /> },
     { value: 3, label: 'Fácil', sub: estimates[3], btnClass: 'btn-3d-green', icon: <Zap size={16} className="fill-white" /> },
@@ -89,9 +89,6 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
             <div className="w-full flex items-center justify-between text-xs font-medium text-slate-500 shrink-0">
               <span className="flex items-center gap-1.5 text-blue-600 font-heading font-semibold">
                 <Sparkles size={15} /> Frente
-              </span>
-              <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-md text-xs font-heading font-semibold border border-blue-200/60 dark:border-blue-800">
-                Toque para virar 👆
               </span>
             </div>
             
@@ -136,8 +133,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
           >
             {/* Top Label */}
             <div className="w-full flex items-center justify-between text-xs font-heading font-semibold text-amber-600 dark:text-amber-400 shrink-0">
-              <span>💡 Resposta</span>
-              <span className="text-slate-400 font-normal text-xs font-sans">Classifique como foi</span>
+              <span className="flex items-center gap-1.5">💡 Resposta</span>
             </div>
 
             {/* Body Content */}
@@ -177,27 +173,32 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
       </div>
 
       {/* Botões Táteis de Classificação SM-2 */}
-      <div className="w-full mt-3 sm:mt-5 min-h-[56px] sm:min-h-[64px] flex items-center">
+      <div className="w-full mt-3 sm:mt-4 min-h-[56px] sm:min-h-[64px] flex items-center">
         {flipped ? (
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 w-full animate-pop-in">
-            {ratingOptions.map(opt => (
-              <button
-                key={opt.value}
-                onClick={() => handleRating(opt.value)}
-                className={`${opt.btnClass} py-2 px-1 sm:py-2.5 sm:px-2 flex flex-col items-center justify-center text-center gap-0.5 rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer`}
-              >
-                <div className="flex items-center justify-center gap-1 w-full">
-                  {opt.icon}
-                  <span className="text-[11px] sm:text-xs font-heading font-bold truncate">{opt.label}</span>
-                </div>
-                <span className="text-[10px] sm:text-[11px] font-medium opacity-85 leading-none">{opt.sub}</span>
-              </button>
-            ))}
+          <div className="w-full flex flex-col gap-2 animate-pop-in">
+            <div className="text-xs font-heading font-semibold text-slate-600 dark:text-slate-300 text-center tracking-wide">
+              Classifique como foi:
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5 w-full">
+              {ratingOptions.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => handleRating(opt.value)}
+                  className={`${opt.btnClass} py-2 px-1 sm:py-2.5 sm:px-2 flex flex-col items-center justify-center text-center gap-0.5 rounded-xl shadow-xs active:scale-95 transition-all cursor-pointer`}
+                >
+                  <div className="flex items-center justify-center gap-1 w-full">
+                    {opt.icon}
+                    <span className="text-[11px] sm:text-xs font-heading font-bold truncate">{opt.label}</span>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium opacity-85 leading-none">{opt.sub}</span>
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           <div className="w-full text-center text-slate-500 dark:text-slate-400 text-xs font-semibold flex items-center justify-center gap-2 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
             <Sparkles size={14} className="text-amber-500 shrink-0" />
-            <span>Toque no card para revelar a resposta</span>
+            <span>Toque no card para revelar a resposta e classificar</span>
           </div>
         )}
       </div>

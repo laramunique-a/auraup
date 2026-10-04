@@ -194,7 +194,7 @@ export function StudyPage() {
             <div className="grid grid-cols-4 gap-1.5 sm:gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
               <div className="text-center p-1.5 sm:p-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300">
                 <div className="font-black text-xs sm:text-sm">{sessionStats.ratingCounts[0]}</div>
-                <div className="text-[9px] sm:text-[10px] font-bold">De novo</div>
+                <div className="text-[9px] sm:text-[10px] font-bold">Não Lembrei</div>
               </div>
               <div className="text-center p-1.5 sm:p-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300">
                 <div className="font-black text-xs sm:text-sm">{sessionStats.ratingCounts[1]}</div>
@@ -284,8 +284,15 @@ export function StudyPage() {
         </span>
       </header>
 
+      {/* Título entre a barra de desempenho e o card */}
+      <div className="max-w-xl mx-auto w-full text-center pt-1.5 pb-0 sm:pt-2.5 shrink-0">
+        <h1 className="text-base sm:text-xl font-heading font-bold text-slate-800 dark:text-slate-100 tracking-tight">
+          Você se lembra dessa?
+        </h1>
+      </div>
+
       {/* Flashcard 3D */}
-      <main className="flex-1 flex items-center justify-center my-2 sm:my-4 w-full">
+      <main className="flex-1 flex items-center justify-center my-1.5 sm:my-3.5 w-full">
         {current && (
           <FlashCard
             key={current.id}
