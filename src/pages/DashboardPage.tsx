@@ -269,7 +269,6 @@ export function DashboardPage() {
       setSelectedFile(null)
       const fileInput = document.getElementById('anki-dashboard-import') as HTMLInputElement | null
       if (fileInput) fileInput.value = ''
-      await reload()
       await refreshStats()
     } catch (err: any) {
       show(err.message || 'Erro na importação.', 'error')

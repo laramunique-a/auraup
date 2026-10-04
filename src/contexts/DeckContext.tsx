@@ -35,7 +35,10 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
           return [deck.id, stats] as [string, DeckStats]
         })
       )
-      setStatsMap(Object.fromEntries(statsEntries))
+      setStatsMap(prev => ({
+        ...prev,
+        ...Object.fromEntries(statsEntries)
+      }))
     } catch (e) {
       console.error('Error loading stats:', e)
     }
@@ -53,7 +56,6 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     try {
       const data = await deckService.getDecks(user.id)
       setDecks(data)
-      // Carrega stats em segundo plano ou logo após os decks
       await loadStats(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erro ao carregar baralhos')
@@ -63,10 +65,15 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
   }, [user, loadStats])
 
   const refreshStats = useCallback(async () => {
-    if (decks.length > 0) {
-      await loadStats(decks)
+    if (!user?.id) return
+    try {
+      const currentDecks = await deckService.getDecks(user.id)
+      setDecks(currentDecks)
+      await loadStats(currentDecks)
+    } catch (e) {
+      console.error('Error refreshing stats:', e)
     }
-  }, [decks, loadStats])
+  }, [user?.id, loadStats])
 
   useEffect(() => {
     loadData()

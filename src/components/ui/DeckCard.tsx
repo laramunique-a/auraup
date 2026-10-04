@@ -83,11 +83,15 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
             <h3 className="font-heading font-semibold text-slate-800 dark:text-slate-100 text-base sm:text-lg leading-snug break-words">{deck.name}</h3>
             <div className="text-xs font-medium text-aura-text-muted flex items-center flex-wrap gap-2.5 mt-1.5">
               <span className="flex items-center gap-1">
-                <Layers size={13} /> <span className="font-semibold text-slate-700 dark:text-slate-200">{stats?.total || 0}</span> cards
+                <Layers size={13} /> <span className="font-semibold text-slate-700 dark:text-slate-200">{stats?.total ?? '...'}</span> cards
               </span>
-              {hasDue ? (
+              {!stats ? (
+                <span className="text-slate-400 font-medium flex items-center gap-1 text-[11px]">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" /> calculando...
+                </span>
+              ) : hasDue ? (
                 <span className="text-aura-orange font-semibold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md text-[11px]">
-                  🔥 <span className="font-bold">{stats?.due}</span> para revisar
+                  🔥 <span className="font-bold">{stats.due}</span> para revisar
                 </span>
               ) : (
                 <span className="text-aura-green font-medium flex items-center gap-1 text-[11px]">
@@ -184,11 +188,15 @@ export function DeckCard({ deck, stats, viewMode = 'grid', onDelete, onClick }: 
 
         <div className="flex items-center gap-3 text-xs font-medium text-aura-text-muted">
           <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">
-            <Layers size={14} className="text-aura-blue" /> <span className="text-slate-700 dark:text-slate-200 font-semibold">{stats?.total || 0}</span> cards
+            <Layers size={14} className="text-aura-blue" /> <span className="text-slate-700 dark:text-slate-200 font-semibold">{stats?.total ?? '...'}</span> cards
           </span>
-          {hasDue ? (
+          {!stats ? (
+            <span className="text-slate-400 font-medium flex items-center gap-1 text-xs">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" /> calculando...
+            </span>
+          ) : hasDue ? (
             <span className="text-aura-orange font-semibold flex items-center gap-1 bg-orange-50 dark:bg-orange-950/40 px-2 py-0.5 rounded-md">
-              🔥 <span className="font-bold">{stats?.due}</span> pendentes
+              🔥 <span className="font-bold">{stats.due}</span> pendentes
             </span>
           ) : (
             <span className="text-aura-green font-medium flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md">
