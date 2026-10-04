@@ -243,12 +243,12 @@ export function StudyPage() {
   return (
     <div className="min-h-[100dvh] bg-aura-bg flex flex-col justify-between p-3.5 sm:p-6 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] pt-[calc(env(safe-area-inset-top,0px)+8px)] relative overflow-x-hidden">
       
-      {/* Logo AuraUP no Desktop/Web (canto superior esquerdo harmonioso e sutil) */}
-      <div className="hidden md:flex items-center absolute top-3.5 left-5 lg:top-5 lg:left-8 select-none pointer-events-none opacity-85 hover:opacity-100 transition-opacity">
+      {/* Logo AuraUP no Desktop/Web (canto superior esquerdo harmonioso, nítido e responsivo) */}
+      <div className="hidden md:flex items-center absolute top-4 left-5 lg:top-5 lg:left-8 select-none pointer-events-none opacity-90 hover:opacity-100 transition-opacity">
         <img 
           src="/logo-login.png" 
           alt="AuraUP" 
-          className="h-8 lg:h-9 w-auto object-contain drop-shadow-xs" 
+          className="h-12 lg:h-14 w-auto object-contain drop-shadow-xs" 
         />
       </div>
 
@@ -294,11 +294,11 @@ export function StudyPage() {
       </header>
 
       {/* Logo AuraUP no PWA/Mobile (entre a barra de desempenho e o título) */}
-      <div className="flex md:hidden items-center justify-center pt-1 pb-0.5 shrink-0 select-none pointer-events-none">
+      <div className="flex md:hidden items-center justify-center pt-1.5 pb-0.5 shrink-0 select-none pointer-events-none">
         <img 
           src="/logo-login.png" 
           alt="AuraUP" 
-          className="h-6 w-auto object-contain opacity-85 drop-shadow-2xs" 
+          className="h-9 sm:h-10 w-auto object-contain opacity-90 drop-shadow-2xs" 
         />
       </div>
 
