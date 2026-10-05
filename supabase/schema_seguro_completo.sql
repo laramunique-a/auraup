@@ -471,4 +471,146 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- ==============================================================================
+-- 13. RPC: ADMIN CRIAR OU RESTAURAR ALUNO (admin_create_student)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.admin_create_student(
+  student_email TEXT,
+  student_password TEXT,
+  student_name TEXT,
+  student_level_id TEXT DEFAULT 'lvl_1',
+  student_xp INTEGER DEFAULT 0
+)
+RETURNS UUID AS $$
+DECLARE
+  target_user_id UUID;
+BEGIN
+  IF NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Apenas administradores podem cadastrar alunos.';
+  END IF;
+
+  -- 1. Verifica se o e-mail já existe em auth.users
+  SELECT id INTO target_user_id
+  FROM auth.users
+  WHERE LOWER(email) = LOWER(TRIM(student_email));
+
+  IF target_user_id IS NOT NULL THEN
+    -- Atualiza a senha no auth.users e garante metadados
+    UPDATE auth.users
+    SET encrypted_password = crypt(student_password, gen_salt('bf')),
+        email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+        raw_user_meta_data = jsonb_build_object('name', student_name),
+        updated_at = NOW()
+    WHERE id = target_user_id;
+
+    -- Garante / Restaura o perfil em public.profiles
+    INSERT INTO public.profiles (
+      id, email, full_name, nickname, role, level_id, xp, coins, streak, is_active, must_change_password, updated_at
+    ) VALUES (
+      target_user_id,
+      LOWER(TRIM(student_email)),
+      TRIM(student_name),
+      split_part(TRIM(student_name), ' ', 1),
+      'user',
+      student_level_id,
+      COALESCE(student_xp, 0),
+      0,
+      1,
+      true,
+      true,
+      NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      full_name = EXCLUDED.full_name,
+      nickname = EXCLUDED.nickname,
+      role = 'user',
+      level_id = EXCLUDED.level_id,
+      is_active = true,
+      must_change_password = true,
+      updated_at = NOW();
+
+    RETURN target_user_id;
+  ELSE
+    -- 2. Não existe: Cria do zero no auth.users
+    INSERT INTO auth.users (
+      instance_id,
+      id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at
+    ) VALUES (
+      '00000000-0000-0000-0000-000000000000',
+      gen_random_uuid(),
+      'authenticated',
+      'authenticated',
+      LOWER(TRIM(student_email)),
+      crypt(student_password, gen_salt('bf')),
+      NOW(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      jsonb_build_object('name', student_name),
+      NOW(),
+      NOW()
+    ) RETURNING id INTO target_user_id;
+
+    -- Cria o perfil no public.profiles
+    INSERT INTO public.profiles (
+      id, email, full_name, nickname, role, level_id, xp, coins, streak, is_active, must_change_password, created_at, updated_at
+    ) VALUES (
+      target_user_id,
+      LOWER(TRIM(student_email)),
+      TRIM(student_name),
+      split_part(TRIM(student_name), ' ', 1),
+      'user',
+      student_level_id,
+      COALESCE(student_xp, 0),
+      0,
+      1,
+      true,
+      true,
+      NOW(),
+      NOW()
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      full_name = EXCLUDED.full_name,
+      nickname = EXCLUDED.nickname,
+      role = 'user',
+      level_id = EXCLUDED.level_id,
+      is_active = true,
+      must_change_password = true,
+      updated_at = NOW();
+
+    RETURN target_user_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ==============================================================================
+-- 14. SINCRONIZAÇÃO DE USUÁRIOS ÓRFÃOS (Resgata perfis ausentes de auth.users)
+-- ==============================================================================
+INSERT INTO public.profiles (
+  id, email, full_name, nickname, role, level_id, xp, coins, streak, is_active, must_change_password
+)
+SELECT 
+  u.id,
+  u.email,
+  COALESCE(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1)),
+  split_part(COALESCE(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1)), ' ', 1),
+  CASE WHEN LOWER(u.email) = 'auraenglish7@gmail.com' THEN 'admin' ELSE 'user' END,
+  'lvl_1',
+  0,
+  0,
+  1,
+  true,
+  true
+FROM auth.users u
+LEFT JOIN public.profiles p ON p.id = u.id
+WHERE p.id IS NULL
+ON CONFLICT (id) DO NOTHING;
+
 
