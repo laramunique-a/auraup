@@ -122,6 +122,37 @@ CREATE POLICY "Apenas admin pode deletar perfis"
   TO authenticated
   USING (public.is_admin());
 
+-- Trava de segurança para impedir escalação de privilégios ou adulteração de status por não-admins
+CREATE OR REPLACE FUNCTION public.protect_profile_changes()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Se o usuário NÃO for administrador (ou seja, for um aluno ou usuário comum)
+  IF NOT public.is_admin() THEN
+    -- 1. Impede escalação de privilégio para admin
+    IF NEW.role IS DISTINCT FROM OLD.role THEN
+      RAISE EXCEPTION 'Apenas administradores podem alterar o nível de acesso (role).';
+    END IF;
+
+    -- 2. Impede que o aluno reative uma conta desativada pelo admin
+    IF NEW.is_active IS DISTINCT FROM OLD.is_active THEN
+      RAISE EXCEPTION 'Apenas administradores podem alterar o status de ativação da conta.';
+    END IF;
+
+    -- 3. Impede alteração de email pelo endpoint de profiles
+    IF NEW.email IS DISTINCT FROM OLD.email THEN
+      RAISE EXCEPTION 'Alteração de e-mail não permitida diretamente no perfil.';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_protect_profile_changes ON public.profiles;
+CREATE TRIGGER trg_protect_profile_changes
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW EXECUTE FUNCTION public.protect_profile_changes();
+
 -- Trigger para criar perfil automaticamente no primeiro login / cadastro
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
@@ -392,6 +423,11 @@ CREATE OR REPLACE FUNCTION public.add_user_reward(
 )
 RETURNS VOID AS $$
 BEGIN
+  -- Permite apenas que o próprio usuário receba seus pontos OU que um admin os conceda
+  IF auth.uid() != user_id AND NOT public.is_admin() THEN
+    RAISE EXCEPTION 'Não autorizado a alterar recompensas de outro usuário.';
+  END IF;
+
   UPDATE public.profiles
   SET 
     xp = GREATEST(0, xp + xp_to_add),

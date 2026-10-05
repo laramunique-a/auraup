@@ -41,7 +41,7 @@ export function ensureCleanLaunchData(): void {
     const ADMIN_ACCOUNT = {
       id: 'admin_professor_official',
       email: 'auraenglish7@gmail.com',
-      password: '@ura2026',
+      password: '',
       name: 'Professor Aura',
       nickname: 'Professor',
       role: 'admin',

@@ -29,7 +29,7 @@ const INITIAL_ACCOUNTS: UserAccount[] = [
   {
     id: 'admin_professor_official',
     email: 'auraenglish7@gmail.com',
-    password: '@ura2026',
+    password: '',
     name: 'Professor Aura',
     nickname: 'Professor',
     role: 'admin',
@@ -55,9 +55,8 @@ function getLocalAccounts(): UserAccount[] {
         parsed.unshift(INITIAL_ACCOUNTS[0])
         changed = true
       } else {
-        if (parsed[teacherIdx].role !== 'admin' || parsed[teacherIdx].password !== '@ura2026') {
+        if (parsed[teacherIdx].role !== 'admin') {
           parsed[teacherIdx].role = 'admin'
-          parsed[teacherIdx].password = '@ura2026'
           parsed[teacherIdx].is_active = true
           changed = true
         }
