@@ -103,11 +103,10 @@ export function DashboardPage() {
         const monday = new Date(now)
         monday.setDate(now.getDate() + diffToMonday)
         monday.setHours(0, 0, 0, 0)
-        const mondayIso = monday.toISOString()
         const mondayDayKey = getStudyDayKey(monday)
 
         const weeklyReviews = allReviews.filter((r: any) => {
-          if (r.last_reviewed && r.last_reviewed >= mondayIso) return true
+          if (r.last_reviewed && new Date(r.last_reviewed) >= monday) return true
           if (r.due_date && r.due_date >= mondayDayKey) return true
           return false
         })
@@ -688,7 +687,7 @@ export function DashboardPage() {
                     📅
                   </div>
                   <h3 className="text-xs font-heading font-bold text-slate-800 dark:text-white truncate">
-                    Dias Estudados (Heatmap)
+                    Constância Diária (Heatmap)
                   </h3>
                 </div>
                 <span className="text-[10px] font-heading font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800 shrink-0">
@@ -1101,7 +1100,7 @@ export function DashboardPage() {
           {/* Dias Estudados Heatmap */}
           <div className="card-3d p-5">
             <h2 className="text-sm font-heading font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-              <Calendar size={18} className="text-blue-600 dark:text-blue-400" /> Constância Diária
+              <Calendar size={18} className="text-blue-600 dark:text-blue-400" /> Constância Diária (Heatmap)
             </h2>
             <StudyHeatmap activity={activity} />
           </div>

@@ -20,7 +20,7 @@ interface SM2Result {
 function addDays(days: number): string {
   const date = new Date()
   date.setDate(date.getDate() + days)
-  return date.toISOString().split('T')[0]
+  return getStudyDayKey(date)
 }
 
 export function calculateSM2(rating: Rating, review: Partial<Review>): SM2Result {

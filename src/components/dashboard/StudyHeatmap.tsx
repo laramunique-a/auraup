@@ -18,11 +18,14 @@ export function StudyHeatmap({ activity }: StudyHeatmapProps) {
     let startOffset = firstDay.getDay() - 1 
     if (startOffset === -1) startOffset = 6 
 
+    const todayStr = getStudyDayKey()
     const days = []
     for (let i = 0; i < startOffset; i++) days.push(null)
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const dateStr = getStudyDayKey(new Date(year, month, d))
-      days.push({ dayNumber: d, date: dateStr, count: activity[dateStr] || 0 })
+      const isFuture = dateStr > todayStr
+      const count = isFuture ? 0 : (activity[dateStr] || 0)
+      days.push({ dayNumber: d, date: dateStr, count })
     }
     return days
   }, [viewDate, activity])

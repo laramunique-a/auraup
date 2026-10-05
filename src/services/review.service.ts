@@ -100,21 +100,24 @@ async function getActivity(userId: string): Promise<Record<string, number>> {
   const userSpecific = lsGetItem<Record<string, number>>(userKey) || {}
   const merged: Record<string, number> = { ...userSpecific, ...global }
 
-  // 2. Garante que se houver registro de ofensiva/data ativa, o dia tenha ao menos 1
+  const today = getStudyDayKey()
+
+  // 2. Garante que se houver registro de ofensiva/data ativa válida, o dia tenha ao menos 1
   try {
     const lastActive = localStorage.getItem('uply_last_active_date')
-    if (lastActive && /^\d{4}-\d{2}-\d{2}$/.test(lastActive)) {
+    if (lastActive && /^\d{4}-\d{2}-\d{2}$/.test(lastActive) && lastActive <= today) {
       merged[lastActive] = Math.max(merged[lastActive] || 0, 1)
     }
   } catch {}
 
-  // 3. Recupera de revisões locais antigas (uply_reviews)
+  // 3. Recupera de revisões locais antigas (uply_reviews) convertendo timestamp UTC para data local
   try {
     const localReviews = lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId || !r.user_id)
     for (const r of localReviews) {
       if (r.last_reviewed) {
-        const d = r.last_reviewed.split('T')[0]
-        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+        const parsedDate = new Date(r.last_reviewed)
+        const d = !isNaN(parsedDate.getTime()) ? getStudyDayKey(parsedDate) : r.last_reviewed.split('T')[0]
+        if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) {
           merged[d] = (merged[d] || 0) + 1
         }
       }
@@ -131,13 +134,13 @@ async function getActivity(userId: string): Promise<Record<string, number>> {
 
       if (cloudActivity && Array.isArray(cloudActivity)) {
         for (const row of cloudActivity) {
-          if (row.date) {
+          if (row.date && row.date <= today) {
             merged[row.date] = Math.max(merged[row.date] || 0, row.count || 0)
           }
         }
       }
 
-      // Consulta também a tabela reviews para recuperar datas de estudo passadas
+      // Consulta também a tabela reviews para recuperar datas de estudo passadas no fuso horário local
       const { data: cloudReviews } = await supabase
         .from('reviews')
         .select('last_reviewed')
@@ -146,19 +149,32 @@ async function getActivity(userId: string): Promise<Record<string, number>> {
       if (cloudReviews && Array.isArray(cloudReviews)) {
         for (const r of cloudReviews) {
           if (r.last_reviewed) {
-            const d = r.last_reviewed.split('T')[0]
-            if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+            const parsedDate = new Date(r.last_reviewed)
+            const d = !isNaN(parsedDate.getTime()) ? getStudyDayKey(parsedDate) : r.last_reviewed.split('T')[0]
+            if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) {
               merged[d] = Math.max(merged[d] || 0, 1)
             }
           }
         }
       }
+
+      // Remove no banco de dados qualquer data futura incorreta salva anteriormente por bug de fuso UTC
+      try {
+        await supabase.from('activity').delete().eq('user_id', userId).gt('date', today)
+      } catch {}
     } catch (e) {
       console.warn('[Activity] Usando dados locais como fallback:', e)
     }
   }
 
-  // Atualiza cache local unificado
+  // 5. Expurgar quaisquer datas futuras residuais no cache local
+  for (const k of Object.keys(merged)) {
+    if (k > today) {
+      delete merged[k]
+    }
+  }
+
+  // Atualiza cache local unificado e limpo
   lsSetItem(globalKey, merged)
   lsSetItem(userKey, merged)
   return merged
