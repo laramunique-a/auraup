@@ -46,20 +46,21 @@ async function localGetGlobalDueCardIds(userId: string, cardIds: string[]): Prom
 async function logActivity(userId: string, count: number = 1): Promise<Record<string, number>> {
   if (!userId) return {}
   const today = getStudyDayKey()
-  const globalKey = LS_ACTIVITY + '_global'
   const userKey = LS_ACTIVITY + '_' + userId
 
-  // 1. Atualiza dados no localStorage (Instantâneo no PWA e Web)
-  const currentMap = lsGetItem<Record<string, number>>(globalKey) || {}
+  // 1. Atualiza dados no localStorage estritamente para o perfil deste usuário
   const userSpecific = lsGetItem<Record<string, number>>(userKey) || {}
-  const merged = { ...userSpecific, ...currentMap }
-  merged[today] = (merged[today] || 0) + count
-  lsSetItem(globalKey, merged)
-  lsSetItem(userKey, merged)
+  userSpecific[today] = (userSpecific[today] || 0) + count
+  lsSetItem(userKey, userSpecific)
+
+  // Remove qualquer cache global legado para evitar contaminação entre perfis
+  try {
+    localStorage.removeItem(LS_ACTIVITY + '_global')
+  } catch {}
 
   // 2. Dispara evento para atualizar o Heatmap na tela em tempo real
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('uply_activity_sync', { detail: { date: today, count: merged[today] } }))
+    window.dispatchEvent(new CustomEvent('uply_activity_sync', { detail: { date: today, count: userSpecific[today] } }))
   }
 
   // 3. Sincroniza com Supabase se disponível
@@ -75,44 +76,100 @@ async function logActivity(userId: string, count: number = 1): Promise<Record<st
       if (!selectErr && existing) {
         await supabase
           .from('activity')
-          .update({ count: Math.max(existing.count || 0, merged[today]) })
+          .update({ count: Math.max(existing.count || 0, userSpecific[today]) })
           .eq('id', existing.id)
       } else {
         await supabase
           .from('activity')
-          .upsert({ user_id: userId, date: today, count: merged[today] }, { onConflict: 'user_id,date' })
+          .upsert({ user_id: userId, date: today, count: userSpecific[today] }, { onConflict: 'user_id,date' })
       }
     } catch (e) {
       console.warn('[ActivitySync] Salvo localmente, pendente nuvem:', e)
     }
   }
 
-  return merged
+  return userSpecific
 }
 
 async function getActivity(userId: string): Promise<Record<string, number>> {
   if (!userId) return {}
-  const globalKey = LS_ACTIVITY + '_global'
   const userKey = LS_ACTIVITY + '_' + userId
 
-  // 1. Recupera do cache local
-  const global = lsGetItem<Record<string, number>>(globalKey) || {}
-  const userSpecific = lsGetItem<Record<string, number>>(userKey) || {}
-  const merged: Record<string, number> = { ...userSpecific, ...global }
-
-  const today = getStudyDayKey()
-
-  // 2. Garante que se houver registro de ofensiva/data ativa válida, o dia tenha ao menos 1
+  // Limpa qualquer cache global legado para que perfis nunca compartilhem dados de outros
   try {
-    const lastActive = localStorage.getItem('uply_last_active_date')
-    if (lastActive && /^\d{4}-\d{2}-\d{2}$/.test(lastActive) && lastActive <= today) {
-      merged[lastActive] = Math.max(merged[lastActive] || 0, 1)
-    }
+    localStorage.removeItem(LS_ACTIVITY + '_global')
   } catch {}
 
-  // 3. Recupera de revisões locais antigas (uply_reviews) convertendo timestamp UTC para data local
+  const userSpecific = lsGetItem<Record<string, number>>(userKey) || {}
+  const merged: Record<string, number> = { ...userSpecific }
+  const today = getStudyDayKey()
+
+  // 1. Modo Supabase: consulta revisões reais do usuário
+  if (!isLocalMode && supabase) {
+    try {
+      const { data: cloudReviews } = await supabase
+        .from('reviews')
+        .select('last_reviewed')
+        .eq('user_id', userId)
+
+      const hasRealReviews = cloudReviews && cloudReviews.length > 0
+
+      // Se o aluno nunca estudou um card (perfil novo), sua constância deve ser totalmente zerada
+      if (!hasRealReviews) {
+        lsSetItem(userKey, {})
+        try {
+          await supabase.from('activity').delete().eq('user_id', userId)
+        } catch {}
+        return {}
+      }
+
+      // Se tem revisões, recupera as atividades reais registradas no banco para este usuário
+      const { data: cloudActivity } = await supabase
+        .from('activity')
+        .select('date, count')
+        .eq('user_id', userId)
+
+      const cloudMap: Record<string, number> = {}
+
+      if (cloudActivity && Array.isArray(cloudActivity)) {
+        for (const row of cloudActivity) {
+          if (row.date && row.date <= today) {
+            cloudMap[row.date] = Math.max(cloudMap[row.date] || 0, row.count || 0)
+          }
+        }
+      }
+
+      if (cloudReviews && Array.isArray(cloudReviews)) {
+        for (const r of cloudReviews) {
+          if (r.last_reviewed) {
+            const parsedDate = new Date(r.last_reviewed)
+            const d = !isNaN(parsedDate.getTime()) ? getStudyDayKey(parsedDate) : r.last_reviewed.split('T')[0]
+            if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) {
+              cloudMap[d] = Math.max(cloudMap[d] || 0, 1)
+            }
+          }
+        }
+      }
+
+      // Remove no banco de dados qualquer data futura incorreta
+      try {
+        await supabase.from('activity').delete().eq('user_id', userId).gt('date', today)
+      } catch {}
+
+      lsSetItem(userKey, cloudMap)
+      return cloudMap
+    } catch (e) {
+      console.warn('[Activity] Usando dados locais como fallback:', e)
+    }
+  }
+
+  // 2. Modo Local (ou fallback offline): recupera apenas revisões que pertencem estritamente a este user_id
   try {
-    const localReviews = lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId || !r.user_id)
+    const localReviews = lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId)
+    if (localReviews.length === 0 && Object.keys(userSpecific).length > 0) {
+      lsSetItem(userKey, {})
+      return {}
+    }
     for (const r of localReviews) {
       if (r.last_reviewed) {
         const parsedDate = new Date(r.last_reviewed)
@@ -124,58 +181,13 @@ async function getActivity(userId: string): Promise<Record<string, number>> {
     }
   } catch {}
 
-  // 4. Se estiver em modo Supabase, faz merge bidirecional com a tabela activity e reviews da nuvem
-  if (!isLocalMode && supabase) {
-    try {
-      const { data: cloudActivity } = await supabase
-        .from('activity')
-        .select('date, count')
-        .eq('user_id', userId)
-
-      if (cloudActivity && Array.isArray(cloudActivity)) {
-        for (const row of cloudActivity) {
-          if (row.date && row.date <= today) {
-            merged[row.date] = Math.max(merged[row.date] || 0, row.count || 0)
-          }
-        }
-      }
-
-      // Consulta também a tabela reviews para recuperar datas de estudo passadas no fuso horário local
-      const { data: cloudReviews } = await supabase
-        .from('reviews')
-        .select('last_reviewed')
-        .eq('user_id', userId)
-
-      if (cloudReviews && Array.isArray(cloudReviews)) {
-        for (const r of cloudReviews) {
-          if (r.last_reviewed) {
-            const parsedDate = new Date(r.last_reviewed)
-            const d = !isNaN(parsedDate.getTime()) ? getStudyDayKey(parsedDate) : r.last_reviewed.split('T')[0]
-            if (d && /^\d{4}-\d{2}-\d{2}$/.test(d) && d <= today) {
-              merged[d] = Math.max(merged[d] || 0, 1)
-            }
-          }
-        }
-      }
-
-      // Remove no banco de dados qualquer data futura incorreta salva anteriormente por bug de fuso UTC
-      try {
-        await supabase.from('activity').delete().eq('user_id', userId).gt('date', today)
-      } catch {}
-    } catch (e) {
-      console.warn('[Activity] Usando dados locais como fallback:', e)
-    }
-  }
-
-  // 5. Expurgar quaisquer datas futuras residuais no cache local
+  // 3. Expurgar quaisquer datas futuras residuais no cache local
   for (const k of Object.keys(merged)) {
     if (k > today) {
       delete merged[k]
     }
   }
 
-  // Atualiza cache local unificado e limpo
-  lsSetItem(globalKey, merged)
   lsSetItem(userKey, merged)
   return merged
 }

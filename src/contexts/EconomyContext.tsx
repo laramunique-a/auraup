@@ -1,5 +1,4 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
-import { reviewService } from '../services/review.service'
 
 export interface EconomyState {
   xp: number
@@ -111,18 +110,17 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     try {
       const today = getTodayString()
       const yesterday = getYesterdayString()
-      const lastActive = localStorage.getItem(LAST_ACTIVE_KEY)
 
-      // Registra presença no Heatmap para o dia de hoje
+      let activeKey = LAST_ACTIVE_KEY
       try {
         const rawUser = localStorage.getItem('uply_user')
         if (rawUser) {
           const u = JSON.parse(rawUser)
-          if (u?.id) {
-            reviewService.logActivity(u.id, 1)
-          }
+          if (u?.id) activeKey = `${LAST_ACTIVE_KEY}_${u.id}`
         }
       } catch {}
+
+      const lastActive = localStorage.getItem(activeKey)
 
       if (lastActive === today) {
         // Já acessou hoje, mantém o streak atual garantindo ao menos 1
@@ -132,20 +130,20 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
 
       if (lastActive === yesterday) {
         // Acesso consecutivo! Incrementa o streak
-        localStorage.setItem(LAST_ACTIVE_KEY, today)
+        localStorage.setItem(activeKey, today)
         setStreak(prev => Math.max(1, prev + 1))
         return
       }
 
       // Se é o primeiro registro
       if (!lastActive) {
-        localStorage.setItem(LAST_ACTIVE_KEY, today)
+        localStorage.setItem(activeKey, today)
         setStreak(prev => Math.max(1, prev))
         return
       }
 
       // Se passou mais de um dia sem acesso, reinicia a ofensiva em 1
-      localStorage.setItem(LAST_ACTIVE_KEY, today)
+      localStorage.setItem(activeKey, today)
       setStreak(1)
     } catch (e) {
       console.error('Erro ao computar streak diário:', e)

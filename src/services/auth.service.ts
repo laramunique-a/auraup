@@ -529,6 +529,7 @@ export const authService = {
   async signOut(): Promise<void> {
     localStorage.removeItem('uply_user')
     localStorage.removeItem('uply_economy_state')
+    localStorage.removeItem('uply_activity_global')
     if (!isLocalMode && supabase) {
       try {
         await supabase.auth.signOut()
