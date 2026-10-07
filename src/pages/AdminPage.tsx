@@ -197,63 +197,53 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
       // Tenta registrar no Supabase primeiro para permitir acesso de qualquer aparelho/navegador
       if (supabase) {
-        // 1. RPC oficial de Administrador
+        // 1. Prioridade absoluta: SignUp nativo oficial do Supabase GoTrue
+        // (Garante encriptação segura, tokens preenchidos e NUNCA corrompe auth.users)
         try {
-          const { data: rpcUserId, error: rpcErr } = await supabase.rpc('admin_create_student', {
-            student_email: trimmedEmail,
-            student_password: trimmedPassword,
-            student_name: trimmedName,
-            student_level_id: selectedLevelId || 'lvl_1',
-            student_xp: initialXP
+          const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+            auth: { persistSession: false, autoRefreshToken: false }
           })
-          if (!rpcErr && rpcUserId) {
-            createdUserId = rpcUserId
+          const { data: signUpData, error: signUpErr } = await tempClient.auth.signUp({
+            email: trimmedEmail,
+            password: trimmedPassword,
+            options: {
+              data: {
+                name: trimmedName,
+              }
+            }
+          })
+          if (signUpData?.user?.id) {
+            createdUserId = signUpData.user.id
+          } else if (signUpErr && (signUpErr.message.includes('already registered') || signUpErr.message.includes('already exist'))) {
+            // Se o usuário já existia no Auth, busca id existente para restaurar/atualizar
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('id')
+              .eq('email', trimmedEmail)
+              .maybeSingle()
+            if (prof?.id) {
+              createdUserId = prof.id
+            }
           }
         } catch {
-          // Fallback caso RPC não responda
+          // Fallback
         }
 
-        // 2. Fallback via Edge Function
+        // 2. Fallback de restauração via RPC caso signUp indique que já existia
         if (!createdUserId) {
           try {
-            const { data, error } = await supabase.functions.invoke('create-user', {
-              body: { 
-                email: trimmedEmail, 
-                password: trimmedPassword, 
-                name: trimmedName,
-                level_id: selectedLevelId || undefined,
-                xp: initialXP,
-                must_change_password: true
-              }
+            const { data: rpcUserId, error: rpcErr } = await supabase.rpc('admin_create_student', {
+              student_email: trimmedEmail,
+              student_password: trimmedPassword,
+              student_name: trimmedName,
+              student_level_id: selectedLevelId || 'lvl_1',
+              student_xp: initialXP
             })
-            if (!error && !data?.error && data?.user?.id) {
-              createdUserId = data.user.id
+            if (!rpcErr && rpcUserId) {
+              createdUserId = rpcUserId
             }
           } catch {
-            // Fallback
-          }
-        }
-
-        // 3. Fallback via SignUp
-        if (!createdUserId) {
-          try {
-            const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
-              auth: { persistSession: false, autoRefreshToken: false }
-            })
-            const { data: signUpData } = await tempClient.auth.signUp({
-              email: trimmedEmail,
-              password: trimmedPassword,
-              options: {
-                data: {
-                  name: trimmedName,
-                }
-              }
-            })
-            if (signUpData?.user?.id) {
-              createdUserId = signUpData.user.id
-            }
-          } catch {
-            // Fallback
+            // Fallback caso RPC não responda
           }
         }
 

@@ -196,12 +196,14 @@ export const authService = {
           return user
         }
 
-        if (error && error.message.includes('Invalid login credentials')) {
-          // Verifica se existe conta local antes de lançar erro
-          const accounts = getLocalAccounts()
-          const localAcc = accounts.find(a => a.email.toLowerCase() === email)
-          if (!localAcc) {
-            throw new Error('E-mail ou senha incorretos.')
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            // Verifica se existe conta local antes de lançar erro de senha
+            const accounts = getLocalAccounts()
+            const localAcc = accounts.find(a => a.email.toLowerCase() === email)
+            if (!localAcc) {
+              throw new Error('E-mail ou senha incorretos.')
+            }
           }
         }
       } catch (sbErr: any) {
@@ -539,27 +541,38 @@ export const authService = {
    * Valida se a sessão do usuário ainda é válida (conta existe e não está desativada)
    */
   async validateSession(userId: string): Promise<boolean> {
-    if (isLocalMode || !supabase) {
+    if (!userId) return false
+
+    // 1. Usuário de sessão local
+    if (userId.startsWith('user_') || userId.startsWith('admin_')) {
       const accounts = getLocalAccounts()
       const account = accounts.find(a => a.id === userId)
-      return !!account && account.is_active !== false
-    }
-
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('id, is_active')
-        .eq('id', userId)
-        .maybeSingle()
-
-      if (error || !profile || profile.is_active === false) {
+      if (account && account.is_active === false) {
         return false
       }
       return true
-    } catch {
-      // Em caso de instabilidade de rede temporária, preserva
-      return true
     }
+
+    // 2. Usuário de sessão Supabase (UUID)
+    if (supabase) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, is_active')
+          .eq('id', userId)
+          .maybeSingle()
+
+        // SÓ invalida se o perfil foi explicitamente retornado e marcado como inativo
+        if (profile && profile.is_active === false) {
+          return false
+        }
+        return true
+      } catch {
+        return true
+      }
+    }
+
+    return true
   },
 
   /**
