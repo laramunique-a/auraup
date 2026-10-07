@@ -187,111 +187,113 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
     setCreating(true)
     try {
-      if (isLocalMode || !supabase) {
-        const localLevels = getLocalAdminLevels()
-        const selectedLvl = localLevels.find(l => l.id === selectedLevelId) || localLevels[0]
-        const initialXP = selectedLvl ? (selectedLvl.min_xp || 0) : 0
-
-        const newUser = await authService.adminRegisterStudent({
-          name: newName.trim(),
-          email: newEmail.trim(),
-          initialPassword: newInitialPassword.trim(),
-          level_id: selectedLvl?.id || 'lvl_1',
-          level: selectedLvl,
-          initialXP
-        })
-
-        const currentList = getLocalAdminUsers()
-        currentList.unshift(newUser)
-        saveLocalAdminUsers(currentList)
-        setUsers(currentList)
-        setActiveModal(null)
-        setNewEmail('')
-        setNewName('')
-        setNewInitialPassword('aura123')
-        setSelectedLevelId('')
-        show(`Aluno cadastrado com sucesso com ${initialXP} XP inicial!`, 'success')
-        return
-      }
-
-      const selectedLvl = levels.find(l => l.id === selectedLevelId)
+      const selectedLvl = levels.find(l => l.id === selectedLevelId) || getLocalAdminLevels().find(l => l.id === selectedLevelId)
       const initialXP = selectedLvl ? (selectedLvl.min_xp || 0) : 0
+      const trimmedEmail = newEmail.trim().toLowerCase()
+      const trimmedName = newName.trim()
+      const trimmedPassword = newInitialPassword.trim() || 'aura123'
 
       let createdUserId: string | null = null
 
-      // 1. Prioridade: Criação / Restauração direta via RPC oficial de Administrador
-      try {
-        const { data: rpcUserId, error: rpcErr } = await supabase.rpc('admin_create_student', {
-          student_email: newEmail.trim(),
-          student_password: newInitialPassword.trim() || 'aura123',
-          student_name: newName.trim(),
-          student_level_id: selectedLevelId || 'lvl_1',
-          student_xp: initialXP
-        })
-        if (!rpcErr && rpcUserId) {
-          createdUserId = rpcUserId
-        }
-      } catch {
-        // Fallback caso a RPC ainda não esteja instalada no Supabase
-      }
-
-      // 2. Fallback via Edge Function
-      if (!createdUserId) {
+      // Tenta registrar no Supabase primeiro para permitir acesso de qualquer aparelho/navegador
+      if (supabase) {
+        // 1. RPC oficial de Administrador
         try {
-          const { data, error } = await supabase.functions.invoke('create-user', {
-            body: { 
-              email: newEmail.trim(), 
-              password: newInitialPassword.trim() || 'aura123', 
-              name: newName.trim(),
-              level_id: selectedLevelId || undefined,
-              xp: initialXP,
-              must_change_password: true
-            }
+          const { data: rpcUserId, error: rpcErr } = await supabase.rpc('admin_create_student', {
+            student_email: trimmedEmail,
+            student_password: trimmedPassword,
+            student_name: trimmedName,
+            student_level_id: selectedLevelId || 'lvl_1',
+            student_xp: initialXP
           })
-          if (!error && !data?.error && data?.user?.id) {
-            createdUserId = data.user.id
+          if (!rpcErr && rpcUserId) {
+            createdUserId = rpcUserId
           }
         } catch {
-          // Fallback
+          // Fallback caso RPC não responda
         }
-      }
 
-      // 3. Fallback via SignUp temporário
-      if (!createdUserId) {
-        const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
-          auth: { persistSession: false, autoRefreshToken: false }
-        })
-        const { data: signUpData, error: signUpErr } = await tempClient.auth.signUp({
-          email: newEmail.trim(),
-          password: newInitialPassword.trim() || 'aura123',
-          options: {
-            data: {
-              name: newName.trim(),
+        // 2. Fallback via Edge Function
+        if (!createdUserId) {
+          try {
+            const { data, error } = await supabase.functions.invoke('create-user', {
+              body: { 
+                email: trimmedEmail, 
+                password: trimmedPassword, 
+                name: trimmedName,
+                level_id: selectedLevelId || undefined,
+                xp: initialXP,
+                must_change_password: true
+              }
+            })
+            if (!error && !data?.error && data?.user?.id) {
+              createdUserId = data.user.id
             }
+          } catch {
+            // Fallback
           }
-        })
-        if (signUpErr) {
-          if (signUpErr.message.includes('User already registered') || signUpErr.message.includes('already registered')) {
-            throw new Error('Este aluno já possui cadastro no Supabase Auth. Execute o script de sincronização SQL no painel do Supabase para restaurá-lo na lista de alunos.')
-          }
-          throw signUpErr
         }
-        if (signUpData?.user?.id) {
-          createdUserId = signUpData.user.id
+
+        // 3. Fallback via SignUp
+        if (!createdUserId) {
+          try {
+            const tempClient = createClient(supabaseUrl, supabaseAnonKey, {
+              auth: { persistSession: false, autoRefreshToken: false }
+            })
+            const { data: signUpData } = await tempClient.auth.signUp({
+              email: trimmedEmail,
+              password: trimmedPassword,
+              options: {
+                data: {
+                  name: trimmedName,
+                }
+              }
+            })
+            if (signUpData?.user?.id) {
+              createdUserId = signUpData.user.id
+            }
+          } catch {
+            // Fallback
+          }
+        }
+
+        // Garante a gravação do perfil no banco Supabase
+        if (createdUserId) {
+          try {
+            await supabase.from('profiles').upsert({ 
+              id: createdUserId,
+              email: trimmedEmail,
+              full_name: trimmedName,
+              nickname: trimmedName.split(' ')[0],
+              role: 'user',
+              level_id: selectedLevelId || 'lvl_1',
+              xp: initialXP,
+              must_change_password: true,
+              is_active: true
+            })
+          } catch {
+            // ignore
+          }
         }
       }
 
-      if (createdUserId) {
-        await supabase.from('profiles').upsert({ 
-          id: createdUserId,
-          email: newEmail.trim(),
-          full_name: newName.trim(),
-          nickname: newName.trim().split(' ')[0],
-          role: 'user',
-          level_id: selectedLevelId || undefined,
-          xp: initialXP,
-          must_change_password: true
+      // Garante também o cadastro e cache no armazenamento local (para modo offline e lista rápida)
+      try {
+        const newUser = await authService.adminRegisterStudent({
+          name: trimmedName,
+          email: trimmedEmail,
+          initialPassword: trimmedPassword,
+          level_id: selectedLevelId || 'lvl_1',
+          level: selectedLvl,
+          initialXP
         })
+        const currentList = getLocalAdminUsers()
+        if (!currentList.some(u => u.email.toLowerCase() === trimmedEmail)) {
+          currentList.unshift(newUser)
+          saveLocalAdminUsers(currentList)
+        }
+      } catch {
+        // Se já constava localmente, mantém
       }
 
       setActiveModal(null)

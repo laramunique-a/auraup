@@ -122,86 +122,125 @@ export const authService = {
       throw new Error('Preencha seu e-mail e sua senha.')
     }
 
-    // Modo Local
-    if (isLocalMode || !supabase) {
-      const accounts = getLocalAccounts()
-      const account = accounts.find(a => a.email.toLowerCase() === email)
+    // 1. Tenta autenticação via Supabase (permite acesso em múltiplos dispositivos e mobile)
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        if (!error && data?.user) {
+          const u = data.user
+          let { data: profile } = await supabase
+            .from('profiles')
+            .select('*, level:levels(*)')
+            .eq('id', u.id)
+            .maybeSingle()
 
-      if (!account) {
-        throw new Error('E-mail não cadastrado. Solicite seu acesso ao administrador.')
-      }
+          // Auto-cura de perfil caso ainda não tenha sido gerado
+          if (!profile) {
+            const newProfile = {
+              id: u.id,
+              email: u.email || email,
+              full_name: u.user_metadata?.name || email.split('@')[0],
+              nickname: u.user_metadata?.name?.split(' ')[0] || email.split('@')[0],
+              role: email === 'auraenglish7@gmail.com' ? 'admin' : 'user',
+              avatar_id: 'avatar_1',
+              xp: 0,
+              coins: 0,
+              streak: 0,
+              is_active: true,
+              must_change_password: email !== 'auraenglish7@gmail.com'
+            }
+            try {
+              await supabase.from('profiles').upsert(newProfile)
+              const { data: healed } = await supabase
+                .from('profiles')
+                .select('*, level:levels(*)')
+                .eq('id', u.id)
+                .maybeSingle()
+              profile = healed || (newProfile as any)
+            } catch {
+              profile = newProfile as any
+            }
+          }
 
-      if (account.password !== password) {
-        throw new Error('Senha incorreta. Verifique e tente novamente.')
-      }
+          if (profile && profile.is_active === false) {
+            await supabase.auth.signOut()
+            throw new Error('Esta conta de aluno está desativada. Solicite seu acesso ao administrador.')
+          }
 
-      if (!account.is_active) {
-        throw new Error('Esta conta de aluno está desativada.')
-      }
+          const user: User = {
+            id: u.id,
+            email: u.email!,
+            name: profile?.full_name || u.user_metadata?.name || email.split('@')[0],
+            nickname: profile?.nickname || email.split('@')[0],
+            role: profile?.role || 'user',
+            avatar_id: profile?.avatar_id || 'avatar_1',
+            xp: profile?.xp || 0,
+            coins: profile?.coins || 0,
+            streak: profile?.streak || 0,
+            level_id: profile?.level_id,
+            level: profile?.level,
+            is_active: profile?.is_active ?? true,
+            must_change_password: profile?.must_change_password ?? false,
+          }
 
-      const user = toUser(account)
-      localStorage.setItem('uply_user', JSON.stringify(user))
-      
-      // Sincroniza economia local do usuário logado
-      const ecoState = {
-        xp: user.xp,
-        coins: user.coins,
-        streak: user.streak,
-      }
-      localStorage.setItem('uply_economy_state', JSON.stringify(ecoState))
-      window.dispatchEvent(new CustomEvent('uply_economy_sync'))
+          localStorage.setItem('uply_user', JSON.stringify(user))
 
-      return user
-    }
+          const ecoState = {
+            xp: user.xp,
+            coins: user.coins,
+            streak: user.streak,
+          }
+          localStorage.setItem('uply_economy_state', JSON.stringify(ecoState))
+          window.dispatchEvent(new CustomEvent('uply_economy_sync'))
 
-    // Modo Supabase
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        if (error.message.includes('Invalid login credentials')) {
-          throw new Error('E-mail ou senha incorretos.')
+          return user
         }
-        throw new Error(error.message)
+
+        if (error && error.message.includes('Invalid login credentials')) {
+          // Verifica se existe conta local antes de lançar erro
+          const accounts = getLocalAccounts()
+          const localAcc = accounts.find(a => a.email.toLowerCase() === email)
+          if (!localAcc) {
+            throw new Error('E-mail ou senha incorretos.')
+          }
+        }
+      } catch (sbErr: any) {
+        if (sbErr.message === 'E-mail ou senha incorretos.' || sbErr.message.includes('desativada')) {
+          throw sbErr
+        }
+        // Em caso de falha de conexão com Supabase, tenta o login local abaixo
       }
-
-      const u = data.user
-      const { data: profile, error: profileErr } = await supabase
-        .from('profiles')
-        .select('*, level:levels(*)')
-        .eq('id', u.id)
-        .maybeSingle()
-
-      if (profileErr || !profile) {
-        await supabase.auth.signOut()
-        throw new Error('Esta conta de aluno não existe mais ou foi excluída pela administração.')
-      }
-
-      if (profile.is_active === false) {
-        await supabase.auth.signOut()
-        throw new Error('Este acesso está desativado. Entre em contato com a administração.')
-      }
-
-      const user: User = {
-        id: u.id,
-        email: u.email!,
-        name: profile.full_name || u.user_metadata?.name || email.split('@')[0],
-        nickname: profile.nickname || email.split('@')[0],
-        role: profile.role || 'user',
-        avatar_id: profile.avatar_id || 'avatar_1',
-        xp: profile.xp || 0,
-        coins: profile.coins || 0,
-        streak: profile.streak || 0,
-        level_id: profile.level_id,
-        level: profile.level,
-        is_active: profile.is_active,
-        must_change_password: profile.must_change_password ?? false,
-      }
-
-      localStorage.setItem('uply_user', JSON.stringify(user))
-      return user
-    } catch (err: any) {
-      throw new Error(err.message || 'Falha ao autenticar.')
     }
+
+    // 2. Modo Local (localStorage) / Fallback offline
+    const accounts = getLocalAccounts()
+    const account = accounts.find(a => a.email.toLowerCase() === email)
+
+    if (!account) {
+      throw new Error('E-mail não cadastrado. Solicite seu acesso ao administrador.')
+    }
+
+    if (account.password !== password) {
+      throw new Error('Senha incorreta. Verifique e tente novamente.')
+    }
+
+    if (!account.is_active) {
+      throw new Error('Esta conta de aluno está desativada.')
+    }
+
+    const user = toUser(account)
+    localStorage.setItem('uply_user', JSON.stringify(user))
+    
+    // Sincroniza economia local do usuário logado
+    const ecoState = {
+      xp: user.xp,
+      coins: user.coins,
+      streak: user.streak,
+    }
+    localStorage.setItem('uply_economy_state', JSON.stringify(ecoState))
+    window.dispatchEvent(new CustomEvent('uply_economy_sync'))
+
+    return user
   },
 
   /**

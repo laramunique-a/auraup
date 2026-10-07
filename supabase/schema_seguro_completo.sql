@@ -14,9 +14,12 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
+  RETURN (
+    COALESCE(auth.jwt()->>'email', '') = 'auraenglish7@gmail.com'
+    OR EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -495,10 +498,17 @@ BEGIN
   WHERE LOWER(email) = LOWER(TRIM(student_email));
 
   IF target_user_id IS NOT NULL THEN
-    -- Atualiza a senha no auth.users e garante metadados
+    -- Atualiza a senha no auth.users e garante metadados sem tokens nulos
     UPDATE auth.users
     SET encrypted_password = crypt(student_password, gen_salt('bf')),
         email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+        confirmation_token = COALESCE(confirmation_token, ''),
+        recovery_token = COALESCE(recovery_token, ''),
+        email_change_token_new = COALESCE(email_change_token_new, ''),
+        email_change = COALESCE(email_change, ''),
+        phone_change = COALESCE(phone_change, ''),
+        phone_change_token = COALESCE(phone_change_token, ''),
+        reauthentication_token = COALESCE(reauthentication_token, ''),
         raw_user_meta_data = jsonb_build_object('name', student_name),
         updated_at = NOW()
     WHERE id = target_user_id;
@@ -531,7 +541,7 @@ BEGIN
 
     RETURN target_user_id;
   ELSE
-    -- 2. Não existe: Cria do zero no auth.users
+    -- 2. Não existe: Cria do zero no auth.users preenchendo todos os tokens obrigatórios
     INSERT INTO auth.users (
       instance_id,
       id,
@@ -543,7 +553,14 @@ BEGIN
       raw_app_meta_data,
       raw_user_meta_data,
       created_at,
-      updated_at
+      updated_at,
+      confirmation_token,
+      recovery_token,
+      email_change_token_new,
+      email_change,
+      phone_change,
+      phone_change_token,
+      reauthentication_token
     ) VALUES (
       '00000000-0000-0000-0000-000000000000',
       gen_random_uuid(),
@@ -555,7 +572,14 @@ BEGIN
       '{"provider":"email","providers":["email"]}'::jsonb,
       jsonb_build_object('name', student_name),
       NOW(),
-      NOW()
+      NOW(),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      ''
     ) RETURNING id INTO target_user_id;
 
     -- Cria o perfil no public.profiles
@@ -591,7 +615,27 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ==============================================================================
--- 14. SINCRONIZAÇÃO DE USUÁRIOS ÓRFÃOS (Resgata perfis ausentes de auth.users)
+-- 14. CURA DE TOKENS NULOS EM auth.users (Previne erro 500: Database error querying schema)
+-- ==============================================================================
+UPDATE auth.users
+SET 
+  confirmation_token = COALESCE(confirmation_token, ''),
+  recovery_token = COALESCE(recovery_token, ''),
+  email_change_token_new = COALESCE(email_change_token_new, ''),
+  email_change = COALESCE(email_change, ''),
+  phone_change = COALESCE(phone_change, ''),
+  phone_change_token = COALESCE(phone_change_token, ''),
+  reauthentication_token = COALESCE(reauthentication_token, ''),
+  email_confirmed_at = COALESCE(email_confirmed_at, NOW())
+WHERE 
+  confirmation_token IS NULL
+  OR recovery_token IS NULL
+  OR email_change_token_new IS NULL
+  OR email_change IS NULL
+  OR email_confirmed_at IS NULL;
+
+-- ==============================================================================
+-- 15. SINCRONIZAÇÃO DE USUÁRIOS ÓRFÃOS (Resgata perfis ausentes de auth.users)
 -- ==============================================================================
 INSERT INTO public.profiles (
   id, email, full_name, nickname, role, level_id, xp, coins, streak, is_active, must_change_password
@@ -612,5 +656,6 @@ FROM auth.users u
 LEFT JOIN public.profiles p ON p.id = u.id
 WHERE p.id IS NULL
 ON CONFLICT (id) DO NOTHING;
+
 
 
