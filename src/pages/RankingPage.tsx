@@ -4,7 +4,7 @@ import { PageHeader } from '../components/common/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
 import { supabase, isLocalMode } from '../services/storage'
-import { DEFAULT_ACADEMIC_LEVELS, getAcademicLevel, getAcademicLevelTheme } from '../lib/academicLevels'
+import { getAcademicLevel, getAcademicLevelTheme, getCustomAcademicLevels } from '../lib/academicLevels'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -272,7 +272,12 @@ export function RankingPage() {
   const levelGroups = useMemo<GroupSection[]>(() => {
     if (!isAdmin) return []
 
-    return DEFAULT_ACADEMIC_LEVELS.map(acadLvl => {
+    const allAcademicNames = Array.from(new Set([
+      ...getCustomAcademicLevels(),
+      ...allStudents.map((s: any) => getAcademicLevel(s.level || s.level_id))
+    ]))
+
+    return allAcademicNames.map(acadLvl => {
       const theme = getAcademicLevelTheme(acadLvl)
       const matching = allStudents
         .filter((s: any) => getAcademicLevel(s.level || s.level_id) === acadLvl)

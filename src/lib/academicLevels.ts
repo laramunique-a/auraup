@@ -9,8 +9,46 @@ export const DEFAULT_ACADEMIC_LEVELS = [
 
 export type AcademicLevel = typeof DEFAULT_ACADEMIC_LEVELS[number] | string
 
+const LS_ACADEMIC_LEVELS = 'uply_academic_levels'
+
+export function getCustomAcademicLevels(): string[] {
+  try {
+    const raw = localStorage.getItem(LS_ACADEMIC_LEVELS)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return Array.from(new Set([...DEFAULT_ACADEMIC_LEVELS, ...parsed.map((s: string) => s.trim()).filter(Boolean)]))
+      }
+    }
+  } catch { /* ignore */ }
+  return [...DEFAULT_ACADEMIC_LEVELS]
+}
+
+export function saveCustomAcademicLevels(levels: string[]): void {
+  try {
+    const clean = Array.from(new Set(levels.map(s => s.trim()).filter(Boolean)))
+    localStorage.setItem(LS_ACADEMIC_LEVELS, JSON.stringify(clean))
+  } catch { /* ignore */ }
+}
+
+export function addCustomAcademicLevel(newLevelName: string): string[] {
+  const current = getCustomAcademicLevels()
+  const trimmed = newLevelName.trim()
+  if (!trimmed) return current
+
+  const already = current.find(l => l.toLowerCase() === trimmed.toLowerCase())
+  if (!already) {
+    current.push(trimmed)
+    saveCustomAcademicLevels(current)
+    return current
+  }
+  return current
+}
+
 export function getAcademicLevel(level?: Partial<Level> | string | null): string {
   if (!level) return 'Básico'
+
+  const customLevels = getCustomAcademicLevels()
 
   if (typeof level === 'string') {
     const trimmed = level.trim()
@@ -20,14 +58,14 @@ export function getAcademicLevel(level?: Partial<Level> | string | null): string
     if (trimmed === 'lvl_4') return 'Avançado'
 
     const lower = trimmed.toLowerCase()
+    // Match em níveis customizados ou canônicos
+    const matchCustom = customLevels.find(l => l.toLowerCase() === lower)
+    if (matchCustom) return matchCustom
+
     if (lower.includes('pre') || lower.includes('pré')) return 'Pré-Intermediário'
     if (lower.includes('interm') || lower.includes('explore')) return 'Intermediário'
     if (lower.includes('avanç') || lower.includes('adv') || lower.includes('independen')) return 'Avançado'
     if (lower.includes('básic') || lower.includes('basic') || lower.includes('hello') || lower.includes('iniciante')) return 'Básico'
-    
-    // Se já for um dos nomes canônicos
-    const matchCanonical = DEFAULT_ACADEMIC_LEVELS.find(l => l.toLowerCase() === lower)
-    if (matchCanonical) return matchCanonical
 
     return trimmed || 'Básico'
   }

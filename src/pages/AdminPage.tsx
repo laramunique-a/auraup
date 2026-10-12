@@ -11,7 +11,7 @@ import {
   UserPlus, Users, Pencil, Trash2, Plus, Coins, Sparkles, 
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
-  ChevronDown, KeyRound, GraduationCap, FileUp
+  ChevronDown, KeyRound, GraduationCap, FileUp, Award
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -19,7 +19,7 @@ import { ankiService } from '../services/anki.service'
 import { wordsOfTheDayService, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { isEnglishText } from '../lib/speechUtils'
 import { authService } from '../services/auth.service'
-import { DEFAULT_ACADEMIC_LEVELS, getAcademicLevel, getAcademicLevelTheme } from '../lib/academicLevels'
+import { getAcademicLevel, getAcademicLevelTheme, getCustomAcademicLevels, addCustomAcademicLevel } from '../lib/academicLevels'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -36,7 +36,7 @@ export function AdminPage() {
   const { speak } = useSpeech()
   const [users, setUsers] = useState<User[]>([])
   const [activeTab, setActiveTab] = useState<'users' | 'levels' | 'decks' | 'words'>('users')
-  const [activeModal, setActiveModal] = useState<'addUser' | 'editUser' | 'deleteUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'importOfficialDeck' | 'wordOfTheDay' | null>(null)
+  const [activeModal, setActiveModal] = useState<'addUser' | 'editUser' | 'deleteUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'importOfficialDeck' | 'wordOfTheDay' | 'addAcademicLevel' | null>(null)
   
   // Importação de Baralho Oficial do Anki
   const [selectedAdminFile, setSelectedAdminFile] = useState<File | null>(null)
@@ -742,6 +742,22 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const [newLevelXP, setNewLevelXP] = useState<string | number>(0)
   const [newLevelColor, setNewLevelColor] = useState('#6366f1')
   const [newLevelAcademicLevel, setNewLevelAcademicLevel] = useState<string>('Básico')
+  const [availableAcademicLevels, setAvailableAcademicLevels] = useState<string[]>(() => getCustomAcademicLevels())
+  const [newAcademicLevelInput, setNewAcademicLevelInput] = useState('')
+
+  function handleCreateAcademicLevel() {
+    const trimmed = newAcademicLevelInput.trim()
+    if (!trimmed) {
+      show('Informe o nome do nível pedagógico.', 'error')
+      return
+    }
+    const updated = addCustomAcademicLevel(trimmed)
+    setAvailableAcademicLevels([...updated])
+    setNewLevelAcademicLevel(trimmed)
+    show(`Nível pedagógico "${trimmed}" cadastrado com sucesso!`, 'success')
+    setActiveModal(null)
+    setNewAcademicLevelInput('')
+  }
 
   const PRESET_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
@@ -1219,27 +1235,77 @@ function saveLocalAdminLevels(levelsList: any[]) {
       ) : activeTab === 'levels' ? (
         /* Gestão de Turmas / Níveis */
         <section className="w-full space-y-4">
-          <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
               <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Turmas & Níveis Cadastrados</h2>
               <span className="text-xs font-heading font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800 shadow-xs">
                 <span className="font-bold">{levels.length}</span> {levels.length === 1 ? 'turma' : 'turmas'}
               </span>
             </div>
-            <Button 
-              variant="primary" 
-              size="sm" 
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => {
+                  setNewAcademicLevelInput('')
+                  setActiveModal('addAcademicLevel')
+                }}
+              >
+                <Award size={15} /> Novo Nível
+              </Button>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={() => {
+                  setEditingLevel(null)
+                  setNewLevelName('')
+                  setNewLevelXP(0)
+                  setNewLevelColor('#6366f1')
+                  setNewLevelAcademicLevel(availableAcademicLevels[0] || 'Básico')
+                  setActiveModal('addLevel')
+                }}
+              >
+                <Plus size={15} /> Nova Turma
+              </Button>
+            </div>
+          </div>
+
+          {/* Barra de Níveis Pedagógicos Cadastrados */}
+          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+              <span className="text-xs font-heading font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
+                <Award size={14} className="text-amber-500" /> Níveis Pedagógicos:
+              </span>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {availableAcademicLevels.map((lvl) => {
+                  const theme = getAcademicLevelTheme(lvl)
+                  const countTurmas = levels.filter(l => getAcademicLevel(l) === lvl).length
+                  return (
+                    <span 
+                      key={lvl} 
+                      className={`inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-2.5 py-1 rounded-lg border ${theme.bg} ${theme.text} ${theme.border}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: theme.dot }} />
+                      <span>{lvl}</span>
+                      <span className="text-[10px] opacity-75 font-normal">
+                        ({countTurmas} {countTurmas === 1 ? 'turma' : 'turmas'})
+                      </span>
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+
+            <button
+              type="button"
               onClick={() => {
-                setEditingLevel(null)
-                setNewLevelName('')
-                setNewLevelXP(0)
-                setNewLevelColor('#6366f1')
-                setNewLevelAcademicLevel('Básico')
-                setActiveModal('addLevel')
+                setNewAcademicLevelInput('')
+                setActiveModal('addAcademicLevel')
               }}
+              className="text-xs font-heading font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer self-start sm:self-auto"
             >
-              <Plus size={15} /> Nova Turma
-            </Button>
+              <Plus size={13} /> Cadastrar Novo Nível
+            </button>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -2344,15 +2410,27 @@ function saveLocalAdminLevels(levelsList: any[]) {
           <AdminField label="Nome da Turma" value={newLevelName} onChange={setNewLevelName} placeholder="Ex: Iniciante, Intermediário, Turma A" />
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Vínculo: Nível Pedagógico
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Vínculo: Nível Pedagógico
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewAcademicLevelInput('')
+                  setActiveModal('addAcademicLevel')
+                }}
+                className="text-[11px] font-heading font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5 cursor-pointer"
+              >
+                <Plus size={11} /> Novo Nível
+              </button>
+            </div>
             <select
               value={newLevelAcademicLevel}
               onChange={e => setNewLevelAcademicLevel(e.target.value)}
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
             >
-              {DEFAULT_ACADEMIC_LEVELS.map(lvl => (
+              {availableAcademicLevels.map(lvl => (
                 <option key={lvl} value={lvl}>{lvl}</option>
               ))}
             </select>
@@ -2380,6 +2458,55 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   }}
                 />
               ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: Cadastrar Novo Nível Pedagógico */}
+      <Modal 
+        open={activeModal === 'addAcademicLevel'} 
+        onClose={() => setActiveModal(null)} 
+        title="🎓 Cadastrar Novo Nível Pedagógico"
+        footer={
+          <div className="w-full flex items-center justify-end gap-2">
+            <Button variant="ghost" size="md" onClick={() => setActiveModal(null)}>Cancelar</Button>
+            <Button variant="primary" size="md" onClick={handleCreateAcademicLevel}>
+              <Plus size={16} /> Cadastrar Nível
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-1">
+          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+            Cadastre um novo nível pedagógico (ex: <em>Iniciante</em>, <em>Kids</em>, <em>Fluência</em>, <em>Avançado C2</em>). 
+            Ele ficará imediatamente disponível para vincular a turmas e no Ranking por Nível da escola.
+          </p>
+
+          <AdminField 
+            label="Nome do Novo Nível Pedagógico" 
+            value={newAcademicLevelInput} 
+            onChange={setNewAcademicLevelInput} 
+            placeholder="Ex: Iniciante, Kids, Fluência, Business..." 
+          />
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Níveis Atualmente Cadastrados:
+            </label>
+            <div className="flex gap-1.5 flex-wrap">
+              {availableAcademicLevels.map(l => {
+                const theme = getAcademicLevelTheme(l)
+                return (
+                  <span 
+                    key={l}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-heading font-semibold border ${theme.bg} ${theme.text} ${theme.border}`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.dot }} />
+                    {l}
+                  </span>
+                )
+              })}
             </div>
           </div>
         </div>
