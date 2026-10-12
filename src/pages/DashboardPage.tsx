@@ -10,7 +10,7 @@ import {
   Plus, FileUp, LayoutGrid, List, 
   Sparkles, Calendar, Trophy, Volume2, 
   Flame, Target, ArrowRight, Globe, Users,
-  ArrowUpDown
+  ArrowUpDown, Medal
 } from 'lucide-react'
 import { StudyHeatmap } from '../components/dashboard/StudyHeatmap'
 import { reviewService } from '../services/review.service'
@@ -19,6 +19,7 @@ import { ankiService } from '../services/anki.service'
 import { getStudyDayKey } from '../lib/sm2'
 import { wordsOfTheDayService, INITIAL_WORDS_OF_THE_DAY, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { GLOBAL_RANKING_MOCK, CLASS_RANKING_MOCK } from '../mockData'
+import { getAcademicLevel } from '../lib/academicLevels'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -161,51 +162,107 @@ export function DashboardPage() {
     }
   }, [loadActivityData])
 
-  // Cálculo dinâmico e em tempo real da colocação do usuário nos dois rankings
+  // Cálculo dinâmico e em tempo real da colocação do usuário nos 3 rankings (Global, Nível e Turma)
   const userRankings = useMemo(() => {
     const isAdmin = user?.role === 'admin'
+    const userAcademicLevel = getAcademicLevel(user?.level || user?.level_id)
+    const userClassId = user?.level_id || user?.level?.id
+
+    // Tenta obter alunos do storage local
+    let students: any[] = []
+    try {
+      const raw = localStorage.getItem('uply_accounts_db')
+      if (raw) {
+        students = JSON.parse(raw).filter((a: any) => a.role === 'user' && a.is_active !== false)
+      } else {
+        const raw2 = localStorage.getItem('uply_admin_users')
+        if (raw2) {
+          students = JSON.parse(raw2).filter((u: any) => u.role !== 'admin' && u.is_active !== false)
+        }
+      }
+    } catch { /* ignore */ }
 
     // Se for admin, o perfil não compete nos rankings dos alunos
     if (isAdmin) {
-      const totalGlobal = GLOBAL_RANKING_MOCK.filter(item => !item.isCurrentUser).length
-      const totalClass = CLASS_RANKING_MOCK.filter(item => !item.isCurrentUser).length
+      const totalGlobal = Math.max(students.length, GLOBAL_RANKING_MOCK.filter(item => !item.isCurrentUser).length)
+      const matchingNivel = students.filter(s => getAcademicLevel(s.level || s.level_id) === userAcademicLevel)
+      const totalNivel = matchingNivel.length > 0 ? matchingNivel.length : Math.max(1, Math.floor(totalGlobal / 2))
+      const matchingClass = students.filter(s => (s.level_id || s.level?.id) === userClassId)
+      const totalClass = matchingClass.length > 0 ? matchingClass.length : CLASS_RANKING_MOCK.filter(item => !item.isCurrentUser).length
+
       return {
         isAdmin: true,
+        academicLevel: userAcademicLevel,
+        turmaName: user?.level?.name || 'Turma',
         global: { pos: null, total: totalGlobal },
+        nivel: { pos: null, total: totalNivel },
         turma: { pos: null, total: totalClass },
       }
     }
 
-    // 1. Ranking Global
-    const globalList = GLOBAL_RANKING_MOCK.map(item => {
-      if (item.isCurrentUser) {
-        return { ...item, xp: Math.max(item.xp, liveXP) }
-      }
-      return item
-    }).sort((a, b) => b.xp - a.xp)
+    // ── Aluno normal ──
+    let baseList = students.map((s: any) => ({
+      id: s.id,
+      name: s.name || s.nickname || 'Aluno',
+      xp: s.id === user?.id ? Math.max(s.xp || 0, liveXP) : (s.xp || 0),
+      levelId: s.level_id || s.level?.id,
+      academicLevel: getAcademicLevel(s.level || s.level_id),
+      isCurrentUser: s.id === user?.id,
+    }))
 
-    const globalIndex = globalList.findIndex(item => item.isCurrentUser)
-    const globalPos = globalIndex !== -1 ? globalIndex + 1 : 1
+    if (!baseList.some(s => s.isCurrentUser)) {
+      baseList.push({
+        id: user?.id || 'me',
+        name: user?.nickname || user?.name || 'Você',
+        xp: liveXP,
+        levelId: userClassId,
+        academicLevel: userAcademicLevel,
+        isCurrentUser: true,
+      })
+    }
+
+    if (baseList.length <= 1) {
+      baseList = GLOBAL_RANKING_MOCK.map(m => ({
+        id: m.id,
+        name: m.name,
+        xp: m.isCurrentUser ? Math.max(m.xp, liveXP) : m.xp,
+        levelId: userClassId || 'lvl_1',
+        academicLevel: userAcademicLevel,
+        isCurrentUser: Boolean(m.isCurrentUser || m.id === 'user-self'),
+      }))
+    }
+
+    // 1. Ranking Global
+    const globalList = [...baseList].sort((a, b) => b.xp - a.xp)
+    const gIndex = globalList.findIndex(item => item.isCurrentUser)
+    const globalPos = gIndex !== -1 ? gIndex + 1 : 1
     const totalGlobal = globalList.length
 
-    // 2. Ranking Minha Turma
-    const classList = CLASS_RANKING_MOCK.map(item => {
-      if (item.isCurrentUser) {
-        return { ...item, xp: Math.max(item.xp, liveXP) }
-      }
-      return item
-    }).sort((a, b) => b.xp - a.xp)
+    // 2. Ranking Nível
+    const nivelList = baseList
+      .filter(item => item.academicLevel === userAcademicLevel || item.isCurrentUser)
+      .sort((a, b) => b.xp - a.xp)
+    const nIndex = nivelList.findIndex(item => item.isCurrentUser)
+    const nivelPos = nIndex !== -1 ? nIndex + 1 : 1
+    const totalNivel = nivelList.length
 
-    const classIndex = classList.findIndex(item => item.isCurrentUser)
-    const classPos = classIndex !== -1 ? classIndex + 1 : 1
+    // 3. Ranking Turma
+    const classList = baseList
+      .filter(item => (userClassId ? item.levelId === userClassId : true) || item.isCurrentUser)
+      .sort((a, b) => b.xp - a.xp)
+    const cIndex = classList.findIndex(item => item.isCurrentUser)
+    const classPos = cIndex !== -1 ? cIndex + 1 : 1
     const totalClass = classList.length
 
     return {
       isAdmin: false,
+      academicLevel: userAcademicLevel,
+      turmaName: user?.level?.name || 'Turma',
       global: { pos: globalPos, total: totalGlobal },
+      nivel: { pos: nivelPos, total: totalNivel },
       turma: { pos: classPos, total: totalClass },
     }
-  }, [liveXP, user?.role])
+  }, [liveXP, user?.role, user?.level_id, user?.level, user?.id, user?.nickname, user?.name])
 
   function speakWord(word: string) {
     if ('speechSynthesis' in window) {
@@ -621,6 +678,7 @@ export function DashboardPage() {
               </div>
 
               <div className="space-y-2 w-full">
+                {/* 1. Global */}
                 <div 
                   onClick={() => navigate('/ranking')}
                   className="p-2.5 rounded-xl border border-blue-100 dark:border-blue-900/50 bg-blue-50/40 dark:bg-slate-900/50 flex items-center justify-between cursor-pointer active:scale-98 transition-transform min-w-0"
@@ -649,6 +707,36 @@ export function DashboardPage() {
                   )}
                 </div>
 
+                {/* 2. Nível */}
+                <div 
+                  onClick={() => navigate('/ranking')}
+                  className="p-2.5 rounded-xl border border-amber-100 dark:border-amber-900/50 bg-amber-50/40 dark:bg-slate-900/50 flex items-center justify-between cursor-pointer active:scale-98 transition-transform min-w-0"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 text-xs shadow-2xs">
+                      <Medal size={13} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-heading font-bold uppercase text-amber-600 dark:text-amber-400 block leading-tight">
+                        Nível {userRankings.academicLevel}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
+                        {userRankings.nivel.total} alunos
+                      </span>
+                    </div>
+                  </div>
+                  {userRankings.isAdmin ? (
+                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-heading font-semibold text-[11px] shrink-0 shadow-2xs">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-lg bg-white dark:bg-slate-800 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-heading font-bold text-xs shrink-0 shadow-2xs">
+                      {userRankings.nivel.pos}º lugar
+                    </span>
+                  )}
+                </div>
+
+                {/* 3. Turma */}
                 <div 
                   onClick={() => navigate('/ranking')}
                   className="p-2.5 rounded-xl border border-emerald-100 dark:border-emerald-900/50 bg-emerald-50/40 dark:bg-slate-900/50 flex items-center justify-between cursor-pointer active:scale-98 transition-transform min-w-0"
@@ -659,7 +747,7 @@ export function DashboardPage() {
                     </div>
                     <div className="min-w-0">
                       <span className="text-[10px] font-heading font-bold uppercase text-emerald-600 dark:text-emerald-400 block leading-tight">
-                        Turmas
+                        {userRankings.turmaName || 'Turma'}
                       </span>
                       <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate block">
                         {userRankings.turma.total} alunos
@@ -1131,7 +1219,7 @@ export function DashboardPage() {
               </button>
             </div>
 
-            {/* Grid com as duas colocações: Global e Minha Turma */}
+            {/* Grid com as três colocações: Global, Nível e Minha Turma */}
             <div className="grid grid-cols-1 gap-2.5">
               {/* Ranking Global */}
               <div 
@@ -1165,6 +1253,38 @@ export function DashboardPage() {
                 </div>
               </div>
 
+              {/* Ranking por Nível */}
+              <div 
+                onClick={() => navigate('/ranking')}
+                className="p-3.5 rounded-lg border border-amber-100 dark:border-amber-900/50 bg-amber-50/50 dark:bg-slate-800/90 flex items-center justify-between gap-3 cursor-pointer hover:border-amber-300 dark:hover:border-amber-700 transition-all group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-md bg-amber-600 text-white flex items-center justify-center shadow-xs shrink-0 group-hover:scale-105 transition-transform">
+                    <Medal size={18} />
+                  </div>
+                  <div>
+                    <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 block">
+                      Nível {userRankings.academicLevel}
+                    </span>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                      Entre {userRankings.nivel.total} alunos
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  {userRankings.isAdmin ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-heading font-semibold text-xs shadow-2xs">
+                      Admin
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-heading font-extrabold text-sm shadow-2xs">
+                      {userRankings.nivel.pos}º lugar
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* Ranking Minha Turma */}
               <div 
                 onClick={() => navigate('/ranking')}
@@ -1176,7 +1296,7 @@ export function DashboardPage() {
                   </div>
                   <div>
                     <span className="text-[11px] font-heading font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block">
-                      Turmas
+                      {userRankings.turmaName || 'Turma'}
                     </span>
                     <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
                       Entre {userRankings.turma.total} alunos

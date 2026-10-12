@@ -19,6 +19,7 @@ import { ankiService } from '../services/anki.service'
 import { wordsOfTheDayService, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { isEnglishText } from '../lib/speechUtils'
 import { authService } from '../services/auth.service'
+import { DEFAULT_ACADEMIC_LEVELS, getAcademicLevel, getAcademicLevelTheme } from '../lib/academicLevels'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -740,6 +741,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const [newLevelName, setNewLevelName] = useState('')
   const [newLevelXP, setNewLevelXP] = useState<string | number>(0)
   const [newLevelColor, setNewLevelColor] = useState('#6366f1')
+  const [newLevelAcademicLevel, setNewLevelAcademicLevel] = useState<string>('Básico')
 
   const PRESET_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
@@ -762,12 +764,15 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
   async function handleCreateLevel() {
     const minXp = parseInt(newLevelXP.toString()) || 0
+    const acadLevel = newLevelAcademicLevel || 'Básico'
+
     if (isLocalMode || !supabase) {
       const newLvl = {
         id: 'lvl_' + generateId(),
         name: newLevelName.trim() || 'Nova Turma',
         min_xp: minXp,
-        color: newLevelColor
+        color: newLevelColor,
+        academic_level: acadLevel,
       }
       const list = getLocalAdminLevels()
       list.push(newLvl)
@@ -778,20 +783,31 @@ function saveLocalAdminLevels(levelsList: any[]) {
       setActiveModal(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelAcademicLevel('Básico')
       return
     }
 
-    const { error } = await supabase.from('levels').insert({
+    const payload: any = {
       name: newLevelName,
       min_xp: minXp,
-      color: newLevelColor
-    })
+      color: newLevelColor,
+      academic_level: acadLevel,
+    }
+
+    let { error } = await supabase.from('levels').insert(payload)
+    if (error && (error.code === 'PGRST204' || error.message?.includes('academic_level'))) {
+      delete payload.academic_level
+      const retry = await supabase.from('levels').insert(payload)
+      error = retry.error
+    }
+
     if (error) show('Erro ao criar turma.', 'error')
     else {
       show('Turma criada!', 'success')
       setActiveModal(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelAcademicLevel('Básico')
       loadLevels()
     }
   }
@@ -799,6 +815,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
   async function handleUpdateLevel() {
     if (!editingLevel) return
     const minXp = parseInt(newLevelXP.toString()) || 0
+    const acadLevel = newLevelAcademicLevel || 'Básico'
+
     if (isLocalMode || !supabase) {
       const list = getLocalAdminLevels()
       const idx = list.findIndex(l => l.id === editingLevel.id)
@@ -807,7 +825,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
           ...list[idx],
           name: newLevelName.trim() || list[idx].name,
           min_xp: minXp,
-          color: newLevelColor
+          color: newLevelColor,
+          academic_level: acadLevel,
         }
         list.sort((a, b) => a.min_xp - b.min_xp)
         saveLocalAdminLevels(list)
@@ -832,17 +851,30 @@ function saveLocalAdminLevels(levelsList: any[]) {
       setEditingLevel(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelAcademicLevel('Básico')
       return
     }
 
-    const { error } = await supabase
+    const payload: any = {
+      name: newLevelName,
+      min_xp: minXp,
+      color: newLevelColor,
+      academic_level: acadLevel,
+    }
+
+    let { error } = await supabase
       .from('levels')
-      .update({
-        name: newLevelName,
-        min_xp: minXp,
-        color: newLevelColor
-      })
+      .update(payload)
       .eq('id', editingLevel.id)
+
+    if (error && (error.code === 'PGRST204' || error.message?.includes('academic_level'))) {
+      delete payload.academic_level
+      const retry = await supabase
+        .from('levels')
+        .update(payload)
+        .eq('id', editingLevel.id)
+      error = retry.error
+    }
 
     if (error) show('Erro ao atualizar turma.', 'error')
     else {
@@ -855,6 +887,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       setEditingLevel(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelAcademicLevel('Básico')
       loadLevels()
       loadUsers()
     }
@@ -924,7 +957,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
             <button
               type="button"
-              title="Turmas"
+              title="Turma/Nível"
               onClick={() => setActiveTab('levels')}
               className={`flex items-center justify-center gap-1.5 py-2 px-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
                 activeTab === 'levels'
@@ -933,7 +966,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               }`}
             >
               <GraduationCap size={15} className="shrink-0" />
-              <span className="truncate">Turmas</span>
+              <span className="truncate">Turma/Nível</span>
             </button>
 
             <button
@@ -970,7 +1003,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       {/* Grid de Stats Compacto */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-5">
         <AdminStatCard icon={<Users size={16} />} label="Alunos ativos" value={allStudents.length} color="blue" />
-        <AdminStatCard icon={<GraduationCap size={16} />} label="Turmas ativas" value={levels.length} color="indigo" />
+        <AdminStatCard icon={<GraduationCap size={16} />} label="Turmas / Níveis" value={levels.length} color="indigo" />
         <AdminStatCard icon={<BookOpen size={16} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
         <AdminStatCard icon={<Sparkles size={16} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
       </div>
@@ -1188,12 +1221,23 @@ function saveLocalAdminLevels(levelsList: any[]) {
         <section className="w-full space-y-4">
           <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5">
-              <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Turmas Cadastradas</h2>
+              <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Turmas & Níveis Cadastrados</h2>
               <span className="text-xs font-heading font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800 shadow-xs">
                 <span className="font-bold">{levels.length}</span> {levels.length === 1 ? 'turma' : 'turmas'}
               </span>
             </div>
-            <Button variant="primary" size="sm" onClick={() => setActiveModal('addLevel')}>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              onClick={() => {
+                setEditingLevel(null)
+                setNewLevelName('')
+                setNewLevelXP(0)
+                setNewLevelColor('#6366f1')
+                setNewLevelAcademicLevel('Básico')
+                setActiveModal('addLevel')
+              }}
+            >
               <Plus size={15} /> Nova Turma
             </Button>
           </div>
@@ -1201,23 +1245,32 @@ function saveLocalAdminLevels(levelsList: any[]) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {levels.map((lvl) => {
               const studentsInTurma = allStudents.filter(s => s.level_id === lvl.id || s.level?.id === lvl.id)
+              const acadLvl = getAcademicLevel(lvl)
+              const theme = getAcademicLevelTheme(acadLvl)
+
               return (
                 <div 
                   key={lvl.id}
                   className="card-3d p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-2xs hover:border-blue-400/60 transition-all flex flex-col justify-between gap-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <div 
-                        className="w-3.5 h-8 rounded-md shrink-0 shadow-xs" 
+                        className="w-3.5 h-10 rounded-md shrink-0 shadow-xs" 
                         style={{ backgroundColor: lvl.color || '#3B82F6' }} 
                       />
-                      <div>
-                        <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white leading-snug">
+                      <div className="min-w-0">
+                        <h3 className="font-heading font-bold text-base text-slate-900 dark:text-white leading-snug truncate">
                           {lvl.name}
                         </h3>
-                        <div className="text-xs font-normal text-slate-400 mt-0.5">
-                          Ingresso: <span className="font-semibold text-amber-600 dark:text-amber-400">{lvl.min_xp} XP</span>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md border ${theme.bg} ${theme.text} ${theme.border}`}>
+                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: theme.dot }} />
+                            Nível: {acadLvl}
+                          </span>
+                          <span className="text-xs font-normal text-slate-400">
+                            Ingresso: <span className="font-semibold text-amber-600 dark:text-amber-400">{lvl.min_xp} XP</span>
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1228,10 +1281,11 @@ function saveLocalAdminLevels(levelsList: any[]) {
                         setNewLevelName(lvl.name)
                         setNewLevelXP(lvl.min_xp)
                         setNewLevelColor(lvl.color || '#3B82F6')
+                        setNewLevelAcademicLevel(lvl.academic_level || getAcademicLevel(lvl))
                         setActiveModal('editLevel')
                       }}
-                      className="btn-3d-icon w-8 h-8 !rounded-lg text-slate-500 hover:text-blue-600 cursor-pointer"
-                      title="Editar Turma"
+                      className="btn-3d-icon w-8 h-8 !rounded-lg text-slate-500 hover:text-blue-600 cursor-pointer shrink-0"
+                      title="Editar Turma/Nível"
                     >
                       <Pencil size={14} />
                     </button>
@@ -2271,7 +2325,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       <Modal 
         open={activeModal === 'addLevel' || activeModal === 'editLevel'} 
         onClose={() => setActiveModal(null)} 
-        title={editingLevel ? "📝 Editar Turma" : "🚀 Nova Turma"}
+        title={editingLevel ? "📝 Editar Turma/Nível" : "🚀 Nova Turma/Nível"}
         footer={
           <div className="w-full flex items-center justify-between gap-2">
             {editingLevel ? (
@@ -2288,6 +2342,25 @@ function saveLocalAdminLevels(levelsList: any[]) {
       >
         <div className="space-y-3.5 py-1">
           <AdminField label="Nome da Turma" value={newLevelName} onChange={setNewLevelName} placeholder="Ex: Iniciante, Intermediário, Turma A" />
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Vínculo: Nível Pedagógico
+            </label>
+            <select
+              value={newLevelAcademicLevel}
+              onChange={e => setNewLevelAcademicLevel(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
+            >
+              {DEFAULT_ACADEMIC_LEVELS.map(lvl => (
+                <option key={lvl} value={lvl}>{lvl}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              Alunos desta turma competirão no ranking de nível com todos os alunos do nível <strong>{newLevelAcademicLevel}</strong> da escola.
+            </p>
+          </div>
+
           <AdminField label="XP Mínimo para Ingresso" value={newLevelXP} onChange={setNewLevelXP} type="number" />
           
           <div>

@@ -6,6 +6,7 @@ export interface Level {
   min_xp: number
   color: string
   icon?: string
+  academic_level?: string
 }
 
 export interface User {

@@ -30,6 +30,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TABLE IF NOT EXISTS public.levels (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
+  academic_level TEXT DEFAULT 'Básico',
   min_xp INTEGER DEFAULT 0,
   color TEXT DEFAULT '#3B82F6',
   icon TEXT DEFAULT 'Sparkles',
