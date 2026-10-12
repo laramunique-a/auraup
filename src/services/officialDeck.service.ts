@@ -145,21 +145,26 @@ export const officialDeckService = {
         query = query.eq('is_published', true)
       }
       const { data, error } = await query
-      if (error || !data) return getLocalOfficialDecks()
+      if (error || !data) throw error
       return data.map((d: any) => ({
         ...d,
-        level: d.level || d.category || 'Todos'
+        level: d.category || d.level || 'Todos',
+        category: d.category || d.level || 'Todos',
       }))
-    } catch {
+    } catch (err) {
+      console.warn('[OfficialDeckService] Usando dados locais como fallback:', err)
       const all = getLocalOfficialDecks()
       return onlyPublished ? all.filter(d => d.is_published) : all
     }
   },
 
   async createOfficialDeck(deckData: Omit<OfficialDeck, 'id' | 'created_at'>): Promise<OfficialDeck> {
+    const effectiveCategory = deckData.level || deckData.category || 'Todos'
     const newDeck: OfficialDeck = {
       ...deckData,
       id: 'off_' + generateId(),
+      level: effectiveCategory,
+      category: effectiveCategory,
       created_at: new Date().toISOString(),
     }
 
@@ -171,47 +176,88 @@ export const officialDeckService = {
     }
 
     try {
+      // O Supabase possui a coluna 'category' para a turma/nível
+      const payload: any = {
+        id: newDeck.id,
+        name: newDeck.name,
+        description: newDeck.description || '',
+        category: effectiveCategory,
+        is_published: Boolean(newDeck.is_published),
+        cards: newDeck.cards || [],
+        created_at: newDeck.created_at,
+      }
+
       const { data, error } = await supabase
         .from('official_decks')
-        .insert(newDeck)
+        .insert(payload)
         .select()
         .single()
-      if (error || !data) throw error
-      return { ...data, level: data.level || data.category || 'Todos' }
-    } catch {
-      const decks = getLocalOfficialDecks()
-      decks.unshift(newDeck)
-      saveLocalOfficialDecks(decks)
-      return newDeck
+      if (error) throw error
+
+      const created: OfficialDeck = {
+        ...data,
+        level: data.category || 'Todos',
+        category: data.category || 'Todos',
+      }
+
+      const localDecks = getLocalOfficialDecks()
+      localDecks.unshift(created)
+      saveLocalOfficialDecks(localDecks)
+      return created
+    } catch (err: any) {
+      console.error('[OfficialDeckService] Erro ao criar no Supabase:', err)
+      throw new Error(err.message || 'Erro ao salvar baralho oficial.')
     }
   },
 
   async updateOfficialDeck(id: string, updates: Partial<OfficialDeck>): Promise<OfficialDeck> {
+    const effectiveCategory = updates.level || updates.category
+
     if (isLocalMode || !supabase) {
       const decks = getLocalOfficialDecks()
       const idx = decks.findIndex(d => d.id === id)
       if (idx === -1) throw new Error('Baralho oficial não encontrado.')
-      decks[idx] = { ...decks[idx], ...updates }
+      decks[idx] = { 
+        ...decks[idx], 
+        ...updates,
+        level: effectiveCategory || decks[idx].level,
+        category: effectiveCategory || decks[idx].category
+      }
       saveLocalOfficialDecks(decks)
       return decks[idx]
     }
 
     try {
+      const payload: any = { ...updates }
+      if (effectiveCategory) {
+        payload.category = effectiveCategory
+        delete payload.level
+      }
+
       const { data, error } = await supabase
         .from('official_decks')
-        .update(updates)
+        .update(payload)
         .eq('id', id)
         .select()
         .single()
-      if (error || !data) throw error
-      return { ...data, level: data.level || data.category || 'Todos' }
-    } catch {
-      const decks = getLocalOfficialDecks()
-      const idx = decks.findIndex(d => d.id === id)
-      if (idx === -1) throw new Error('Baralho oficial não encontrado.')
-      decks[idx] = { ...decks[idx], ...updates }
-      saveLocalOfficialDecks(decks)
-      return decks[idx]
+      if (error) throw error
+
+      const updated: OfficialDeck = {
+        ...data,
+        level: data.category || 'Todos',
+        category: data.category || 'Todos',
+      }
+
+      const localDecks = getLocalOfficialDecks()
+      const idx = localDecks.findIndex(d => d.id === id)
+      if (idx !== -1) {
+        localDecks[idx] = updated
+        saveLocalOfficialDecks(localDecks)
+      }
+      return updated
+    } catch (err: any) {
+      console.error('[OfficialDeckService] Erro ao atualizar no Supabase:', err)
+      throw new Error(err.message || 'Erro ao atualizar baralho oficial.')
     }
   },
 
@@ -223,10 +269,13 @@ export const officialDeckService = {
     }
 
     try {
-      await supabase.from('official_decks').delete().eq('id', id)
-    } catch {
+      const { error } = await supabase.from('official_decks').delete().eq('id', id)
+      if (error) throw error
       const decks = getLocalOfficialDecks().filter(d => d.id !== id)
       saveLocalOfficialDecks(decks)
+    } catch (err: any) {
+      console.error('[OfficialDeckService] Erro ao excluir no Supabase:', err)
+      throw new Error(err.message || 'Erro ao excluir baralho oficial.')
     }
   },
 
