@@ -15,7 +15,7 @@ CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN (
-    COALESCE(auth.jwt()->>'email', '') = 'auraenglish7@gmail.com'
+    LOWER(COALESCE(auth.jwt()->>'email', '')) IN ('auraenglish7@gmail.com', 'juliantessaro@outlook.com')
     OR EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid() AND role = 'admin'
@@ -186,83 +186,92 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- ==============================================================================
--- 5. CONTA OFICIAL DO PROFESSOR (auraenglish7@gmail.com / @ura2026)
+-- 5. CONTAS OFICIAIS DE ADMINISTRADOR (auraenglish7@gmail.com e juliantessaro@outlook.com / @ura2026)
 -- ==============================================================================
 DO $$
 DECLARE
-  admin_uuid UUID := gen_random_uuid();
+  adm RECORD;
+  admin_uuid UUID;
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE email = 'auraenglish7@gmail.com') THEN
-    INSERT INTO auth.users (
-      id,
-      instance_id,
-      email,
-      encrypted_password,
-      email_confirmed_at,
-      raw_app_meta_data,
-      raw_user_meta_data,
-      created_at,
-      updated_at,
-      role,
-      aud,
-      confirmation_token
-    ) VALUES (
-      admin_uuid,
-      '00000000-0000-0000-0000-000000000000',
-      'auraenglish7@gmail.com',
-      crypt('@ura2026', gen_salt('bf')),
-      NOW(),
-      '{"provider":"email","providers":["email"]}',
-      '{"name":"Professor Aura"}',
-      NOW(),
-      NOW(),
-      'authenticated',
-      'authenticated',
-      ''
-    );
-  ELSE
-    UPDATE auth.users
-    SET 
-      encrypted_password = crypt('@ura2026', gen_salt('bf')),
-      email_confirmed_at = COALESCE(email_confirmed_at, NOW())
-    WHERE email = 'auraenglish7@gmail.com';
-  END IF;
-END $$;
+  FOR adm IN 
+    SELECT * FROM (VALUES 
+      ('auraenglish7@gmail.com', 'Professor Aura', 'Professor'),
+      ('juliantessaro@outlook.com', 'Julian Tessaro', 'Julian')
+    ) AS t(email, full_name, nickname)
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE LOWER(email) = LOWER(adm.email)) THEN
+      admin_uuid := gen_random_uuid();
+      INSERT INTO auth.users (
+        id,
+        instance_id,
+        email,
+        encrypted_password,
+        email_confirmed_at,
+        raw_app_meta_data,
+        raw_user_meta_data,
+        created_at,
+        updated_at,
+        role,
+        aud,
+        confirmation_token
+      ) VALUES (
+        admin_uuid,
+        '00000000-0000-0000-0000-000000000000',
+        adm.email,
+        crypt('@ura2026', gen_salt('bf')),
+        NOW(),
+        '{"provider":"email","providers":["email"]}',
+        jsonb_build_object('name', adm.full_name),
+        NOW(),
+        NOW(),
+        'authenticated',
+        'authenticated',
+        ''
+      );
+    ELSE
+      UPDATE auth.users
+      SET 
+        encrypted_password = crypt('@ura2026', gen_salt('bf')),
+        email_confirmed_at = COALESCE(email_confirmed_at, NOW())
+      WHERE LOWER(email) = LOWER(adm.email);
+    END IF;
 
-INSERT INTO public.profiles (
-  id,
-  email,
-  full_name,
-  nickname,
-  role,
-  avatar_id,
-  xp,
-  coins,
-  streak,
-  is_active,
-  must_change_password
-)
-SELECT
-  id,
-  email,
-  'Professor Aura',
-  'Professor',
-  'admin',
-  'admin',
-  5000,
-  500,
-  30,
-  true,
-  false
-FROM auth.users
-WHERE email = 'auraenglish7@gmail.com'
-ON CONFLICT (id) DO UPDATE SET
-  role = 'admin',
-  full_name = 'Professor Aura',
-  nickname = 'Professor',
-  avatar_id = 'admin',
-  is_active = true,
-  must_change_password = false;
+    INSERT INTO public.profiles (
+      id,
+      email,
+      full_name,
+      nickname,
+      role,
+      avatar_id,
+      xp,
+      coins,
+      streak,
+      is_active,
+      must_change_password
+    )
+    SELECT
+      id,
+      email,
+      adm.full_name,
+      adm.nickname,
+      'admin',
+      'admin',
+      5000,
+      500,
+      30,
+      true,
+      false
+    FROM auth.users
+    WHERE LOWER(email) = LOWER(adm.email)
+    ON CONFLICT (id) DO UPDATE SET
+      role = 'admin',
+      full_name = adm.full_name,
+      nickname = adm.nickname,
+      avatar_id = 'admin',
+      is_active = true,
+      must_change_password = false;
+  END LOOP;
+END $$;
 
 -- ==============================================================================
 -- 6. TABELA DE DECKS OFICIAIS (public.official_decks)
@@ -645,7 +654,7 @@ SELECT
   u.email,
   COALESCE(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1)),
   split_part(COALESCE(u.raw_user_meta_data->>'name', u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1)), ' ', 1),
-  CASE WHEN LOWER(u.email) = 'auraenglish7@gmail.com' THEN 'admin' ELSE 'user' END,
+  CASE WHEN LOWER(u.email) IN ('auraenglish7@gmail.com', 'juliantessaro@outlook.com') THEN 'admin' ELSE 'user' END,
   'lvl_1',
   0,
   0,

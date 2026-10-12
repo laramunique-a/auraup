@@ -67,7 +67,7 @@ export function StudyPage() {
   const [sessionCoins, setSessionCoins] = useState(0)
   const [floatingXP, setFloatingXP] = useState<{ text: string, id: number } | null>(null)
 
-  const handleRating = async (rating: Rating) => {
+  const handleRating = (rating: Rating) => {
     playRewardSound(rating)
 
     if (current && user) {
@@ -90,7 +90,7 @@ export function StudyPage() {
         setTimeout(() => setFloatingXP(null), 900)
       }
     }
-    await submitRating(rating)
+    submitRating(rating)
   }
 
   useEffect(() => {

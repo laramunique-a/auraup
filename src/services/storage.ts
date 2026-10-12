@@ -37,22 +37,38 @@ export function ensureCleanLaunchData(): void {
     // 2. Zera alunos da lista administrativa
     localStorage.setItem('uply_admin_users', JSON.stringify([]))
 
-    // 3. Limpa contas de alunos legados, mantendo apenas o professor oficial
-    const ADMIN_ACCOUNT = {
-      id: 'admin_professor_official',
-      email: 'auraenglish7@gmail.com',
-      password: '',
-      name: 'Professor Aura',
-      nickname: 'Professor',
-      role: 'admin',
-      avatar_id: 'admin',
-      xp: 0,
-      coins: 0,
-      streak: 0,
-      is_active: true,
-      must_change_password: false,
-    }
-    localStorage.setItem('uply_accounts_db', JSON.stringify([ADMIN_ACCOUNT]))
+    // 3. Limpa contas de alunos legados, mantendo apenas os administradores oficiais
+    const ADMIN_ACCOUNTS = [
+      {
+        id: 'admin_professor_official',
+        email: 'auraenglish7@gmail.com',
+        password: '',
+        name: 'Professor Aura',
+        nickname: 'Professor',
+        role: 'admin',
+        avatar_id: 'admin',
+        xp: 0,
+        coins: 0,
+        streak: 0,
+        is_active: true,
+        must_change_password: false,
+      },
+      {
+        id: 'admin_julian_official',
+        email: 'juliantessaro@outlook.com',
+        password: '',
+        name: 'Julian Tessaro',
+        nickname: 'Julian',
+        role: 'admin',
+        avatar_id: 'admin',
+        xp: 0,
+        coins: 0,
+        streak: 0,
+        is_active: true,
+        must_change_password: false,
+      },
+    ]
+    localStorage.setItem('uply_accounts_db', JSON.stringify(ADMIN_ACCOUNTS))
 
     // 4. Força todos os baralhos oficiais pré-cadastrados para ocultos (is_published = false)
     const rawDecks = localStorage.getItem('uply_official_decks')

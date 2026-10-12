@@ -17,10 +17,13 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
 
   const estimates = predictNextIntervals(card.review || {})
 
-  // Resetar estado ao mudar de card
+  // Resetar estado ao mudar de card ou desmontar
   useEffect(() => {
     setFlipped(false)
     setAnimating(false)
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel()
+    }
   }, [card.id])
 
   // Auto-play áudio da Frente: SOMENTE quando configurado (front_audio === true)
@@ -53,11 +56,8 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
   function handleRating(rating: Rating) {
     if (animating) return
     setAnimating(true)
+    if (window.speechSynthesis) window.speechSynthesis.cancel()
     onRating(rating)
-    setTimeout(() => {
-      setFlipped(false)
-      setAnimating(false)
-    }, 320)
   }
 
   const ratingOptions: { value: Rating; label: string; sub: string; btnClass: string; icon: any }[] = [
@@ -73,7 +73,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
   const canPlayBack = Boolean(card.back && canPlaySpeech(card.back, card.back_lang))
 
   return (
-    <div className="w-full max-w-xl mx-auto flex flex-col items-center">
+    <div className="w-full max-w-xl mx-auto flex flex-col items-center animate-fade-in">
       {/* Cena 3D do Flashcard */}
       <div className="card-scene min-h-[340px] sm:min-h-[390px] md:min-h-[420px] relative w-full">
         <div className={`card-wrapper ${flipped ? 'flipped' : ''} min-h-[340px] sm:min-h-[390px] md:min-h-[420px]`}>

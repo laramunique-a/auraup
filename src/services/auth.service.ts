@@ -24,6 +24,16 @@ export interface UserAccount {
 
 const LS_ACCOUNTS_KEY = 'uply_accounts_db'
 
+export const ADMIN_EMAILS = [
+  'auraenglish7@gmail.com',
+  'juliantessaro@outlook.com',
+]
+
+export function isAdminEmail(email?: string | null): boolean {
+  if (!email) return false
+  return ADMIN_EMAILS.includes(email.trim().toLowerCase())
+}
+
 // Contas padrões para inicialização imediata
 const INITIAL_ACCOUNTS: UserAccount[] = [
   {
@@ -32,6 +42,20 @@ const INITIAL_ACCOUNTS: UserAccount[] = [
     password: '',
     name: 'Professor Aura',
     nickname: 'Professor',
+    role: 'admin',
+    avatar_id: 'admin',
+    xp: 5000,
+    coins: 500,
+    streak: 30,
+    is_active: true,
+    must_change_password: false,
+  },
+  {
+    id: 'admin_julian_official',
+    email: 'juliantessaro@outlook.com',
+    password: '',
+    name: 'Julian Tessaro',
+    nickname: 'Julian',
     role: 'admin',
     avatar_id: 'admin',
     xp: 5000,
@@ -49,16 +73,18 @@ function getLocalAccounts(): UserAccount[] {
       const parsed: UserAccount[] = JSON.parse(raw)
       let changed = false
 
-      // Garante que a conta oficial do professor exista e esteja atualizada como admin
-      const teacherIdx = parsed.findIndex(a => a.email.toLowerCase() === 'auraenglish7@gmail.com')
-      if (teacherIdx === -1) {
-        parsed.unshift(INITIAL_ACCOUNTS[0])
-        changed = true
-      } else {
-        if (parsed[teacherIdx].role !== 'admin') {
-          parsed[teacherIdx].role = 'admin'
-          parsed[teacherIdx].is_active = true
+      // Garante que todas as contas oficiais de admin existam e estejam atualizadas como admin
+      for (const adminAcc of INITIAL_ACCOUNTS) {
+        const idx = parsed.findIndex(a => a.email.toLowerCase() === adminAcc.email.toLowerCase())
+        if (idx === -1) {
+          parsed.unshift(adminAcc)
           changed = true
+        } else {
+          if (parsed[idx].role !== 'admin' || !parsed[idx].is_active) {
+            parsed[idx].role = 'admin'
+            parsed[idx].is_active = true
+            changed = true
+          }
         }
       }
 
@@ -135,19 +161,20 @@ export const authService = {
             .maybeSingle()
 
           // Auto-cura de perfil caso ainda não tenha sido gerado
+          const isAdm = isAdminEmail(email) || isAdminEmail(u.email)
           if (!profile) {
             const newProfile = {
               id: u.id,
               email: u.email || email,
-              full_name: u.user_metadata?.name || email.split('@')[0],
-              nickname: u.user_metadata?.name?.split(' ')[0] || email.split('@')[0],
-              role: email === 'auraenglish7@gmail.com' ? 'admin' : 'user',
-              avatar_id: 'avatar_1',
-              xp: 0,
-              coins: 0,
-              streak: 0,
+              full_name: u.user_metadata?.name || (isAdm && email.toLowerCase().includes('julian') ? 'Julian Tessaro' : (isAdm ? 'Professor Aura' : email.split('@')[0])),
+              nickname: u.user_metadata?.name?.split(' ')[0] || (isAdm && email.toLowerCase().includes('julian') ? 'Julian' : (isAdm ? 'Professor' : email.split('@')[0])),
+              role: isAdm ? 'admin' : 'user',
+              avatar_id: isAdm ? 'admin' : 'avatar_1',
+              xp: isAdm ? 5000 : 0,
+              coins: isAdm ? 500 : 0,
+              streak: isAdm ? 30 : 0,
               is_active: true,
-              must_change_password: email !== 'auraenglish7@gmail.com'
+              must_change_password: !isAdm
             }
             try {
               await supabase.from('profiles').upsert(newProfile)
@@ -167,16 +194,17 @@ export const authService = {
             throw new Error('Esta conta de aluno está desativada. Solicite seu acesso ao administrador.')
           }
 
+          const finalRole = (isAdm || profile?.role === 'admin') ? 'admin' : 'user'
           const user: User = {
             id: u.id,
             email: u.email!,
             name: profile?.full_name || u.user_metadata?.name || email.split('@')[0],
             nickname: profile?.nickname || email.split('@')[0],
-            role: profile?.role || 'user',
-            avatar_id: profile?.avatar_id || 'avatar_1',
-            xp: profile?.xp || 0,
-            coins: profile?.coins || 0,
-            streak: profile?.streak || 0,
+            role: finalRole,
+            avatar_id: profile?.avatar_id || (finalRole === 'admin' ? 'admin' : 'avatar_1'),
+            xp: profile?.xp ?? (finalRole === 'admin' ? 5000 : 0),
+            coins: profile?.coins ?? (finalRole === 'admin' ? 500 : 0),
+            streak: profile?.streak ?? (finalRole === 'admin' ? 30 : 0),
             level_id: profile?.level_id,
             level: profile?.level,
             is_active: profile?.is_active ?? true,

@@ -105,7 +105,8 @@ export function useStudySession(deckId: string) {
     // Contabiliza a resposta
     setRatingCounts(prev => ({ ...prev, [rating]: (prev[rating] || 0) + 1 }))
 
-    const clickCount = (sessionClicks[current.id] || 0) + 1
+    const cardToSave = current
+    const clickCount = (sessionClicks[cardToSave.id] || 0) + 1
     const remaining = queue.slice(1)
 
     // Qualquer nota positiva (1 = Difícil, 2 = Bom, 3 = Fácil) gradua a carta e avança a barra de desempenho
@@ -113,11 +114,10 @@ export function useStudySession(deckId: string) {
     const shouldGraduate = rating >= 1
 
     if (shouldGraduate) {
-      await reviewService.saveReview(user.id, current.id, rating)
-      
+      // 1. Atualiza estado e avança para a próxima carta IMEDIATAMENTE (zero delay no PWA)
       setGraduatedIds(prev => {
         const next = new Set(prev)
-        next.add(current.id)
+        next.add(cardToSave.id)
         setReviewed(next.size)
         return next
       })
@@ -130,6 +130,11 @@ export function useStudySession(deckId: string) {
       } else {
         setCurrent(remaining[0])
       }
+
+      // 2. Persistência assíncrona em segundo plano (não bloqueia a troca de cartas na interface)
+      reviewService.saveReview(user.id, cardToSave.id, rating).catch(err => {
+        console.warn('[ReviewService] Erro ao persistir revisão em segundo plano:', err)
+      })
     } else {
       let insertPos = remaining.length
       
@@ -142,15 +147,15 @@ export function useStudySession(deckId: string) {
       }
 
       const newQueue = [...remaining]
-      newQueue.splice(insertPos, 0, current)
+      newQueue.splice(insertPos, 0, cardToSave)
       
-      setSessionClicks(prev => ({ ...prev, [current.id]: clickCount }))
+      setSessionClicks(prev => ({ ...prev, [cardToSave.id]: clickCount }))
       setQueue(newQueue)
       
-      const sameCard = newQueue[0].id === current.id
+      const sameCard = newQueue[0].id === cardToSave.id
       if (sameCard) {
         setCurrent(null)
-        setTimeout(() => setCurrent(current), 10)
+        setTimeout(() => setCurrent(cardToSave), 20)
       } else {
         setCurrent(newQueue[0])
       }
