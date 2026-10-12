@@ -27,7 +27,183 @@ function uint8ArrayToBase64(uint8Array: Uint8Array): string {
 }
 
 /**
- * Ported logic from the backend to process .apkg archives locally.
+/**
+ * Extracts and parses cards from an .apkg file using WASM and local unzipping.
+ */
+export async function parseAnkiFile(file: File, name?: string): Promise<{
+  deckName: string;
+  cards: {
+    front: string;
+    back: string;
+    front_image?: string;
+    back_image?: string;
+    front_lang: 'en-US' | 'pt-BR';
+    back_lang: 'en-US' | 'pt-BR';
+    front_audio: boolean;
+    back_audio: boolean;
+  }[];
+}> {
+  console.log('🚀 Iniciando parse local de alta qualidade (WASM)...');
+  
+  const arrayBuffer = await file.arrayBuffer();
+  const data = new Uint8Array(arrayBuffer);
+  
+  const unzipped = unzipSync(data);
+  let deckName = name || file.name.replace(/\.apkg(\.zip)?$/i, '');
+  
+  let zipEntries = unzipped;
+  const apkgFile = Object.keys(unzipped).find(n => n.endsWith('.apkg'));
+  if (apkgFile) {
+    zipEntries = unzipSync(unzipped[apkgFile]);
+  }
+
+  const collectionKey = Object.keys(zipEntries).find(k => k.startsWith('collection.anki2'));
+  const mediaKey = Object.keys(zipEntries).find(k => k === 'media');
+
+  if (!collectionKey) throw new Error('Banco de dados do Anki não encontrado no arquivo.');
+
+  let collectionData = zipEntries[collectionKey];
+  if (collectionKey.endsWith('b')) collectionData = decompress(collectionData);
+
+  let mediaData = zipEntries[mediaKey || ''];
+
+  // --- 1. Robust Media Map Parser (Support both JSON and Binary) ---
+  let mediaMap: Record<string, string> = {};
+  if (mediaData) {
+    if (mediaData[0] === 0x28 && mediaData[1] === 0xB5) mediaData = decompress(mediaData);
+    
+    try {
+      mediaMap = JSON.parse(new TextDecoder().decode(mediaData));
+    } catch {
+      console.log('🔍 Detectado formato binário no mapa de mídia. Traduzindo...');
+      const binaryMap: Record<string, string> = {};
+      let i = 0;
+      let entryCount = 0;
+      while (i < mediaData.length) {
+        if (mediaData[i] === 0x0a) {
+          i++;
+          let entryLen = 0, shift = 0;
+          while (i < mediaData.length && (mediaData[i] & 0x80)) {
+            entryLen |= (mediaData[i] & 0x7f) << shift; shift += 7; i++;
+          }
+          if (i < mediaData.length) entryLen |= (mediaData[i] & 0x7f) << shift; i++;
+          const entryEnd = i + entryLen;
+          let filename = '';
+          while (i < entryEnd) {
+            const tag = mediaData[i++];
+            let lenOrVal = 0, s = 0;
+            while (i < mediaData.length && (mediaData[i] & 0x80)) {
+              lenOrVal |= (mediaData[i] & 0x7f) << s; s += 7; i++;
+            }
+            if (i < mediaData.length) lenOrVal |= (mediaData[i] & 0x7f) << s; i++;
+            if (tag === 0x0a) {
+              filename = new TextDecoder().decode(mediaData.slice(i, i + lenOrVal));
+              i += lenOrVal;
+            } else if ((tag & 0x7) === 2) i += lenOrVal;
+          }
+          if (filename) {
+            binaryMap[entryCount.toString()] = filename;
+            entryCount++;
+          }
+        } else i++;
+      }
+      mediaMap = binaryMap;
+    }
+  }
+
+  const reverseMediaMap: Record<string, string> = {};
+  Object.entries(mediaMap).forEach(([id, filename]) => {
+    reverseMediaMap[filename] = id;
+  });
+
+  // --- 2. SQL Extraction ---
+  const SQL = await initSqlJs({ locateFile: () => `/sql-wasm.wasm` });
+  const db = new SQL.Database(collectionData);
+  const results = db.exec("SELECT flds FROM notes");
+  const rows = results[0]?.values || [];
+
+  const parsedCards = rows.map((fieldsRow: any) => {
+    const flds = fieldsRow[0] || '';
+    const fields = flds.split('\x1f');
+    const frontRaw = fields[0] || '';
+    const backRaw = fields[1] || '';
+
+    const extractImage = (html: string) => {
+      try {
+        const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
+        if (!imgMatch) return undefined;
+        const filename = imgMatch[1];
+        const zipId = reverseMediaMap[filename];
+        if (!zipId) return undefined;
+
+        let imgData = zipEntries[zipId];
+        if (!imgData) return undefined;
+        if (imgData[0] === 0x28 && imgData[1] === 0xB5) imgData = decompress(imgData);
+        if (imgData.length > 5 * 1024 * 1024) return undefined;
+
+        let mime = 'image/png';
+        if (imgData[0] === 0xff && imgData[1] === 0xd8) mime = 'image/jpeg';
+        else if (imgData[0] === 0x89 && imgData[1] === 0x50) mime = 'image/png';
+        else if (imgData[0] === 0x47 && imgData[1] === 0x49) mime = 'image/gif';
+        
+        return `data:${mime};base64,${uint8ArrayToBase64(imgData)}`;
+      } catch { return undefined; }
+    };
+
+    const cleanText = (text: string) => {
+      return text.replace(/\[sound:[^\]]+\]/g, '').replace(/&nbsp;/g, ' ').replace(/<[^>]*>?/gm, '').trim();
+    };
+
+    // --- 3. Full Language Detection v7 (Survival EN) ---
+    const frontClean = cleanText(frontRaw);
+    const backClean = cleanText(backRaw);
+
+    const detectScore = (text: string) => {
+      const clean = text.replace(/\([^)]*\)/g, '').toLowerCase().trim();
+      if (!clean) return { en: 0, pt: 0 };
+      let en = 0, pt = 0;
+      if (/[áàâãéèêíïóòôõúùûç]/.test(clean)) pt += 15;
+      const ptWords = /\b(de|do|da|que|em|um|para|com|não|uma|os|no|se|na|por|mais|as|como|mas|ao|ele|seu|sua|ou|quando|muito|já|eu|só|pelo|pela|até|mesmo|quem|me|esse|eles|você|essa|dar|foi|era|esta|está|ter|ser|o|a|dia|inteiro|semana|passado|tempo|clima|vida|adulta|conhecer|pessoa|minha|meu|falar|sobre|saber|ver|fazer|ir|querer|pode|poder|disse|dizer|antes|depois|pedir)\b/i;
+      if (ptWords.test(clean)) pt += 7;
+      const enWords = /\b(the|is|and|to|of|for|with|as|at|on|are|it|you|that|was|were|be|this|in|from|have|had|his|her|they|but|which|or|will|an|as|up|so|my|your|at|do|not|can|would|watch|watched|when|all|day|long|last|weekend|next|every|meet|welcome|friend|girl|boy|adulthood|life|adult|talk|about|know|see|make|go|want|could|said|say|order|pizza|before|after|please|thank|thanks|hello|hi|need|get)\b/i;
+      if (enWords.test(clean)) en += 7;
+      if (/\b(a|an)\b/i.test(clean) && !/[áàâãéèêíïóòôõúùûç]/.test(clean)) en += 4;
+      if (/(ado|ada|ido|ida|ção|ções|mente|ar|er|ir)$/i.test(clean)) pt += 5;
+      if (/(ing|ed|ly|tion|ness|ment|able|ible)$/i.test(clean)) en += 5;
+      if (/^(the|i|we|you|they|my|your|welcome|this|it|order|before|after|a)\b/i.test(clean)) en += 6;
+      return { en, pt };
+    };
+
+    const fScore = detectScore(frontClean);
+    const bScore = detectScore(backClean);
+
+    let fLang: 'en-US' | 'pt-BR' = (fScore.en > fScore.pt) ? 'en-US' : 'pt-BR';
+    let bLang: 'en-US' | 'pt-BR' = (bScore.en > bScore.pt) ? 'en-US' : 'pt-BR';
+    if (fLang === 'pt-BR' && bScore.pt < 10) bLang = 'en-US';
+    if (fScore.en >= 7) fLang = 'en-US';
+    if (bScore.en >= 7) bLang = 'en-US';
+
+    return {
+      front: frontClean,
+      back: backClean,
+      front_image: extractImage(frontRaw),
+      back_image: extractImage(backRaw),
+      front_lang: fLang,
+      back_lang: bLang,
+      front_audio: frontClean.length > 0 && fLang === 'en-US',
+      back_audio: backClean.length > 0 && bLang === 'en-US'
+    };
+  });
+
+  db.close();
+
+  if (parsedCards.length === 0) throw new Error('Nenhum card encontrado no arquivo.');
+
+  return { deckName, cards: parsedCards };
+}
+
+/**
+ * Process .apkg archives locally and save into the user's personal decks.
  */
 export async function importAnkiApkg(file: File, name?: string, userId: string = 'local_user_default'): Promise<{ 
   success: boolean; 
@@ -36,162 +212,8 @@ export async function importAnkiApkg(file: File, name?: string, userId: string =
   cards?: any[];
   deck_name?: string;
 }> {
-  console.log('🚀 Iniciando importação local de alta qualidade (WASM)...');
-  
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const data = new Uint8Array(arrayBuffer);
-    
-    const unzipped = unzipSync(data);
-    let deckName = name || file.name.replace(/\.apkg(\.zip)?$/i, '');
-    
-    let zipEntries = unzipped;
-    const apkgFile = Object.keys(unzipped).find(n => n.endsWith('.apkg'));
-    if (apkgFile) {
-      zipEntries = unzipSync(unzipped[apkgFile]);
-    }
-
-    const collectionKey = Object.keys(zipEntries).find(k => k.startsWith('collection.anki2'));
-    const mediaKey = Object.keys(zipEntries).find(k => k === 'media');
-
-    if (!collectionKey) throw new Error('Banco de dados do Anki não encontrado.');
-
-    let collectionData = zipEntries[collectionKey];
-    if (collectionKey.endsWith('b')) collectionData = decompress(collectionData);
-
-    let mediaData = zipEntries[mediaKey || ''];
-
-    // --- 1. Robust Media Map Parser (Support both JSON and Binary) ---
-    let mediaMap: Record<string, string> = {};
-    if (mediaData) {
-      if (mediaData[0] === 0x28 && mediaData[1] === 0xB5) mediaData = decompress(mediaData);
-      
-      try {
-        mediaMap = JSON.parse(new TextDecoder().decode(mediaData));
-      } catch (e) {
-        console.log('🔍 Detectado formato binário no mapa de mídia. Traduzindo...');
-        const binaryMap: Record<string, string> = {};
-        let i = 0;
-        let entryCount = 0;
-        while (i < mediaData.length) {
-          if (mediaData[i] === 0x0a) {
-            i++;
-            let entryLen = 0, shift = 0;
-            while (i < mediaData.length && (mediaData[i] & 0x80)) {
-              entryLen |= (mediaData[i] & 0x7f) << shift; shift += 7; i++;
-            }
-            if (i < mediaData.length) entryLen |= (mediaData[i] & 0x7f) << shift; i++;
-            const entryEnd = i + entryLen;
-            let filename = '';
-            while (i < entryEnd) {
-              const tag = mediaData[i++];
-              let lenOrVal = 0, s = 0;
-              while (i < mediaData.length && (mediaData[i] & 0x80)) {
-                lenOrVal |= (mediaData[i] & 0x7f) << s; s += 7; i++;
-              }
-              if (i < mediaData.length) lenOrVal |= (mediaData[i] & 0x7f) << s; i++;
-              if (tag === 0x0a) {
-                filename = new TextDecoder().decode(mediaData.slice(i, i + lenOrVal));
-                i += lenOrVal;
-              } else if ((tag & 0x7) === 2) i += lenOrVal;
-            }
-            if (filename) {
-              binaryMap[entryCount.toString()] = filename;
-              entryCount++;
-            }
-          } else i++;
-        }
-        mediaMap = binaryMap;
-      }
-    }
-
-    const reverseMediaMap: Record<string, string> = {};
-    Object.entries(mediaMap).forEach(([id, filename]) => {
-      reverseMediaMap[filename] = id;
-    });
-
-    // --- 2. SQL Extraction ---
-    const SQL = await initSqlJs({ locateFile: () => `/sql-wasm.wasm` });
-    const db = new SQL.Database(collectionData);
-    const results = db.exec("SELECT flds FROM notes");
-    const rows = results[0]?.values || [];
-
-    const parsedCards = rows.map((fieldsRow: any) => {
-      const flds = fieldsRow[0] || '';
-      const fields = flds.split('\x1f');
-      const frontRaw = fields[0] || '';
-      const backRaw = fields[1] || '';
-
-      const extractImage = (html: string) => {
-        try {
-          const imgMatch = html.match(/<img[^>]+src=["']([^"']+)["'][^>]*>/i);
-          if (!imgMatch) return null;
-          const filename = imgMatch[1];
-          const zipId = reverseMediaMap[filename];
-          if (!zipId) return null;
-
-          let imgData = zipEntries[zipId];
-          if (!imgData) return null;
-          if (imgData[0] === 0x28 && imgData[1] === 0xB5) imgData = decompress(imgData);
-          if (imgData.length > 5 * 1024 * 1024) return null;
-
-          let mime = 'image/png';
-          if (imgData[0] === 0xff && imgData[1] === 0xd8) mime = 'image/jpeg';
-          else if (imgData[0] === 0x89 && imgData[1] === 0x50) mime = 'image/png';
-          else if (imgData[0] === 0x47 && imgData[1] === 0x49) mime = 'image/gif';
-          
-          return `data:${mime};base64,${uint8ArrayToBase64(imgData)}`;
-        } catch (e) { return null; }
-      };
-
-      const cleanText = (text: string) => {
-        return text.replace(/\[sound:[^\]]+\]/g, '').replace(/&nbsp;/g, ' ').replace(/<[^>]*>?/gm, '').trim();
-      };
-
-      // --- 3. Full Language Detection v7 (Survival EN) ---
-      const frontClean = cleanText(frontRaw);
-      const backClean = cleanText(backRaw);
-
-      const detectScore = (text: string) => {
-        const clean = text.replace(/\([^)]*\)/g, '').toLowerCase().trim();
-        if (!clean) return { en: 0, pt: 0 };
-        let en = 0, pt = 0;
-        if (/[áàâãéèêíïóòôõúùûç]/.test(clean)) pt += 15;
-        const ptWords = /\b(de|do|da|que|em|um|para|com|não|uma|os|no|se|na|por|mais|as|como|mas|ao|ele|seu|sua|ou|quando|muito|já|eu|só|pelo|pela|até|mesmo|quem|me|esse|eles|você|essa|dar|foi|era|esta|está|ter|ser|o|a|dia|inteiro|semana|passado|tempo|clima|vida|adulta|conhecer|pessoa|minha|meu|falar|sobre|saber|ver|fazer|ir|querer|pode|poder|disse|dizer|antes|depois|pedir)\b/i;
-        if (ptWords.test(clean)) pt += 7;
-        const enWords = /\b(the|is|and|to|of|for|with|as|at|on|are|it|you|that|was|were|be|this|in|from|have|had|his|her|they|but|which|or|will|an|as|up|so|my|your|at|do|not|can|would|watch|watched|when|all|day|long|last|weekend|next|every|meet|welcome|friend|girl|boy|adulthood|life|adult|talk|about|know|see|make|go|want|could|said|say|order|pizza|before|after|please|thank|thanks|hello|hi|need|get)\b/i;
-        if (enWords.test(clean)) en += 7;
-        if (/\b(a|an)\b/i.test(clean) && !/[áàâãéèêíïóòôõúùûç]/.test(clean)) en += 4;
-        if (/(ado|ada|ido|ida|ção|ções|mente|ar|er|ir)$/i.test(clean)) pt += 5;
-        if (/(ing|ed|ly|tion|ness|ment|able|ible)$/i.test(clean)) en += 5;
-        if (/^(the|i|we|you|they|my|your|welcome|this|it|order|before|after|a)\b/i.test(clean)) en += 6;
-        return { en, pt };
-      };
-
-      const fScore = detectScore(frontClean);
-      const bScore = detectScore(backClean);
-
-      let fLang: 'en-US' | 'pt-BR' = (fScore.en > fScore.pt) ? 'en-US' : 'pt-BR';
-      let bLang: 'en-US' | 'pt-BR' = (bScore.en > bScore.pt) ? 'en-US' : 'pt-BR';
-      if (fLang === 'pt-BR' && bScore.pt < 10) bLang = 'en-US';
-      if (fScore.en >= 7) fLang = 'en-US';
-      if (bScore.en >= 7) bLang = 'en-US';
-
-      return {
-        front: frontClean,
-        back: backClean,
-        front_image: extractImage(frontRaw),
-        back_image: extractImage(backRaw),
-        front_lang: fLang,
-        back_lang: bLang,
-        front_audio: frontClean.length > 0 && fLang === 'en-US',
-        back_audio: backClean.length > 0 && bLang === 'en-US'
-      };
-    });
-
-    db.close();
-
-    if (parsedCards.length === 0) throw new Error('Nenhum card encontrado.');
+    const { deckName, cards: parsedCards } = await parseAnkiFile(file, name);
 
     // --- 4. Persistence with Audio Flags ---
     if (supabase) {
@@ -292,4 +314,8 @@ export async function exportToAnki(deckName: string, cards: Card[]) {
   saveAs(content, `${deckName.replace(/\s+/g, '_')}.apkg`);
 }
 
-export const ankiService = { importFromApkg: importAnkiApkg, exportToAnki: exportToAnki };
+export const ankiService = { 
+  importFromApkg: importAnkiApkg, 
+  parseAnkiFile, 
+  exportToAnki 
+};

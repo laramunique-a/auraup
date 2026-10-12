@@ -11,10 +11,11 @@ import {
   UserPlus, Users, Pencil, Trash2, Plus, Coins, Sparkles, 
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
-  ChevronDown, KeyRound, GraduationCap
+  ChevronDown, KeyRound, GraduationCap, FileUp
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
+import { ankiService } from '../services/anki.service'
 import { wordsOfTheDayService, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { isEnglishText } from '../lib/speechUtils'
 import { authService } from '../services/auth.service'
@@ -34,8 +35,16 @@ export function AdminPage() {
   const { speak } = useSpeech()
   const [users, setUsers] = useState<User[]>([])
   const [activeTab, setActiveTab] = useState<'users' | 'levels' | 'decks' | 'words'>('users')
-  const [activeModal, setActiveModal] = useState<'addUser' | 'editUser' | 'deleteUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'wordOfTheDay' | null>(null)
+  const [activeModal, setActiveModal] = useState<'addUser' | 'editUser' | 'deleteUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'importOfficialDeck' | 'wordOfTheDay' | null>(null)
   
+  // Importação de Baralho Oficial do Anki
+  const [selectedAdminFile, setSelectedAdminFile] = useState<File | null>(null)
+  const [importingAdminDeck, setImportingAdminDeck] = useState(false)
+  const [adminImportName, setAdminImportName] = useState('')
+  const [adminImportDesc, setAdminImportDesc] = useState('')
+  const [adminImportLevel, setAdminImportLevel] = useState('Todos')
+  const [adminImportPublished, setAdminImportPublished] = useState(true)
+
   // Novo Usuário Form
   const [newEmail, setNewEmail] = useState('')
   const [newName, setNewName] = useState('')
@@ -469,6 +478,60 @@ function saveLocalAdminLevels(levelsList: any[]) {
       await loadOfficialDecks()
     } catch {
       show('Erro ao excluir baralho padrão.', 'error')
+    }
+  }
+
+  // Handlers para Importação de Baralho Oficial (Anki)
+  function handleAdminFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setSelectedAdminFile(file)
+    setAdminImportName(file.name.replace(/\.apkg(\.zip)?$/i, ''))
+    setAdminImportDesc('')
+    setAdminImportLevel('Todos')
+    setAdminImportPublished(true)
+    setActiveModal('importOfficialDeck')
+  }
+
+  async function handleConfirmAdminImport() {
+    if (!selectedAdminFile || !adminImportName.trim()) return
+    setImportingAdminDeck(true)
+    try {
+      const { cards } = await ankiService.parseAnkiFile(selectedAdminFile, adminImportName.trim())
+      if (!cards || cards.length === 0) {
+        throw new Error('Nenhum card encontrado no arquivo selecionado.')
+      }
+
+      const validCards: OfficialCard[] = cards
+        .filter(c => c.front.trim() || c.front_image || c.back.trim() || c.back_image)
+        .map(c => ({
+          front: c.front,
+          back: c.back,
+          front_image: c.front_image || undefined,
+          back_image: c.back_image || undefined,
+          front_audio: c.front_audio && isEnglishText(c.front),
+          back_audio: c.back_audio && isEnglishText(c.back),
+        }))
+
+      await officialDeckService.createOfficialDeck({
+        name: adminImportName.trim(),
+        description: adminImportDesc.trim(),
+        level: adminImportLevel,
+        category: adminImportLevel,
+        is_published: adminImportPublished,
+        cards: validCards,
+      })
+
+      show(`${validCards.length} cards importados como Baralho Oficial! ✨`, 'success')
+      setActiveModal(null)
+      setSelectedAdminFile(null)
+      const input = document.getElementById('anki-admin-import') as HTMLInputElement | null
+      if (input) input.value = ''
+      await loadOfficialDecks()
+    } catch (err: any) {
+      show(err.message || 'Erro ao importar baralho oficial.', 'error')
+    } finally {
+      setImportingAdminDeck(false)
     }
   }
 
@@ -1206,9 +1269,26 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 <span className="font-bold">{officialDecks.length}</span> {officialDecks.length === 1 ? 'baralho' : 'baralhos'}
               </span>
             </div>
-            <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
-              <Plus size={15} /> Criar Baralho Padrão
-            </Button>
+            <div className="flex items-center gap-2">
+              <input 
+                type="file" 
+                id="anki-admin-import" 
+                accept=".apkg,.zip" 
+                className="hidden" 
+                onChange={handleAdminFileSelect} 
+              />
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => document.getElementById('anki-admin-import')?.click()} 
+                disabled={importingAdminDeck}
+              >
+                <FileUp size={15} /> Importar
+              </Button>
+              <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
+                <Plus size={15} /> Criar Baralho Padrão
+              </Button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1716,6 +1796,95 @@ function saveLocalAdminLevels(levelsList: any[]) {
               </button>
             </div>
           )}
+        </div>
+      </Modal>
+
+      {/* Modal Importar Baralho Oficial do Anki (.apkg) */}
+      <Modal
+        open={activeModal === 'importOfficialDeck'}
+        onClose={() => !importingAdminDeck && setActiveModal(null)}
+        title="📥 Importar Baralho Oficial do Anki (.apkg)"
+        maxWidth="540px"
+        footer={
+          <div className="w-full flex items-center justify-between gap-2">
+            <Button variant="ghost" size="md" onClick={() => setActiveModal(null)} disabled={importingAdminDeck}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="vibrant" 
+              size="md" 
+              loading={importingAdminDeck} 
+              onClick={handleConfirmAdminImport} 
+              disabled={!adminImportName.trim() || importingAdminDeck}
+            >
+              Começar Importação ⚡
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 py-2">
+          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">
+            O AuraUP vai converter seus cards, imagens e áudios do Anki em um <strong>Baralho Oficial</strong>. Configure as informações abaixo para disponibilizá-lo:
+          </p>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Nome do Baralho
+            </label>
+            <input
+              placeholder="Ex: 50 Palavras Essenciais do Inglês"
+              value={adminImportName}
+              onChange={e => setAdminImportName(e.target.value)}
+              disabled={importingAdminDeck}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm text-slate-800 dark:text-white font-medium placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Descrição Explicativa
+            </label>
+            <input
+              placeholder="Descreva o propósito deste baralho padrão..."
+              value={adminImportDesc}
+              onChange={e => setAdminImportDesc(e.target.value)}
+              disabled={importingAdminDeck}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm text-slate-800 dark:text-white font-medium placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-normal placeholder:text-slate-400/80 outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Turma / Nível
+              </label>
+              <select 
+                value={adminImportLevel} 
+                onChange={e => setAdminImportLevel(e.target.value)}
+                disabled={importingAdminDeck}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm text-slate-800 dark:text-white font-medium outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
+              >
+                {availableLevelOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                Status de Publicação
+              </label>
+              <select 
+                value={adminImportPublished ? 'published' : 'hidden'} 
+                onChange={e => setAdminImportPublished(e.target.value === 'published')}
+                disabled={importingAdminDeck}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm text-slate-800 dark:text-white font-medium outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
+              >
+                <option value="published">🟢 Publicado (visível para alunos na Loja)</option>
+                <option value="hidden">🟡 Rascunho (oculto)</option>
+              </select>
+            </div>
+          </div>
         </div>
       </Modal>
 
