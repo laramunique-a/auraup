@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { supabase, isLocalMode, generateId, supabaseUrl, supabaseAnonKey } from '../services/storage'
 import { Button } from '../components/ui/Button'
@@ -11,7 +11,7 @@ import {
   UserPlus, Users, Pencil, Trash2, Plus, Coins, Sparkles, 
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
-  ChevronDown, KeyRound, GraduationCap, FileUp, Award
+  ChevronDown, KeyRound, GraduationCap, FileUp, Award, MessageSquareText
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -20,6 +20,7 @@ import { wordsOfTheDayService, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { isEnglishText } from '../lib/speechUtils'
 import { authService } from '../services/auth.service'
 import { getAcademicLevel, getAcademicLevelTheme, getCustomAcademicLevels, addCustomAcademicLevel } from '../lib/academicLevels'
+import { feedbackService, type FeedbackItem } from '../services/feedback.service'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -35,9 +36,15 @@ export function AdminPage() {
   const { toast, show } = useToast()
   const { speak } = useSpeech()
   const [users, setUsers] = useState<User[]>([])
-  const [activeTab, setActiveTab] = useState<'users' | 'levels' | 'decks' | 'words'>('users')
+  const [activeTab, setActiveTab] = useState<'users' | 'levels' | 'decks' | 'words' | 'feedbacks'>('users')
   const [activeModal, setActiveModal] = useState<'addUser' | 'editUser' | 'deleteUser' | 'addLevel' | 'editLevel' | 'editBalance' | 'viewLeagueUsers' | 'officialDeck' | 'importOfficialDeck' | 'wordOfTheDay' | 'addAcademicLevel' | null>(null)
   
+  // Feedbacks e Chamados de Suporte
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
+  const [loadingFeedbacks, setLoadingFeedbacks] = useState(false)
+  const [feedbackFilter, setFeedbackFilter] = useState<'all' | 'pending' | 'in_review' | 'resolved' | 'bug' | 'suggestion'>('all')
+  const [viewingFeedbackImage, setViewingFeedbackImage] = useState<string | null>(null)
+
   // Importação de Baralho Oficial do Anki
   const [selectedAdminFile, setSelectedAdminFile] = useState<File | null>(null)
   const [importingAdminDeck, setImportingAdminDeck] = useState(false)
@@ -134,6 +141,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     loadLevels()
     loadOfficialDecks()
     loadWordsOfTheDay()
+    loadFeedbacks()
   }, [])
 
   useEffect(() => {
@@ -141,6 +149,31 @@ function saveLocalAdminLevels(levelsList: any[]) {
     document.documentElement.scrollTop = 0
     document.body.scrollTop = 0
   }, [activeTab])
+
+  async function loadFeedbacks() {
+    setLoadingFeedbacks(true)
+    try {
+      const list = await feedbackService.getFeedbacks()
+      setFeedbacks(list)
+    } catch {
+      // ignore
+    } finally {
+      setLoadingFeedbacks(false)
+    }
+  }
+
+  async function handleFeedbackStatus(id: string, newStatus: 'pending' | 'resolved' | 'in_review') {
+    await feedbackService.updateStatus(id, newStatus)
+    setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, status: newStatus } : f))
+    show('Status do chamado atualizado!', 'success')
+  }
+
+  async function handleDeleteFeedback(id: string) {
+    if (!confirm('Deseja excluir este relato de feedback?')) return
+    await feedbackService.deleteFeedback(id)
+    setFeedbacks(prev => prev.filter(f => f.id !== id))
+    show('Feedback removido!', 'success')
+  }
 
   async function loadUsers() {
     if (isLocalMode || !supabase) {
@@ -948,20 +981,32 @@ function saveLocalAdminLevels(levelsList: any[]) {
   // Lista de Palavras sempre ordenada alfabeticamente
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
 
+  // Lista de Feedbacks filtrados
+  const filteredFeedbacks = useMemo(() => {
+    return feedbacks.filter(f => {
+      if (feedbackFilter === 'pending') return f.status === 'pending'
+      if (feedbackFilter === 'in_review') return f.status === 'in_review'
+      if (feedbackFilter === 'resolved') return f.status === 'resolved'
+      if (feedbackFilter === 'bug') return f.type === 'bug'
+      if (feedbackFilter === 'suggestion') return f.type === 'suggestion'
+      return true
+    })
+  }, [feedbacks, feedbackFilter])
+
   return (
     <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3.5 sm:py-8 flex-1 w-full">
       {/* Header Padronizado */}
       <PageHeader
         icon={ShieldCheck}
         title={<>Painel <span className="text-blue-600 dark:text-blue-400">Admin</span></>}
-        subtitle={<>Gerencie o ecossistema <strong className="text-slate-700 dark:text-slate-300">AuraUP</strong>, <strong className="text-blue-600 dark:text-blue-400">alunos</strong>, <strong className="text-indigo-600 dark:text-indigo-400">turmas</strong>, <strong className="text-amber-600 dark:text-amber-400">baralhos</strong> e <strong className="text-emerald-600 dark:text-emerald-400">palavras</strong>.</>}
+        subtitle={<>Gerencie o ecossistema <strong className="text-slate-700 dark:text-slate-300">AuraUP</strong>, <strong className="text-blue-600 dark:text-blue-400">alunos</strong>, <strong className="text-indigo-600 dark:text-indigo-400">turmas</strong>, <strong className="text-amber-600 dark:text-amber-400">baralhos</strong>, <strong className="text-emerald-600 dark:text-emerald-400">palavras</strong> e <strong className="text-rose-600 dark:text-rose-400">feedbacks</strong>.</>}
         actions={
-          <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-4 gap-1 shadow-2xs">
+          <div className="w-full sm:w-auto bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 grid grid-cols-5 gap-1 shadow-2xs">
             <button
               type="button"
               title="Alunos"
               onClick={() => setActiveTab('users')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
                 activeTab === 'users'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
@@ -975,7 +1020,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               type="button"
               title="Turma/Nível"
               onClick={() => setActiveTab('levels')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
                 activeTab === 'levels'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
@@ -989,7 +1034,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               type="button"
               title="Baralhos Oficiais"
               onClick={() => setActiveTab('decks')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
                 activeTab === 'decks'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
@@ -1003,7 +1048,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               type="button"
               title="Palavras do Dia"
               onClick={() => setActiveTab('words')}
-              className={`flex items-center justify-center gap-1.5 py-2 px-1.5 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer ${
                 activeTab === 'words'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
@@ -1012,16 +1057,36 @@ function saveLocalAdminLevels(levelsList: any[]) {
               <Sparkles size={15} className="shrink-0" />
               <span className="truncate">Palavras</span>
             </button>
+
+            <button
+              type="button"
+              title="Feedbacks dos Alunos"
+              onClick={() => setActiveTab('feedbacks')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-1 sm:px-3 rounded-lg text-xs sm:text-sm font-heading font-bold transition-all cursor-pointer relative ${
+                activeTab === 'feedbacks'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/50'
+              }`}
+            >
+              <MessageSquareText size={15} className="shrink-0" />
+              <span className="truncate">Feedbacks</span>
+              {feedbacks.filter(f => f.status === 'pending').length > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-extrabold shrink-0">
+                  {feedbacks.filter(f => f.status === 'pending').length}
+                </span>
+              )}
+            </button>
           </div>
         }
       />
 
       {/* Grid de Stats Compacto */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-5">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4 mb-5">
         <AdminStatCard icon={<Users size={16} />} label="Alunos ativos" value={allStudents.length} color="blue" />
         <AdminStatCard icon={<GraduationCap size={16} />} label="Turmas / Níveis" value={levels.length} color="indigo" />
         <AdminStatCard icon={<BookOpen size={16} />} label="Baralhos oficiais" value={officialDecks.length} color="amber" />
         <AdminStatCard icon={<Sparkles size={16} />} label="Palavras cadastradas" value={wordsOfTheDay.length} color="emerald" />
+        <AdminStatCard icon={<MessageSquareText size={16} />} label="Feedbacks / Chamados" value={feedbacks.length} color="rose" />
       </div>
 
       {activeTab === 'users' ? (
@@ -1460,7 +1525,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
             ))}
           </div>
         </section>
-      ) : (
+      ) : activeTab === 'words' ? (
         /* Gestão de Palavras do Dia (Com Modos Quadros / Lista e Ordem Alfabética) */
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
@@ -1606,6 +1671,179 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+        </section>
+      ) : (
+        /* Feedbacks & Chamados de Suporte */
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Feedbacks & Chamados de Suporte</h2>
+              <span className="text-xs font-heading font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/60 px-2.5 py-0.5 rounded-md border border-rose-200/60 dark:border-rose-800 shadow-xs">
+                <span className="font-bold">{feedbacks.filter(f => f.status === 'pending').length}</span> pendentes
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Filtro por status/tipo */}
+              <div className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 flex gap-1 flex-wrap">
+                {[
+                  { id: 'all', label: 'Todos' },
+                  { id: 'pending', label: 'Pendentes' },
+                  { id: 'in_review', label: 'Em Análise' },
+                  { id: 'resolved', label: 'Resolvidos' },
+                  { id: 'bug', label: 'Problemas' },
+                  { id: 'suggestion', label: 'Sugestões' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setFeedbackFilter(tab.id as any)}
+                    className={`px-3 py-1 text-xs font-medium rounded-lg transition-all ${
+                      feedbackFilter === tab.id
+                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <Button variant="ghost" size="sm" onClick={loadFeedbacks} loading={loadingFeedbacks}>
+                Atualizar
+              </Button>
+            </div>
+          </div>
+
+          {loadingFeedbacks ? (
+            <div className="text-center py-12 text-slate-400 text-sm">Carregando mensagens e chamados...</div>
+          ) : filteredFeedbacks.length === 0 ? (
+            <div className="card-3d p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
+              <MessageSquareText size={36} className="mx-auto text-slate-400 mb-2 opacity-50" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Nenhum feedback encontrado neste filtro.</p>
+              <p className="text-xs text-slate-400 mt-1">Os chamados enviados pelos alunos no menu de Ajuda aparecerão aqui.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredFeedbacks.map(item => {
+                const isBug = item.type === 'bug'
+                const statusColor = 
+                  item.status === 'resolved' 
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                    : item.status === 'in_review'
+                    ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                    : 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800'
+
+                const statusLabel = 
+                  item.status === 'resolved' ? 'Resolvido' : item.status === 'in_review' ? 'Em Análise' : 'Pendente'
+
+                return (
+                  <div key={item.id} className="card-3d p-4 rounded-2xl flex flex-col justify-between gap-3 border border-slate-200/80 dark:border-slate-800">
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md border ${
+                            isBug 
+                              ? 'bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300 border-red-200 dark:border-red-800'
+                              : 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                          }`}>
+                            {isBug ? '🐛 Problema / Bug' : '💡 Sugestão / Feedback'}
+                          </span>
+
+                          <span className={`text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md border ${statusColor}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+
+                        <span className="text-[10px] text-slate-400">
+                          {new Date(item.created_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      </div>
+
+                      <div className="text-xs text-slate-600 dark:text-slate-300 flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-slate-800 dark:text-white">{item.user_name || 'Aluno Anônimo'}</span>
+                        {item.user_email && <span className="text-slate-400">({item.user_email})</span>}
+                      </div>
+
+                      <div className="text-xs text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                        {item.message}
+                      </div>
+
+                      {/* Prints / Anexos de Imagens */}
+                      {item.images && item.images.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[11px] font-semibold text-slate-500">Prints anexados ({item.images.length}):</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {item.images.map((img, idx) => (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => setViewingFeedbackImage(img.dataUrl)}
+                                className="group relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 hover:ring-2 hover:ring-blue-500 transition-all shrink-0 cursor-pointer"
+                                title="Clique para ampliar o print"
+                              >
+                                <img src={img.dataUrl} alt={img.name || `Print ${idx + 1}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Informações de Dispositivo / App */}
+                      {(item.app_version || item.device_info) && (
+                        <div className="text-[10px] text-slate-400 truncate" title={`${item.app_version || ''} | ${item.device_info || ''}`}>
+                          📱 {item.app_version ? `v${item.app_version}` : ''} {item.device_info ? `• ${item.device_info}` : ''}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ações / Status */}
+                    <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] text-slate-500 font-medium">Mudar status:</span>
+                        {item.status !== 'pending' && (
+                          <button
+                            type="button"
+                            onClick={() => handleFeedbackStatus(item.id, 'pending')}
+                            className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 transition-colors"
+                          >
+                            Pendente
+                          </button>
+                        )}
+                        {item.status !== 'in_review' && (
+                          <button
+                            type="button"
+                            onClick={() => handleFeedbackStatus(item.id, 'in_review')}
+                            className="text-[11px] px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition-colors"
+                          >
+                            Em Análise
+                          </button>
+                        )}
+                        {item.status !== 'resolved' && (
+                          <button
+                            type="button"
+                            onClick={() => handleFeedbackStatus(item.id, 'resolved')}
+                            className="text-[11px] px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 transition-colors"
+                          >
+                            Resolvido
+                          </button>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFeedback(item.id)}
+                        className="text-slate-400 hover:text-red-600 transition-colors p-1"
+                        title="Excluir este feedback"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           )}
         </section>
@@ -2512,6 +2750,30 @@ function saveLocalAdminLevels(levelsList: any[]) {
         </div>
       </Modal>
 
+      {/* Modal de Visualização de Print / Imagem de Feedback */}
+      {viewingFeedbackImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setViewingFeedbackImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-slate-900 p-2 rounded-2xl shadow-2xl border border-slate-700">
+            <button
+              onClick={() => setViewingFeedbackImage(null)}
+              className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-slate-800/80 text-white hover:bg-slate-700 transition-colors"
+              title="Fechar visualização"
+            >
+              <X size={20} />
+            </button>
+            <img 
+              src={viewingFeedbackImage} 
+              alt="Print ampliado" 
+              className="max-h-[82vh] max-w-full rounded-xl object-contain mx-auto"
+              onClick={e => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
+
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   )
@@ -2523,6 +2785,7 @@ function AdminStatCard({ icon, label, value, color = 'blue' }: any) {
     indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950/50', text: 'text-indigo-600 dark:text-indigo-400', border: 'border-indigo-200/80 dark:border-indigo-800' },
     amber: { bg: 'bg-amber-50 dark:bg-amber-950/50', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-200/80 dark:border-amber-800' },
     emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/50', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200/80 dark:border-emerald-800' },
+    rose: { bg: 'bg-rose-50 dark:bg-rose-950/50', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-200/80 dark:border-rose-800' },
   }
   const theme = colorMap[color] || colorMap.blue
 

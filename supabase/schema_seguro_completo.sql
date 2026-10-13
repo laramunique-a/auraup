@@ -665,7 +665,40 @@ SELECT
 FROM auth.users u
 LEFT JOIN public.profiles p ON p.id = u.id
 WHERE p.id IS NULL
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;-- ==============================================================================
+-- 16. TABELA DE FEEDBACK E CHAMADOS (Bugs e Sugestões dos Alunos)
+-- ==============================================================================
+CREATE TABLE IF NOT EXISTS public.feedback (
+  id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_name TEXT,
+  user_email TEXT,
+  type TEXT NOT NULL DEFAULT 'bug',
+  message TEXT NOT NULL,
+  images JSONB DEFAULT '[]'::jsonb,
+  status TEXT DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Qualquer usuário pode enviar feedback" ON public.feedback;
+CREATE POLICY "Qualquer usuário pode enviar feedback"
+  ON public.feedback FOR INSERT
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Usuários autenticados podem ler feedbacks" ON public.feedback;
+CREATE POLICY "Usuários autenticados podem ler feedbacks"
+  ON public.feedback FOR SELECT
+  USING (true);
+
+DROP POLICY IF EXISTS "Usuários autenticados podem atualizar status de feedbacks" ON public.feedback;
+CREATE POLICY "Usuários autenticados podem atualizar status de feedbacks"
+  ON public.feedback FOR UPDATE
+  USING (true);
+
+DROP POLICY IF EXISTS "Usuários autenticados podem excluir feedbacks" ON public.feedback;
+CREATE POLICY "Usuários autenticados podem excluir feedbacks"
+  ON public.feedback FOR DELETE
+  USING (true);
 

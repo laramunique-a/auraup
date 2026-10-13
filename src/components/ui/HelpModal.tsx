@@ -50,19 +50,9 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, Send, Bug, Lightbulb, Image as ImageIcon, Trash2, Loader2, CheckCircle2 } from 'lucide-react'
+import { X, Send, Bug, Lightbulb, Image as ImageIcon, Trash2, Loader2, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-
-// ─── EmailJS Config — preencha com seus IDs reais (Passos 2, 3 e 4) ──────────
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID'   // ex: 'service_abc1234'
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID'  // ex: 'template_xyz5678'
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY'    // ex: 'user_AbCdEfGhIjKlMnOpQ'
-const ADMIN_EMAIL         = 'auraenglish7@gmail.com'
-
-const EMAIL_CONFIGURED =
-  EMAILJS_SERVICE_ID  !== 'YOUR_SERVICE_ID' &&
-  EMAILJS_TEMPLATE_ID !== 'YOUR_TEMPLATE_ID' &&
-  EMAILJS_PUBLIC_KEY  !== 'YOUR_PUBLIC_KEY'
+import { feedbackService } from '../../services/feedback.service'
 
 const MAX_IMAGES = 4
 const MAX_FILE_SIZE = 3 * 1024 * 1024 // 3 MB
@@ -161,38 +151,22 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
 
     const fromName  = user?.nickname || user?.name || 'Usuário'
     const fromEmail = user?.email || 'sem-email@auraup.com'
-    const typeLabel = type === 'bug' ? '🐛 Bug' : '💡 Sugestão'
 
     try {
-      if (EMAIL_CONFIGURED) {
-        // ── Passo 7: descomente após instalar o SDK (Passo 5) ─────────────
-        // const emailjs = (await import('@emailjs/browser')).default
-        // await emailjs.send(
-        //   EMAILJS_SERVICE_ID,
-        //   EMAILJS_TEMPLATE_ID,
-        //   {
-        //     from_name: fromName,
-        //     from_email: fromEmail,
-        //     type: typeLabel,
-        //     message: message.trim(),
-        //     images_count: images.length,
-        //     image_urls: images.map(img => img.dataUrl).join('\n\n') || '(sem imagem)',
-        //   },
-        //   EMAILJS_PUBLIC_KEY,
-        // )
-        throw new Error('SDK do EmailJS não instalado. Siga o Passo 5 nos comentários do HelpModal.tsx.')
-      } else {
-        // Fallback mailto — usado enquanto EmailJS não estiver configurado
-        const subject = encodeURIComponent(`[AuraUP] ${typeLabel} — ${fromName}`)
-        const body    = encodeURIComponent(
-          `Tipo: ${typeLabel}\nUsuário: ${fromName} <${fromEmail}>\n\n${message.trim()}` +
-          (images.length > 0 ? `\n\n[${images.length} imagem(ns) anexada(s) — visualização disponível via EmailJS]` : '')
-        )
-        window.open(`mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`, '_blank')
+      const res = await feedbackService.sendFeedback({
+        user_id: user?.id,
+        user_name: fromName,
+        user_email: fromEmail,
+        type,
+        message: message.trim(),
+        images,
+      })
+
+      if (res.success) {
         setStatus('success')
-        return
+      } else {
+        throw new Error(res.error || 'Erro ao enviar feedback.')
       }
-      setStatus('success')
     } catch (err: any) {
       setErrorMsg(err?.message || 'Falha ao enviar. Tente novamente.')
       setStatus('error')
@@ -337,12 +311,10 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
                 />
               </div>
 
-              {!EMAIL_CONFIGURED && (
-                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-                  <strong>⚠️ E-mail direto não configurado.</strong> O botão "Enviar" abrirá seu cliente de e-mail como alternativa.
-                  Configure o EmailJS seguindo os comentários no arquivo <code className="font-mono bg-amber-100 dark:bg-amber-900/50 px-1 py-0.5 rounded">HelpModal.tsx</code>.
-                </div>
-              )}
+              <div className="p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/70 dark:border-blue-900/60 text-xs text-blue-800 dark:text-blue-300 leading-relaxed flex items-center gap-2.5 shadow-2xs">
+                <ShieldCheck size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                <span>Sua mensagem será enviada diretamente à equipe de coordenação e suporte do AuraUP.</span>
+              </div>
 
               {errorMsg && (
                 <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">⚠️ {errorMsg}</p>
