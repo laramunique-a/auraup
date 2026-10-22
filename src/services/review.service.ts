@@ -1,5 +1,6 @@
 /**
  * Review Service — local mode (localStorage) + Supabase mode
+ * Enhanced to support unlimited reviews and cards without PostgREST 1000 row limit.
  */
 
 import type { Review, Rating } from '../types'
@@ -17,9 +18,6 @@ async function localGetReview(cardId: string, userId: string): Promise<Review | 
 }
 
 async function localGetReviewsForDeck(_deckId: string, userId: string): Promise<Review[]> {
-  // We need to cross with card IDs — card service will provide them
-  // But to avoid circular deps, we filter by user and then cards in that deck
-  // Card IDs are passed from the deck study session
   const reviews = lsGet<Review>(LS_REVIEWS)
   return reviews.filter(r => r.user_id === userId)
 }
@@ -104,14 +102,10 @@ async function getActivity(userId: string): Promise<Record<string, number>> {
   const merged: Record<string, number> = { ...userSpecific }
   const today = getStudyDayKey()
 
-  // 1. Modo Supabase: consulta revisões reais do usuário
+  // 1. Modo Supabase: consulta revisões reais do usuário (paginado)
   if (!isLocalMode && supabase) {
     try {
-      const { data: cloudReviews } = await supabase
-        .from('reviews')
-        .select('last_reviewed')
-        .eq('user_id', userId)
-
+      const cloudReviews = await supabaseGetAllUserReviews(userId)
       const hasRealReviews = cloudReviews && cloudReviews.length > 0
 
       // Se o aluno nunca estudou um card (perfil novo), sua constância deve ser totalmente zerada
@@ -236,13 +230,67 @@ async function supabaseGetReview(cardId: string, userId: string): Promise<Review
   return data || null
 }
 
+async function supabaseGetAllUserReviews(userId: string): Promise<Review[]> {
+  const allReviews: Review[] = []
+  const PAGE_SIZE = 1000
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await supabase!
+      .from('reviews')
+      .select('*')
+      .eq('user_id', userId)
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) {
+      hasMore = false
+    } else {
+      allReviews.push(...data)
+      if (data.length < PAGE_SIZE) {
+        hasMore = false
+      } else {
+        page++
+      }
+    }
+  }
+
+  return allReviews
+}
+
 async function supabaseGetReviewsForDeck(_deckId: string, userId: string): Promise<Review[]> {
-  const { data } = await supabase!
-    .from('reviews')
-    .select('*, cards!inner(deck_id)')
-    .eq('user_id', userId)
-    .eq('cards.deck_id', _deckId)
-  return data || []
+  const allReviews: Review[] = []
+  const PAGE_SIZE = 1000
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await supabase!
+      .from('reviews')
+      .select('*, cards!inner(deck_id)')
+      .eq('user_id', userId)
+      .eq('cards.deck_id', _deckId)
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) {
+      hasMore = false
+    } else {
+      allReviews.push(...data)
+      if (data.length < PAGE_SIZE) {
+        hasMore = false
+      } else {
+        page++
+      }
+    }
+  }
+
+  return allReviews
 }
 
 async function supabaseGetDueCardIds(_deckId: string, userId: string, cardIds: string[]): Promise<string[]> {
@@ -250,19 +298,21 @@ async function supabaseGetDueCardIds(_deckId: string, userId: string, cardIds: s
   const today = getStudyDayKey()
 
   try {
-    let query = supabase!
-      .from('reviews')
-      .select('card_id, due_date')
-      .eq('user_id', userId)
-
+    let reviewsData: any[] = []
     if (cardIds.length <= 100) {
-      query = query.in('card_id', cardIds)
+      const { data, error } = await supabase!
+        .from('reviews')
+        .select('card_id, due_date')
+        .eq('user_id', userId)
+        .in('card_id', cardIds)
+      if (error) throw error
+      reviewsData = data || []
+    } else {
+      // Carregar todas as revisões do usuário de forma paginada para baralhos grandes
+      reviewsData = await supabaseGetAllUserReviews(userId)
     }
 
-    const { data, error } = await query
-    if (error) throw error
-
-    const reviewMap = new Map((data || []).map((r: any) => [r.card_id, r]))
+    const reviewMap = new Map((reviewsData || []).map((r: any) => [r.card_id, r]))
     return cardIds.filter(id => {
       const rev = reviewMap.get(id)
       if (!rev) return true // Card nunca revisado (novo)
@@ -312,7 +362,7 @@ export const reviewService = {
   getReview: isLocalMode ? localGetReview : supabaseGetReview,
   getReviewsForDeck: (deckId: string, userId: string) => 
     deckId === 'all' 
-      ? (isLocalMode ? lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId) : supabase!.from('reviews').select('*').eq('user_id', userId).then(r => r.data || []))
+      ? (isLocalMode ? lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId) : supabaseGetAllUserReviews(userId))
       : (isLocalMode ? localGetReviewsForDeck(deckId, userId) : supabaseGetReviewsForDeck(deckId, userId)),
   getDueCardIds: isLocalMode ? localGetDueCardIds : supabaseGetDueCardIds,
   getGlobalDueCardIds: isLocalMode ? localGetGlobalDueCardIds : supabaseGetGlobalDueCardIds,
