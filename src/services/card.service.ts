@@ -1,5 +1,6 @@
 /**
- * Card Service — local mode (localStorage) + Supabase mode
+ * Card Service — local mode (localStorage/IndexedDB) + Supabase mode
+ * Enhanced to support unlimited cards without PostgREST 1000 row ceiling.
  */
 
 import type { Card } from '../types'
@@ -68,22 +69,66 @@ async function localDeleteCardsByDeck(deckId: string): Promise<void> {
 // ── Supabase Mode ─────────────────────────────────────────────────────────────
 
 async function supabaseGetCards(deckId: string): Promise<Card[]> {
-  const { data, error } = await supabase!
-    .from('cards')
-    .select('*')
-    .eq('deck_id', deckId)
-    .order('created_at', { ascending: true })
-  if (error) throw new Error(error.message)
-  return data || []
+  const allCards: Card[] = []
+  const PAGE_SIZE = 1000
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await supabase!
+      .from('cards')
+      .select('*')
+      .eq('deck_id', deckId)
+      .order('created_at', { ascending: true })
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) {
+      hasMore = false
+    } else {
+      allCards.push(...data)
+      if (data.length < PAGE_SIZE) {
+        hasMore = false
+      } else {
+        page++
+      }
+    }
+  }
+
+  return allCards
 }
 
 async function supabaseGetAllUserCards(userId: string): Promise<Card[]> {
-  const { data, error } = await supabase!
-    .from('cards')
-    .select('*, decks!inner(user_id)')
-    .eq('decks.user_id', userId)
-  if (error) throw new Error(error.message)
-  return data || []
+  const allCards: Card[] = []
+  const PAGE_SIZE = 1000
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const from = page * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await supabase!
+      .from('cards')
+      .select('*, decks!inner(user_id)')
+      .eq('decks.user_id', userId)
+      .range(from, to)
+
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) {
+      hasMore = false
+    } else {
+      allCards.push(...data)
+      if (data.length < PAGE_SIZE) {
+        hasMore = false
+      } else {
+        page++
+      }
+    }
+  }
+
+  return allCards
 }
 
 async function supabaseCreateCard(deckId: string, front: string, back: string, extra?: Partial<Card>): Promise<Card> {
