@@ -1,6 +1,8 @@
 /**
  * Anki Service — Handles .apkg import/export locally in the browser.
  * Now restored to "Perfect Local Quality" (Language v7 + Full Image support).
+ * Includes batch insertion (100 cards/chunk), automatic image compression (<640px),
+ * and 100MB file size safeguard.
  */
 
 import { saveAs } from 'file-saver';
@@ -10,9 +12,12 @@ import { unzipSync } from 'fflate';
 import initSqlJs from 'sql.js';
 import { decompress } from 'fzstd';
 import { cardIDB } from './idb.storage';
+import { compressBase64 } from '../lib/utils';
 
 // @ts-ignore
 import * as genanki from 'genanki-js';
+
+const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 
 /**
  * Robust binary to Base64 conversion to avoid stack overflow.
@@ -21,12 +26,11 @@ function uint8ArrayToBase64(uint8Array: Uint8Array): string {
   let binary = '';
   const len = uint8Array.byteLength;
   for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(uint8Array[i]);
+    binary += String.fromCharCode(uint8Array[i]);
   }
   return window.btoa(binary);
 }
 
-/**
 /**
  * Extracts and parses cards from an .apkg file using WASM and local unzipping.
  */
@@ -43,6 +47,10 @@ export async function parseAnkiFile(file: File, name?: string): Promise<{
     back_audio: boolean;
   }[];
 }> {
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error('O arquivo excede o limite máximo de 100 MB. Escolha um arquivo menor.');
+  }
+
   console.log('🚀 Iniciando parse local de alta qualidade (WASM)...');
   
   const arrayBuffer = await file.arrayBuffer();
@@ -139,7 +147,8 @@ export async function parseAnkiFile(file: File, name?: string): Promise<{
         let imgData = zipEntries[zipId];
         if (!imgData) return undefined;
         if (imgData[0] === 0x28 && imgData[1] === 0xB5) imgData = decompress(imgData);
-        if (imgData.length > 5 * 1024 * 1024) return undefined;
+        // Proteção contra buffers corrompidos de tamanho absurdo (> 50MB)
+        if (imgData.length > 50 * 1024 * 1024) return undefined;
 
         let mime = 'image/png';
         if (imgData[0] === 0xff && imgData[1] === 0xd8) mime = 'image/jpeg';
@@ -199,26 +208,58 @@ export async function parseAnkiFile(file: File, name?: string): Promise<{
 
   if (parsedCards.length === 0) throw new Error('Nenhum card encontrado no arquivo.');
 
+  // --- 4. Compressão automática de imagens para economizar espaço e evitar estouro de payload ---
+  console.log(`🖼️ Comprimindo imagens de ${parsedCards.length} cards extraídos...`);
+  for (let i = 0; i < parsedCards.length; i++) {
+    const card = parsedCards[i];
+    if (card.front_image && card.front_image.startsWith('data:image')) {
+      try {
+        card.front_image = await compressBase64(card.front_image, 640, 0.6);
+      } catch (err) {
+        console.warn(`[Anki] Não foi possível comprimir imagem da frente do card ${i + 1}:`, err);
+      }
+    }
+    if (card.back_image && card.back_image.startsWith('data:image')) {
+      try {
+        card.back_image = await compressBase64(card.back_image, 640, 0.6);
+      } catch (err) {
+        console.warn(`[Anki] Não foi possível comprimir imagem do verso do card ${i + 1}:`, err);
+      }
+    }
+  }
+
   return { deckName, cards: parsedCards };
 }
 
 /**
  * Process .apkg archives locally and save into the user's personal decks.
+ * Includes batching and progress tracking.
  */
-export async function importAnkiApkg(file: File, name?: string, userId: string = 'local_user_default'): Promise<{ 
+export async function importAnkiApkg(
+  file: File, 
+  name?: string, 
+  userId: string = 'local_user_default',
+  onProgress?: (status: string) => void
+): Promise<{ 
   success: boolean; 
   message: string; 
   deck_id?: string;
   cards?: any[];
   deck_name?: string;
 }> {
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    throw new Error('O arquivo excede o limite máximo permitido de 100 MB.');
+  }
+
   try {
+    if (onProgress) onProgress('Extraindo e processando dados do baralho...');
     const { deckName, cards: parsedCards } = await parseAnkiFile(file, name);
 
-    // --- 4. Persistence with Audio Flags ---
+    // --- Persistence in Supabase ---
     if (supabase) {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        if (onProgress) onProgress('Criando novo baralho na nuvem...');
         const { data: deck, error: deckErr } = await supabase.from('decks').insert({ user_id: session.user.id, name: deckName }).select().single();
         if (deckErr) throw deckErr;
 
@@ -234,14 +275,34 @@ export async function importAnkiApkg(file: File, name?: string, userId: string =
           back_audio: c.back_audio
         }));
 
-        const { error: cardsErr } = await supabase.from('cards').insert(cardsToInsert);
-        if (cardsErr) throw cardsErr;
+        // Inserção em lotes (batching) de 100 cards por vez
+        const BATCH_SIZE = 100;
+        const totalBatches = Math.ceil(cardsToInsert.length / BATCH_SIZE);
+        for (let i = 0; i < cardsToInsert.length; i += BATCH_SIZE) {
+          const chunk = cardsToInsert.slice(i, i + BATCH_SIZE);
+          const currentBatch = Math.floor(i / BATCH_SIZE) + 1;
+          const currentCount = Math.min(i + BATCH_SIZE, cardsToInsert.length);
+          if (onProgress) {
+            onProgress(`Salvando lote ${currentBatch} de ${totalBatches} (${currentCount}/${cardsToInsert.length} cards)...`);
+          }
+          const { error: cardsErr } = await supabase.from('cards').insert(chunk);
+          if (cardsErr) {
+            console.error(`Erro ao inserir lote ${currentBatch}:`, cardsErr);
+            throw new Error(`Erro ao salvar cards no Supabase (lote ${currentBatch}/${totalBatches}): ${cardsErr.message}`);
+          }
+        }
 
-        return { success: true, message: `${parsedCards.length} cards importados!`, deck_id: deck.id, deck_name: deckName };
+        return { 
+          success: true, 
+          message: `${parsedCards.length} cards importados com sucesso!`, 
+          deck_id: deck.id, 
+          deck_name: deckName 
+        };
       }
     }
 
     // Local Persistence
+    if (onProgress) onProgress('Salvando cards no armazenamento local...');
     const effectiveUserId = userId || 'local_user_default';
     const decks = lsGet<Deck>('uply_decks');
     let finalDeckName = deckName;
