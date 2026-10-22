@@ -71,6 +71,7 @@ export function DashboardPage() {
   
   // Import Anki State
   const [importing, setImporting] = useState(false)
+  const [importStatus, setImportStatus] = useState('')
   const [showImportModal, setShowImportModal] = useState(false)
   const [importDeckName, setImportDeckName] = useState('')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -304,6 +305,12 @@ export function DashboardPage() {
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB
+    if (file.size > MAX_FILE_SIZE) {
+      show('O arquivo selecionado tem mais de 100 MB. O limite máximo para importação é de 100 MB.', 'error')
+      if (e.target) e.target.value = ''
+      return
+    }
     setSelectedFile(file)
     setImportDeckName(file.name.replace(/\.apkg(\.zip)?$/i, ''))
     setShowImportModal(true)
@@ -312,17 +319,20 @@ export function DashboardPage() {
   async function handleImportConfirm() {
     if (!selectedFile) return
     setImporting(true)
+    setImportStatus('Iniciando processamento...')
     try {
       const result = await ankiService.importFromApkg(
         selectedFile,
         importDeckName.trim(),
-        user?.id || 'local_user_default'
+        user?.id || 'local_user_default',
+        (statusMsg) => setImportStatus(statusMsg)
       )
       if (!result.success) throw new Error(result.message)
 
       show(result.message || 'Importação realizada com sucesso! ✨', 'success')
       setShowImportModal(false)
       setSelectedFile(null)
+      setImportStatus('')
       const fileInput = document.getElementById('anki-dashboard-import') as HTMLInputElement | null
       if (fileInput) fileInput.value = ''
       await refreshStats()
@@ -330,6 +340,7 @@ export function DashboardPage() {
       show(err.message || 'Erro na importação.', 'error')
     } finally {
       setImporting(false)
+      setImportStatus('')
     }
   }
 
@@ -1378,6 +1389,12 @@ export function DashboardPage() {
             disabled={importing}
             className="w-full px-4 py-3 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 font-medium text-base text-slate-900 dark:text-white outline-none transition-all"
           />
+          {importStatus && (
+            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-xs font-semibold text-blue-700 dark:text-blue-300">
+              <div className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              <span>{importStatus}</span>
+            </div>
+          )}
         </div>
       </Modal>
 
