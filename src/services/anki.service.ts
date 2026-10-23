@@ -7,8 +7,6 @@
 
 import { saveAs } from 'file-saver';
 import { supabase, lsGet, lsSetItem, isLocalMode } from './storage';
-
-const isUUID = (str?: string) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 import type { Card, Deck } from '../types';
 import { unzipSync } from 'fflate';
 import initSqlJs from 'sql.js';
@@ -20,6 +18,8 @@ import { compressBase64 } from '../lib/utils';
 import * as genanki from 'genanki-js';
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
+
+const isUUID = (str?: string) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 
 /**
  * Robust binary to Base64 conversion to avoid stack overflow.
