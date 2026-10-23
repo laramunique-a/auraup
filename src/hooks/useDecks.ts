@@ -14,6 +14,7 @@ export function useDecks() {
     getDeckStats: async (deckId: string) => context.statsMap[deckId] || { total: 0, due: 0, new: 0 }, 
     reload: context.reload,
     refreshStats: context.refreshStats,
-    recordReviewLocally: context.recordReviewLocally
+    recordReviewLocally: context.recordReviewLocally,
+    addDeck: context.addDeck
   }
 }

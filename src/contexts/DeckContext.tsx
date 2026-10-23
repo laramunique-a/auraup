@@ -14,6 +14,7 @@ interface DeckContextType {
   createDeck: (name: string, description?: string) => Promise<Deck | undefined>
   updateDeck: (id: string, updates: Partial<Pick<Deck, 'name' | 'description'>>) => Promise<Deck>
   deleteDeck: (id: string) => Promise<void>
+  addDeck: (deck: Deck, initialStats?: DeckStats) => void
 }
 
 const DeckContext = createContext<DeckContextType | undefined>(undefined)
@@ -108,6 +109,19 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     return deck
   }
 
+  const addDeck = useCallback((deck: Deck, initialStats?: DeckStats) => {
+    setDecks(prev => {
+      if (prev.some(d => d.id === deck.id)) return prev
+      return [deck, ...prev]
+    })
+    if (initialStats) {
+      setStatsMap(prev => ({
+        ...prev,
+        [deck.id]: initialStats
+      }))
+    }
+  }, [])
+
   const updateDeck = async (id: string, updates: Partial<Pick<Deck, 'name' | 'description'>>) => {
     const updated = await deckService.updateDeck(id, updates)
     setDecks(prev => prev.map(d => d.id === id ? updated : d))
@@ -126,7 +140,7 @@ export function DeckProvider({ children }: { children: React.ReactNode }) {
     <DeckContext.Provider value={{ 
       decks, statsMap, loading, error, 
       reload: loadData, refreshStats, recordReviewLocally,
-      createDeck, updateDeck, deleteDeck 
+      createDeck, updateDeck, deleteDeck, addDeck
     }}>
       {children}
     </DeckContext.Provider>

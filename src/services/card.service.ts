@@ -9,6 +9,8 @@ import { cardIDB } from './idb.storage'
 
 const LS_CARDS = 'uply_cards'
 
+const isUUID = (str?: string) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 // ── Local Mode (IndexedDB) ──────────────────────────────────────────────────
 
 async function migrateIfNeeded() {
@@ -164,11 +166,41 @@ async function supabaseDeleteCardsByDeck(deckId: string): Promise<void> {
   }
 }
 
+// ── Public Unified Functions ──────────────────────────────────────────────────
+
+async function getCards(deckId: string): Promise<Card[]> {
+  if (isLocalMode || !supabase || !isUUID(deckId)) {
+    return localGetCards(deckId);
+  }
+  try {
+    const cards = await supabaseGetCards(deckId);
+    if (cards && cards.length > 0) return cards;
+    return localGetCards(deckId);
+  } catch (err) {
+    console.warn('[CardService] Erro ao buscar cards no Supabase, fallback local:', err);
+    return localGetCards(deckId);
+  }
+}
+
+async function getAllUserCards(userId: string): Promise<Card[]> {
+  if (isLocalMode || !supabase || !isUUID(userId)) {
+    return localGetAllUserCards(userId);
+  }
+  try {
+    const cards = await supabaseGetAllUserCards(userId);
+    if (cards && cards.length > 0) return cards;
+    return localGetAllUserCards(userId);
+  } catch (err) {
+    console.warn('[CardService] Erro ao buscar todos cards do usuário no Supabase, fallback local:', err);
+    return localGetAllUserCards(userId);
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const cardService = {
-  getCards: isLocalMode ? localGetCards : supabaseGetCards,
-  getAllUserCards: isLocalMode ? localGetAllUserCards : supabaseGetAllUserCards,
+  getCards,
+  getAllUserCards,
   createCard: isLocalMode ? localCreateCard : supabaseCreateCard,
   updateCard: isLocalMode ? localUpdateCard : supabaseUpdateCard,
   deleteCard: isLocalMode ? localDeleteCard : supabaseDeleteCard,

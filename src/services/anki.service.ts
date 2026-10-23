@@ -6,7 +6,9 @@
  */
 
 import { saveAs } from 'file-saver';
-import { supabase, lsGet, lsSetItem } from './storage';
+import { supabase, lsGet, lsSetItem, isLocalMode } from './storage';
+
+const isUUID = (str?: string) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 import type { Card, Deck } from '../types';
 import { unzipSync } from 'fflate';
 import initSqlJs from 'sql.js';
@@ -243,9 +245,11 @@ export async function importAnkiApkg(
 ): Promise<{ 
   success: boolean; 
   message: string; 
+  deck?: Deck;
   deck_id?: string;
   cards?: any[];
   deck_name?: string;
+  cardsCount?: number;
 }> {
   if (file.size > MAX_FILE_SIZE_BYTES) {
     throw new Error('O arquivo excede o limite máximo permitido de 100 MB.');
@@ -255,13 +259,30 @@ export async function importAnkiApkg(
     if (onProgress) onProgress('Extraindo e processando dados do baralho...');
     const { deckName, cards: parsedCards } = await parseAnkiFile(file, name);
 
-    // --- Persistence in Supabase ---
+    let effectiveUserId = userId || 'local_user_default';
     if (supabase) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          effectiveUserId = session.user.id;
+        }
+      } catch {}
+    }
+
+    const canUseSupabase = !isLocalMode && !!supabase && isUUID(effectiveUserId);
+    let createdDeck: Deck | null = null;
+
+    // --- Persistence in Supabase ---
+    if (canUseSupabase) {
+      try {
         if (onProgress) onProgress('Criando novo baralho na nuvem...');
-        const { data: deck, error: deckErr } = await supabase.from('decks').insert({ user_id: session.user.id, name: deckName }).select().single();
+        const { data: deck, error: deckErr } = await supabase!
+          .from('decks')
+          .insert({ user_id: effectiveUserId, name: deckName })
+          .select()
+          .single();
         if (deckErr) throw deckErr;
+        createdDeck = deck;
 
         const cardsToInsert = parsedCards.map(c => ({
           deck_id: deck.id,
@@ -285,56 +306,64 @@ export async function importAnkiApkg(
           if (onProgress) {
             onProgress(`Salvando lote ${currentBatch} de ${totalBatches} (${currentCount}/${cardsToInsert.length} cards)...`);
           }
-          const { error: cardsErr } = await supabase.from('cards').insert(chunk);
+          const { error: cardsErr } = await supabase!.from('cards').insert(chunk);
           if (cardsErr) {
             console.error(`Erro ao inserir lote ${currentBatch}:`, cardsErr);
             throw new Error(`Erro ao salvar cards no Supabase (lote ${currentBatch}/${totalBatches}): ${cardsErr.message}`);
           }
         }
-
-        return { 
-          success: true, 
-          message: `${parsedCards.length} cards importados com sucesso!`, 
-          deck_id: deck.id, 
-          deck_name: deckName 
-        };
+      } catch (cloudErr: any) {
+        console.warn('[Anki] Falha ao persistir no Supabase, salvando localmente:', cloudErr);
+        createdDeck = null;
       }
     }
 
-    // Local Persistence
-    if (onProgress) onProgress('Salvando cards no armazenamento local...');
-    const effectiveUserId = userId || 'local_user_default';
-    const decks = lsGet<Deck>('uply_decks');
-    let finalDeckName = deckName;
-    let counter = 1;
-    while (decks.some(d => (d.user_id === effectiveUserId || !d.user_id || d.user_id === 'local') && d.name.toLowerCase() === finalDeckName.toLowerCase())) {
-      finalDeckName = `${deckName} (${counter++})`;
+    // Local Persistence (fallback ou se o usuário estiver em modo local / perfil não-UUID)
+    if (!createdDeck) {
+      if (onProgress) onProgress('Salvando cards no armazenamento local...');
+      const decks = lsGet<Deck>('uply_decks');
+      let finalDeckName = deckName;
+      let counter = 1;
+      while (decks.some(d => (d.user_id === effectiveUserId || !d.user_id || d.user_id === 'local') && d.name.toLowerCase() === finalDeckName.toLowerCase())) {
+        finalDeckName = `${deckName} (${counter++})`;
+      }
+
+      createdDeck = { 
+        id: crypto.randomUUID(), 
+        name: finalDeckName, 
+        created_at: new Date().toISOString(), 
+        user_id: effectiveUserId 
+      };
+      lsSetItem('uply_decks', [...decks, createdDeck]);
+
+      const newCards: Card[] = parsedCards.map(c => ({ 
+        ...c, 
+        id: crypto.randomUUID(), 
+        deck_id: createdDeck!.id, 
+        created_at: new Date().toISOString() 
+      }));
+
+      // Save directly to IndexedDB (cardIDB) to support 1000+ cards with images safely
+      await cardIDB.saveBulk(newCards as any);
     }
 
-    const newDeck: Deck = { 
-      id: crypto.randomUUID(), 
-      name: finalDeckName, 
-      created_at: new Date().toISOString(), 
-      user_id: effectiveUserId 
-    };
-    lsSetItem('uply_decks', [...decks, newDeck]);
-
-    const newCards: Card[] = parsedCards.map(c => ({ 
-      ...c, 
-      id: crypto.randomUUID(), 
-      deck_id: newDeck.id, 
-      created_at: new Date().toISOString() 
-    }));
-
-    // Save directly to IndexedDB (cardIDB) to support 1000+ cards with images safely
-    await cardIDB.saveBulk(newCards as any);
+    // Garante SEMPRE o espelhamento do deck no localStorage para que ele apareça imediatamente na UI sem sumir
+    try {
+      const localDecks = lsGet<Deck>('uply_decks');
+      if (!localDecks.some(d => d.id === createdDeck!.id)) {
+        lsSetItem('uply_decks', [createdDeck, ...localDecks]);
+      }
+    } catch (e) {
+      console.warn('[Anki] Erro ao espelhar deck localmente:', e);
+    }
 
     return { 
       success: true, 
       message: `${parsedCards.length} cards importados com sucesso! ✨`, 
-      deck_id: newDeck.id, 
-      cards: newCards, 
-      deck_name: finalDeckName 
+      deck: createdDeck,
+      deck_id: createdDeck.id, 
+      deck_name: createdDeck.name,
+      cardsCount: parsedCards.length
     };
 
   } catch (err: any) {
@@ -343,9 +372,6 @@ export async function importAnkiApkg(
   }
 }
 
-/**
- * Exports a deck to .apkg (Client-side)
- */
 export async function exportToAnki(deckName: string, cards: Card[]) {
   // @ts-ignore
   const { Package, Deck, Model, Note } = genanki;

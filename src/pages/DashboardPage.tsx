@@ -38,7 +38,7 @@ export function DashboardPage() {
     progressToNextLevel 
   } = useEconomy()
 
-  const { decks, loading, statsMap, createDeck, deleteDeck, reload, refreshStats } = useDecks()
+  const { decks, loading, statsMap, createDeck, deleteDeck, reload, refreshStats, addDeck } = useDecks()
   const [showCreate, setShowCreate] = useState(false)
   const [deckName, setDeckName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -333,9 +333,20 @@ export function DashboardPage() {
       setShowImportModal(false)
       setSelectedFile(null)
       setImportStatus('')
+      setMobileTab('decks')
       const fileInput = document.getElementById('anki-dashboard-import') as HTMLInputElement | null
       if (fileInput) fileInput.value = ''
-      await refreshStats()
+
+      // Adiciona o baralho imediatamente ao estado visual do Dashboard para evitar que suma
+      if (result.deck) {
+        addDeck(result.deck, {
+          total: result.cardsCount || (result.cards ? result.cards.length : 0),
+          due: result.cardsCount || (result.cards ? result.cards.length : 0),
+          new: result.cardsCount || (result.cards ? result.cards.length : 0)
+        })
+      }
+
+      await reload()
     } catch (err: any) {
       show(err.message || 'Erro na importação.', 'error')
     } finally {
@@ -350,10 +361,10 @@ export function DashboardPage() {
     const statsA = statsMap[a.id]
     const statsB = statsMap[b.id]
     switch (sortBy) {
-      case 'alpha': return a.name.localeCompare(b.name)
+      case 'alpha': return (a.name || '').localeCompare(b.name || '')
       case 'recent': return (statsB?.lastReview || '').localeCompare(statsA?.lastReview || '')
-      case 'newest': return b.created_at.localeCompare(a.created_at)
-      case 'oldest': return a.created_at.localeCompare(b.created_at)
+      case 'newest': return (b.created_at || '').localeCompare(a.created_at || '')
+      case 'oldest': return (a.created_at || '').localeCompare(b.created_at || '')
       case 'cards': return (statsB?.total || 0) - (statsA?.total || 0)
       case 'due': return (statsB?.due || 0) - (statsA?.due || 0)
       default: return 0

@@ -10,6 +10,8 @@ import { calculateSM2, getStudyDayKey } from '../lib/sm2'
 const LS_REVIEWS = 'uply_reviews'
 const LS_ACTIVITY = 'uply_activity'
 
+const isUUID = (str?: string) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 // ── Local Mode ────────────────────────────────────────────────────────────────
 
 async function localGetReview(cardId: string, userId: string): Promise<Review | null> {
@@ -62,7 +64,7 @@ async function logActivity(userId: string, count: number = 1): Promise<Record<st
   }
 
   // 3. Sincroniza com Supabase se disponível
-  if (!isLocalMode && supabase) {
+  if (!isLocalMode && supabase && isUUID(userId)) {
     try {
       const { data: existing, error: selectErr } = await supabase
         .from('activity')
@@ -103,7 +105,7 @@ async function getActivity(userId: string): Promise<Record<string, number>> {
   const today = getStudyDayKey()
 
   // 1. Modo Supabase: consulta revisões reais do usuário (paginado)
-  if (!isLocalMode && supabase) {
+  if (!isLocalMode && supabase && isUUID(userId)) {
     try {
       const cloudReviews = await supabaseGetAllUserReviews(userId)
       const hasRealReviews = cloudReviews && cloudReviews.length > 0
@@ -262,6 +264,10 @@ async function supabaseGetAllUserReviews(userId: string): Promise<Review[]> {
 }
 
 async function supabaseGetReviewsForDeck(_deckId: string, userId: string): Promise<Review[]> {
+  if (_deckId === 'all') {
+    return supabaseGetAllUserReviews(userId);
+  }
+
   const allReviews: Review[] = []
   const PAGE_SIZE = 1000
   let page = 0
@@ -356,17 +362,88 @@ async function supabaseSaveReview(userId: string, cardId: string, rating: Rating
   return data
 }
 
+// ── Public Unified Functions ──────────────────────────────────────────────────
+
+async function getReviewsForDeck(deckId: string, userId: string): Promise<Review[]> {
+  if (isLocalMode || !supabase || !isUUID(userId)) {
+    return localGetReviewsForDeck(deckId, userId);
+  }
+  if (deckId === 'all') {
+    try {
+      return await supabaseGetAllUserReviews(userId);
+    } catch (err) {
+      console.warn('[ReviewService] Erro ao buscar todas as revisões, fallback local:', err);
+      return localGetReviewsForDeck('all', userId);
+    }
+  }
+  if (!isUUID(deckId)) {
+    return localGetReviewsForDeck(deckId, userId);
+  }
+  try {
+    return await supabaseGetReviewsForDeck(deckId, userId);
+  } catch (err) {
+    console.warn('[ReviewService] Erro ao buscar revisões do deck, fallback local:', err);
+    return localGetReviewsForDeck(deckId, userId);
+  }
+}
+
+async function getReview(cardId: string, userId: string): Promise<Review | null> {
+  if (isLocalMode || !supabase || !isUUID(userId) || !isUUID(cardId)) {
+    return localGetReview(cardId, userId);
+  }
+  try {
+    return await supabaseGetReview(cardId, userId);
+  } catch {
+    return localGetReview(cardId, userId);
+  }
+}
+
+async function getDueCardIds(deckId: string, userId: string, cardIds: string[]): Promise<string[]> {
+  if (isLocalMode || !supabase || !isUUID(userId)) {
+    return localGetDueCardIds(deckId, userId, cardIds);
+  }
+  try {
+    return await supabaseGetDueCardIds(deckId, userId, cardIds);
+  } catch {
+    return localGetDueCardIds(deckId, userId, cardIds);
+  }
+}
+
+async function getGlobalDueCardIds(userId: string, cardIds: string[]): Promise<string[]> {
+  if (isLocalMode || !supabase || !isUUID(userId)) {
+    return localGetGlobalDueCardIds(userId, cardIds);
+  }
+  try {
+    return await supabaseGetGlobalDueCardIds(userId, cardIds);
+  } catch {
+    return localGetGlobalDueCardIds(userId, cardIds);
+  }
+}
+
+async function saveReview(userId: string, cardId: string, rating: Rating): Promise<Review> {
+  if (isLocalMode || !supabase || !isUUID(userId) || !isUUID(cardId)) {
+    return localSaveReview(userId, cardId, rating);
+  }
+  try {
+    const rev = await supabaseSaveReview(userId, cardId, rating);
+    try {
+      await localSaveReview(userId, cardId, rating);
+    } catch {}
+    return rev;
+  } catch (err) {
+    console.warn('[ReviewService] Erro ao salvar revisão no Supabase, fallback local:', err);
+    return localSaveReview(userId, cardId, rating);
+  }
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const reviewService = {
-  getReview: isLocalMode ? localGetReview : supabaseGetReview,
-  getReviewsForDeck: (deckId: string, userId: string) => 
-    deckId === 'all' 
-      ? (isLocalMode ? lsGet<Review>(LS_REVIEWS).filter(r => r.user_id === userId) : supabaseGetAllUserReviews(userId))
-      : (isLocalMode ? localGetReviewsForDeck(deckId, userId) : supabaseGetReviewsForDeck(deckId, userId)),
-  getDueCardIds: isLocalMode ? localGetDueCardIds : supabaseGetDueCardIds,
-  getGlobalDueCardIds: isLocalMode ? localGetGlobalDueCardIds : supabaseGetGlobalDueCardIds,
-  saveReview: isLocalMode ? localSaveReview : supabaseSaveReview,
+  getReview,
+  getReviewsForDeck,
+  getDueCardIds,
+  getGlobalDueCardIds,
+  saveReview,
   logActivity,
   getActivity,
 }

@@ -10,6 +10,8 @@ import { isCardDue } from '../lib/sm2'
 
 const LS_DECKS = 'uply_decks'
 
+const isUUID = (str?: string) => !!str && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 // ── Local Mode ────────────────────────────────────────────────────────────────
 
 async function localGetDecks(userId: string): Promise<Deck[]> {
@@ -110,7 +112,6 @@ async function supabaseCreateDeck(userId: string, name: string, description?: st
 async function supabaseUpdateDeck(id: string, updates: Partial<Pick<Deck, 'name' | 'description'>>): Promise<Deck> {
   // If name is updating, check for conflicts
   if (updates.name) {
-    // Get deck owner first
     const { data: current } = await supabase!.from('decks').select('user_id').eq('id', id).single()
     if (current) {
       const { data: existing } = await supabase!
@@ -120,7 +121,6 @@ async function supabaseUpdateDeck(id: string, updates: Partial<Pick<Deck, 'name'
         .ilike('name', updates.name.trim())
         .neq('id', id)
         .maybeSingle()
-      
       if (existing) throw new Error('Já existe outro baralho com este nome.')
     }
   }
@@ -140,44 +140,110 @@ async function supabaseDeleteDeck(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+// ── Public Unified Functions ──────────────────────────────────────────────────
+
+async function getDecks(userId: string): Promise<Deck[]> {
+  if (isLocalMode || !supabase || !isUUID(userId)) {
+    return localGetDecks(userId);
+  }
+  try {
+    const cloudDecks = await supabaseGetDecks(userId);
+    const localDecks = (await localGetDecks(userId)).filter(ld => !cloudDecks.some(cd => cd.id === ld.id));
+    return [...cloudDecks, ...localDecks];
+  } catch (err) {
+    console.warn('[DeckService] Erro ao buscar decks no Supabase, fallback local:', err);
+    return localGetDecks(userId);
+  }
+}
+
+async function createDeck(userId: string, name: string, description?: string): Promise<Deck> {
+  if (isLocalMode || !supabase || !isUUID(userId)) {
+    return localCreateDeck(userId, name, description);
+  }
+  try {
+    const deck = await supabaseCreateDeck(userId, name, description);
+    try {
+      const localDecks = lsGet<Deck>(LS_DECKS);
+      if (!localDecks.some(d => d.id === deck.id)) {
+        lsSet(LS_DECKS, [...localDecks, deck]);
+      }
+    } catch {}
+    return deck;
+  } catch (err: any) {
+    if (err.message?.includes('Já existe')) throw err;
+    console.warn('[DeckService] Erro ao criar deck no Supabase, fallback local:', err);
+    return localCreateDeck(userId, name, description);
+  }
+}
+
+async function updateDeck(id: string, updates: Partial<Pick<Deck, 'name' | 'description'>>): Promise<Deck> {
+  if (isLocalMode || !supabase || !isUUID(id)) {
+    return localUpdateDeck(id, updates);
+  }
+  try {
+    const deck = await supabaseUpdateDeck(id, updates);
+    try {
+      await localUpdateDeck(id, updates);
+    } catch {}
+    return deck;
+  } catch {
+    return localUpdateDeck(id, updates);
+  }
+}
+
+async function deleteDeck(id: string): Promise<void> {
+  try {
+    await localDeleteDeck(id);
+  } catch {}
+  if (!isLocalMode && supabase && isUUID(id)) {
+    try {
+      await supabaseDeleteDeck(id);
+    } catch {}
+  }
+}
+
 // ── Stats (shared logic) ──────────────────────────────────────────────────────
 
 async function getDeckStats(deckId: string, userId: string): Promise<DeckStats> {
-  const cards = await cardService.getCards(deckId)
-  const reviews = await reviewService.getReviewsForDeck(deckId, userId)
-  const reviewMap = new Map<string, any>(reviews.map(r => [r.card_id, r] as [string, any]))
+  try {
+    const cards = await cardService.getCards(deckId)
+    const reviews = await reviewService.getReviewsForDeck(deckId, userId)
+    const reviewMap = new Map<string, any>(reviews.map(r => [r.card_id, r] as [string, any]))
 
-  let due = 0
-  let newCards = 0
-  let lastReview: string | undefined = undefined
+    let due = 0
+    let newCards = 0
+    let lastReview: string | undefined = undefined
 
-  for (const card of cards) {
-    const review = reviewMap.get(card.id)
-    if (!review) {
-      newCards++
-      due++ // Cards novos também estão "vencidos" (disponíveis para estudo)
-    } else {
-      if (isCardDue(review.due_date)) {
+    for (const card of cards) {
+      const review = reviewMap.get(card.id)
+      if (!review) {
+        newCards++
         due++
-      }
-      // Check for most recent review
-      if (review.last_reviewed) {
-        if (!lastReview || review.last_reviewed > lastReview) {
-          lastReview = review.last_reviewed
+      } else {
+        if (isCardDue(review.due_date)) {
+          due++
+        }
+        if (review.last_reviewed) {
+          if (!lastReview || review.last_reviewed > lastReview) {
+            lastReview = review.last_reviewed
+          }
         }
       }
     }
-  }
 
-  return { total: cards.length, due, new: newCards, lastReview }
+    return { total: cards.length, due, new: newCards, lastReview }
+  } catch (err) {
+    console.warn('[DeckService] Erro ao carregar estatísticas do deck:', deckId, err);
+    return { total: 0, due: 0, new: 0 };
+  }
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const deckService = {
-  getDecks: isLocalMode ? localGetDecks : supabaseGetDecks,
-  createDeck: isLocalMode ? localCreateDeck : supabaseCreateDeck,
-  updateDeck: isLocalMode ? localUpdateDeck : supabaseUpdateDeck,
-  deleteDeck: isLocalMode ? localDeleteDeck : supabaseDeleteDeck,
+  getDecks,
+  createDeck,
+  updateDeck,
+  deleteDeck,
   getDeckStats,
 }
