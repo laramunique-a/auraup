@@ -23,9 +23,11 @@ export function StorePage() {
     async function loadStoreDecks() {
       setLoading(true)
       try {
-        const publishedDecks = await officialDeckService.getOfficialDecks(true)
+        // Busca apenas metadados leves (2KB em vez de 15.5MB) para carregamento instantâneo
+        const publishedDecks = await officialDeckService.getOfficialDecks(true, false)
         setOfficialDecks(publishedDecks)
       } catch (err) {
+        console.error('Erro ao carregar loja:', err)
         show('Erro ao carregar a Loja de Decks.', 'error')
       } finally {
         setLoading(false)
@@ -38,11 +40,13 @@ export function StorePage() {
     if (!user) return
     setClaiming(deck.id)
     try {
+      show(`Adicionando "${deck.name}" aos seus baralhos...`, 'info')
       await officialDeckService.claimOfficialDeckToUser(user.id, deck.id)
       await reload()
       setClaimedDeckIds(prev => new Set(prev).add(deck.id))
-      show(`Baralho "${deck.name}" adicionado com sucesso! Ele já está disponível em "Meus Baralhos". ✨`, 'success')
+      show(`Baralho "${deck.name}" adicionado com sucesso! Já está disponível em seus baralhos. ✨`, 'success')
     } catch (err: any) {
+      console.error('Erro ao adicionar baralho:', err)
       show(err?.message || 'Erro ao adicionar o baralho.', 'error')
     } finally {
       setClaiming(null)
@@ -51,7 +55,7 @@ export function StorePage() {
 
   if (loading) return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 flex justify-center items-center min-h-[60vh]">
-      <div className="card-3d w-full max-w-3xl h-96 rounded-3xl animate-pulse bg-slate-100/60" />
+      <div className="card-3d w-full max-w-3xl h-96 rounded-3xl animate-pulse bg-slate-100/60 dark:bg-slate-800/60" />
     </div>
   )
 
@@ -107,6 +111,8 @@ export function StorePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {visibleOfficialDecks.map((deck) => {
             const isClaimed = claimedDeckIds.has(deck.id) || decks.some(d => d.name.toLowerCase().trim() === deck.name.toLowerCase().trim())
+            const count = deck.cards_count ?? deck.cards?.length ?? 0
+
             return (
               <div 
                 key={deck.id} 
@@ -127,7 +133,7 @@ export function StorePage() {
                       Nível: <span className="font-bold">{deck.level || 'Todos'}</span>
                     </span>
                     <span className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
-                      <Layers size={13} className="text-blue-600 dark:text-blue-400" /> <span className="font-semibold text-slate-700 dark:text-slate-300">{deck.cards?.length || 0}</span> cards
+                      <Layers size={13} className="text-blue-600 dark:text-blue-400" /> <span className="font-semibold text-slate-700 dark:text-slate-300">{count}</span> cards
                     </span>
                   </div>
 
