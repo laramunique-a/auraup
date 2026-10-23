@@ -440,14 +440,23 @@ function saveLocalAdminLevels(levelsList: any[]) {
     setActiveModal('officialDeck')
   }
 
-  function openEditOfficialDeck(deck: OfficialDeck) {
+  async function openEditOfficialDeck(deck: OfficialDeck) {
     setDeckFormStep(1)
     setEditingOfficialDeck(deck)
     setOffName(deck.name)
     setOffDesc(deck.description || '')
     setOffLevel(deck.level || deck.category || 'Todos')
     setOffPublished(deck.is_published)
-    setOffCards(deck.cards && deck.cards.length > 0 ? deck.cards.map(c => ({ ...c, front_audio: c.front_audio !== false, back_audio: !!c.back_audio })) : [{ front: '', back: '', front_audio: true, back_audio: false }])
+    
+    let cards = deck.cards || []
+    if (cards.length === 0) {
+      const fullDeck = await officialDeckService.getOfficialDeckById(deck.id)
+      if (fullDeck && fullDeck.cards) {
+        cards = fullDeck.cards
+      }
+    }
+
+    setOffCards(cards.length > 0 ? cards.map(c => ({ ...c, front_audio: c.front_audio !== false, back_audio: !!c.back_audio })) : [{ front: '', back: '', front_audio: true, back_audio: false }])
     setActiveModal('officialDeck')
   }
 
