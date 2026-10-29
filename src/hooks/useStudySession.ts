@@ -28,39 +28,39 @@ export function useStudySession(deckId: string) {
       try {
         const isGlobal = deckId === 'all'
         
-        let allCards: Card[] = []
         let reviews: any[] = []
         let dueIds: string[] = []
+        let allCardIds: string[] = []
 
         if (isGlobal) {
-          allCards = await cardService.getAllUserCards(user.id)
-          const cardIds = allCards.map(c => c.id)
+          // 1. Carrega apenas os IDs leves (sem imagens Base64) para identificar quais cartões estão vencidos
+          const cardRefs = await cardService.getAllUserCardIds(user.id)
+          allCardIds = cardRefs.map(c => c.id)
           reviews = await reviewService.getReviewsForDeck('all', user.id)
-          dueIds = await reviewService.getGlobalDueCardIds(user.id, cardIds)
+          dueIds = await reviewService.getGlobalDueCardIds(user.id, allCardIds)
         } else {
-          allCards = await cardService.getCards(deckId)
-          const cardIds = allCards.map(c => c.id)
+          // 1. Carrega apenas os IDs leves do baralho para identificar quais cartões estão vencidos
+          const cardRefs = await cardService.getCardIds(deckId)
+          allCardIds = cardRefs.map(c => c.id)
           reviews = await reviewService.getReviewsForDeck(deckId, user.id)
-          dueIds = await reviewService.getDueCardIds(deckId, user.id, cardIds)
+          dueIds = await reviewService.getDueCardIds(deckId, user.id, allCardIds)
         }
 
         const reviewMap = new Map(reviews.map(r => [r.card_id, r]))
 
-        let dueCards: StudyCard[] = allCards
-          .filter(c => dueIds.includes(c.id))
-          .map(c => ({
-            ...c,
-            review: reviewMap.get(c.id)
-          }))
-        
-        // Se o usuário entrou para estudar este baralho e não há cards estritamente "vencidos",
-        // carrega todas as cartas do baralho para permitir estudo/revisão contínua a qualquer momento!
-        if (dueCards.length === 0 && allCards.length > 0) {
-          dueCards = allCards.map(c => ({
-            ...c,
-            review: reviewMap.get(c.id)
-          }))
-        }
+        // 2. Define quais cartões realmente serão estudados nesta sessão
+        // Se não houver cartões estritamente vencidos, carrega todos os cartões do baralho para estudo contínuo
+        const targetCardIds = dueIds.length > 0 ? dueIds : allCardIds
+
+        // 3. Baixa os dados completos (com imagens) SOMENTE dos cartões que entrarão na sessão
+        const fetchedCards: Card[] = targetCardIds.length > 0
+          ? await cardService.getCardsByIds(targetCardIds)
+          : []
+
+        const dueCards: StudyCard[] = fetchedCards.map(c => ({
+          ...c,
+          review: reviewMap.get(c.id)
+        }))
 
         // Fila inicial de estudo (mantém a ordem das cartas desde o número 1 para baralhos específicos)
         let finalQueue: StudyCard[] = []

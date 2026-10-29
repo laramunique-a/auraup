@@ -143,7 +143,8 @@ async function supabaseDeleteDeck(id: string): Promise<void> {
 // ── Stats (shared logic) ──────────────────────────────────────────────────────
 
 async function getDeckStats(deckId: string, userId: string): Promise<DeckStats> {
-  const cards = await cardService.getCards(deckId)
+  // Busca apenas os IDs dos cartões (sem imagens Base64) para calcular contagens do Dashboard
+  const cards = await cardService.getCardIds(deckId)
   const reviews = await reviewService.getReviewsForDeck(deckId, userId)
   const reviewMap = new Map<string, any>(reviews.map(r => [r.card_id, r] as [string, any]))
 

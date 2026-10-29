@@ -405,6 +405,14 @@ CREATE POLICY "Usuário gerencia apenas suas próprias revisões"
   USING (user_id = auth.uid())
   WITH CHECK (user_id = auth.uid());
 
+-- Índices secundários para performance de busca e RLS sem seq_scans
+CREATE INDEX IF NOT EXISTS idx_decks_user_id ON public.decks (user_id);
+CREATE INDEX IF NOT EXISTS idx_cards_deck_id ON public.cards (deck_id);
+CREATE INDEX IF NOT EXISTS idx_cards_deck_id_created_at ON public.cards (deck_id, created_at ASC);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON public.reviews (user_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_card_id ON public.reviews (card_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_user_card ON public.reviews (user_id, card_id);
+
 -- ==============================================================================
 -- 9. TABELA DE ATIVIDADE DIÁRIA (public.activity)
 -- ==============================================================================
