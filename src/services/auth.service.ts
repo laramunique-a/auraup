@@ -414,13 +414,15 @@ export const authService = {
       if (data.newPassword && data.newPassword.trim().length > 0) {
         const val = validatePassword(data.newPassword.trim())
         if (!val.valid) throw new Error(val.error)
-        try {
-          await supabase.rpc('admin_update_user_password', {
-            target_user_id: userId,
-            new_password: data.newPassword.trim()
-          })
-        } catch (rpcErr) {
-          console.warn('Não foi possível alterar a senha no auth.users via RPC:', rpcErr)
+        // supabase.rpc NÃO lança exceção em caso de erro: é preciso checar o campo `error`.
+        // Se a senha não puder ser alterada, interrompe tudo para não exibir falso sucesso.
+        const { error: rpcErr } = await supabase.rpc('admin_update_user_password', {
+          target_user_id: userId,
+          new_password: data.newPassword.trim()
+        })
+        if (rpcErr) {
+          console.error('Falha ao alterar a senha no auth.users via RPC:', rpcErr)
+          throw new Error(`Não foi possível redefinir a senha do aluno: ${rpcErr.message}`)
         }
       }
 
