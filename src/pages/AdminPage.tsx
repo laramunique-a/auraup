@@ -3155,9 +3155,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 </div>
               )}
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              Professores disponíveis: {adminTeachers.join(', ')}.
-            </p>
           </div>
         </div>
       </Modal>
