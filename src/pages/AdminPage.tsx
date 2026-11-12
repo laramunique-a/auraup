@@ -877,6 +877,25 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
   const PRESET_COLORS = ['#2563EB', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
 
+  const LS_TURMAS_META = 'auraup_turmas_metadata'
+
+  function getTurmasLocalMeta(): Record<string, { code?: string; academic_level?: string; color?: string }> {
+    try {
+      const raw = localStorage.getItem(LS_TURMAS_META)
+      return raw ? JSON.parse(raw) : {}
+    } catch {
+      return {}
+    }
+  }
+
+  function saveTurmaLocalMeta(id: string, meta: { code?: string; academic_level?: string; color?: string }) {
+    try {
+      const all = getTurmasLocalMeta()
+      all[id] = { ...all[id], ...meta }
+      localStorage.setItem(LS_TURMAS_META, JSON.stringify(all))
+    } catch { /* ignore */ }
+  }
+
   async function loadLevels() {
     if (isLocalMode || !supabase) {
       const local = getLocalAdminLevels()
@@ -895,14 +914,22 @@ function saveLocalAdminLevels(levelsList: any[]) {
         setLevels(getLocalAdminLevels())
         return
       }
+      const localMeta = getTurmasLocalMeta()
       const enriched = data.map((lvl: any, idx: number) => {
-        if (lvl.code) return lvl
-        const cfg = getAcademicLevelConfig(lvl)
-        const countBefore = data.slice(0, idx).filter((x: any) => getAcademicLevelConfig(x).prefix === cfg.prefix).length
+        const meta = localMeta[lvl.id] || {}
+        const acadLevel = lvl.academic_level || meta.academic_level || getAcademicLevel(lvl)
+        const cfg = getAcademicLevelConfig(acadLevel)
+        const countBefore = data.slice(0, idx).filter((x: any) => {
+          const xMeta = localMeta[x.id] || {}
+          const xAcad = x.academic_level || xMeta.academic_level || getAcademicLevel(x)
+          return getAcademicLevelConfig(xAcad).prefix === cfg.prefix
+        }).length
+        const fallbackCode = `${cfg.prefix}${String(countBefore + 1).padStart(3, '0')}`
         return {
           ...lvl,
-          code: `${cfg.prefix}${String(countBefore + 1).padStart(3, '0')}`,
-          color: lvl.color || cfg.color
+          academic_level: acadLevel,
+          code: lvl.code || meta.code || fallbackCode,
+          color: lvl.color || meta.color || cfg.color
         }
       })
       setLevels(enriched)
@@ -947,15 +974,39 @@ function saveLocalAdminLevels(levelsList: any[]) {
       academic_level: acadLevel,
     }
 
-    let { error } = await supabase.from('levels').insert(payload)
-    if (error && (error.code === 'PGRST204' || error.message?.includes('code') || error.message?.includes('academic_level'))) {
+    // 1. Tenta salvar tudo (caso Supabase já tenha code e academic_level)
+    let res = await supabase.from('levels').insert(payload).select()
+    let error = res.error
+    let createdItem = res.data?.[0]
+
+    // 2. Se falhar por colunas ausentes no schema do Supabase, remove-as
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('code') || error.message?.includes('academic_level'))) {
       delete payload.code
-      const retry = await supabase.from('levels').insert(payload)
+      delete payload.academic_level
+      const retry = await supabase.from('levels').insert(payload).select()
       error = retry.error
+      createdItem = retry.data?.[0]
     }
 
-    if (error) show('Erro ao criar turma.', 'error')
-    else {
+    // 3. Fallback estrito: colunas essenciais originais
+    if (error) {
+      const basicPayload = {
+        name: newLevelName.trim() || `${code} - Nova Turma`,
+        min_xp: minXp,
+        color: color,
+      }
+      const retryBasic = await supabase.from('levels').insert(basicPayload).select()
+      error = retryBasic.error
+      createdItem = retryBasic.data?.[0]
+    }
+
+    if (error) {
+      console.error('Erro ao criar turma:', error)
+      show('Erro ao criar turma.', 'error')
+    } else {
+      if (createdItem?.id) {
+        saveTurmaLocalMeta(createdItem.id, { code, academic_level: acadLevel, color })
+      }
       show('Turma criada com sucesso!', 'success')
       setActiveModal(null)
       setNewLevelName('')
@@ -1001,15 +1052,35 @@ function saveLocalAdminLevels(levelsList: any[]) {
       academic_level: acadLevel,
     }
 
+    // 1. Tenta atualizar com todos os campos (se colunas code/academic_level existirem no Supabase)
     let { error } = await supabase.from('levels').update(payload).eq('id', editingLevel.id)
-    if (error && (error.code === 'PGRST204' || error.message?.includes('code'))) {
+
+    // 2. Se falhar por coluna não encontrada (PGRST204 / 42703), remove campos extras
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('code') || error.message?.includes('academic_level'))) {
       delete payload.code
+      delete payload.academic_level
       const retry = await supabase.from('levels').update(payload).eq('id', editingLevel.id)
       error = retry.error
     }
 
-    if (error) show('Erro ao atualizar turma.', 'error')
-    else {
+    // 3. Fallback de garantia: apenas as colunas padrão originais
+    if (error) {
+      const basicPayload = {
+        name: newLevelName.trim(),
+        min_xp: minXp,
+        color: color,
+      }
+      const retryBasic = await supabase.from('levels').update(basicPayload).eq('id', editingLevel.id)
+      error = retryBasic.error
+    }
+
+    if (error) {
+      console.error('Erro ao atualizar turma:', error)
+      show('Erro ao atualizar turma.', 'error')
+    } else {
+      // Salva no cache local para persistir cor, código e nível imediatamente
+      saveTurmaLocalMeta(editingLevel.id, { code, academic_level: acadLevel, color })
+
       try {
         await supabase.rpc('sync_league_xp', {
           target_level_id: editingLevel.id,
@@ -1036,6 +1107,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       setLevels(list)
       show('Turma removida!', 'success')
       setActiveModal(null)
+      setEditingLevel(null)
       return
     }
 
@@ -1049,9 +1121,16 @@ function saveLocalAdminLevels(levelsList: any[]) {
     const { error } = await supabase.from('levels').delete().eq('id', editingLevel.id)
     if (error) show('Erro ao deletar turma.', 'error')
     else {
+      try {
+        const meta = getTurmasLocalMeta()
+        delete meta[editingLevel.id]
+        localStorage.setItem(LS_TURMAS_META, JSON.stringify(meta))
+      } catch { /* ignore */ }
       show('Turma removida!', 'success')
       setActiveModal(null)
+      setEditingLevel(null)
       loadLevels()
+      loadUsers()
     }
   }
 
