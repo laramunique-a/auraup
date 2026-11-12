@@ -1,0 +1,120 @@
+================================================================================
+                    RESUMO DE ATUALIZAÇÕES E CORREÇÕES — AURAUP
+================================================================================
+
+1. DESEMPENHO E FIM DA LENTIDÃO EM "MEUS BARALHOS"
+--------------------------------------------------------------------------------
+• Abertura Instantânea (0ms):
+  Implementado sistema de cache local para que a lista de baralhos do aluno
+  apareça imediatamente na tela ao entrar, eliminando a tela cinza/travada de
+  carregamento.
+
+• Consultas Otimizadas em Lote:
+  Redução drástica de mais de 20 requisições simultâneas para apenas 2 consultas
+  leves executadas em segundo plano sem travar a interface.
+
+• Índices de Velocidade no Banco de Dados:
+  Criados índices de alta performance no PostgreSQL do Supabase
+  (idx_decks_user_id, idx_cards_deck_id, idx_reviews_user_id, idx_reviews_card_id)
+  para acelerar as respostas de busca dos cards e revisões.
+
+
+2. GESTÃO DO PROFESSOR RESPONSÁVEL
+--------------------------------------------------------------------------------
+• Seletor no Cadastro e Edição:
+  Adicionado campo de seleção de Professor nos formulários de "Novo Aluno" e
+  "Editar Aluno", listando dinamicamente apenas os administradores (Juliano e
+  Julian).
+
+• Coluna Professor na Listagem:
+  Nova coluna adicionada na tabela de alunos e também nos
+  cards para celular/PWA.
+
+• Alerta "A definir":
+  Alunos que não possuem professor exibem um aviso visual em destaque "A definir".
+  Ao clicar nesse aviso, abre-se diretamente a tela de edição para vincular o
+  professor responsável.
+
+• Formulário Limpo:
+  Removido texto auxiliar redundante abaixo do seletor, mantendo o formulário
+  direto e visualmente limpo.
+
+
+3. PESQUISA, FILTROS E ORDENAÇÃO (ADMIN > ALUNOS)
+--------------------------------------------------------------------------------
+• Busca por Nome em Tempo Real:
+  Campo de pesquisa que filtra os alunos simultaneamente conforme a digitação de
+  qualquer parte do nome ou e-mail, sem distinção de acentos ou maiúsculas.
+
+• Filtros com Visual Moderno:
+  Substituição das listas nativas do navegador por seletores suspensos
+  personalizados (dropdowns) com o design oficial da plataforma para filtrar por:
+  - Turma / Nível
+  - Professor (Juliano / Julian)
+
+• Ordenação Completa:
+  Seletor de ordenação com opções:
+  - A-Z (Ordem Alfabética)
+  - Z-A (Ordem Inversa)
+  - Maior XP e Menor XP
+  - Mais Moedas
+  - Mais Recentes e Mais Antigos
+
+• Botão "Limpar":
+  Atalho para redefinir a busca e todos os filtros ativos com um único clique.
+
+
+4. BLOQUEIO DE FECHAMENTO ACIDENTAL (TELAS SOBREPOSTAS / MODAIS)
+--------------------------------------------------------------------------------
+• Trava ao Clicar Fora:
+  Qualquer janela que abre sobreposta (Novo Aluno, Editar Aluno, Baralhos,
+  Turmas, Chamados de Ajuda, etc.) agora não fecha mais ao clicar acidentalmente
+  no fundo escuro.
+
+• Proteção de Dados:
+  Evita que o usuário perca o que já digitou ao preencher um formulário longo.
+
+• Fechamento Controlado:
+  O fechamento ocorre exclusivamente pelos botões oficiais ("X" no canto
+  superior direito, botão "Cancelar" ou ao salvar a ação).
+
+
+5. ORGANIZAÇÃO DE BARALHOS EM PASTAS & CORREÇÃO DE CARDS
+--------------------------------------------------------------------------------
+• Visualização em Pastas:
+  Aba Admin > Baralhos agora organiza os baralhos oficiais dentro de pastas por
+  Nível/Turma (além da pasta "Todos os Níveis").
+
+• Correção dos "0 Cards Inclusos":
+  Resolvido o problema em que os baralhos apareciam marcando 0 cards; agora o
+  total real é calculado e sincronizado automaticamente pelo banco de dados.
+
+
+6. NOVO FORMULÁRIO DE CARDS & VOZ NATURAL DE PRONÚNCIA (AWESOMETTS / GOOGLE TRANSLATE)
+--------------------------------------------------------------------------------
+• Novo Fluxo de Associação:
+  - Frente: renomeada para "IMAGEM (PORTUGUÊS)" com placeholder
+    "Ex: Maçã (palavra em português com imagem)", sem opção de áudio.
+  - Verso: renomeado para "RESPOSTA (INGLÊS)" com placeholder
+    "Ex: Apple (palavra ou frase em inglês)".
+  - Opção de áudio marcada por padrão ("Áudio (Inglês)": ativado) apenas para
+    novos cards, podendo o usuário desmarcar manualmente se quiser.
+  - Aplicado tanto no menu dos alunos (Meus Baralhos) quanto no painel do
+    administrador (Baralhos Padrão e Importação APKG).
+
+• Voz Natural Studio (AwesomeTTS do Anki):
+  - Substituição da voz mecânica/robótica local do Windows pelo mesmo motor do
+    Google Translate TTS em inglês americano (en-US) usado no AwesomeTTS.
+  - Pronúncia humana nítida em velocidade normal (1.0x).
+  - Cache de áudio inteligente em memória (reprodução instantânea em 0ms).
+  - Fallback automático para vozes de alta definição do navegador em caso de uso
+    offline.
+  - Zero impacto em armazenamento no banco de dados e zero impacto na velocidade
+    de carregamento do site.
+  - 100% sincronizado com o PWA (celular e desktop).
+
+
+================================================================================
+Status: Todas as alterações foram testadas, compiladas e validadas com sucesso.
+================================================================================
+

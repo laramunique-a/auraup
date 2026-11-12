@@ -128,7 +128,7 @@ export function AdminPage() {
   const [offDesc, setOffDesc] = useState('')
   const [offLevel, setOffLevel] = useState('Todos')
   const [offPublished, setOffPublished] = useState(true)
-  const [offCards, setOffCards] = useState<OfficialCard[]>([{ front: '', back: '', front_audio: true, back_audio: false }])
+  const [offCards, setOffCards] = useState<OfficialCard[]>([{ front: '', back: '', front_audio: false, back_audio: true }])
   const [savingOfficialDeck, setSavingOfficialDeck] = useState(false)
 
   // Form Palavra do Dia & View Mode
@@ -484,7 +484,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     setOffDesc('')
     setOffLevel(defaultLevel)
     setOffPublished(true)
-    setOffCards([{ front: '', back: '', front_audio: true, back_audio: false }])
+    setOffCards([{ front: '', back: '', front_audio: false, back_audio: true }])
   }
 
   function openCreateOfficialDeck() {
@@ -508,7 +508,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       }
     }
 
-    setOffCards(cards.length > 0 ? cards.map(c => ({ ...c, front_audio: c.front_audio !== false, back_audio: !!c.back_audio })) : [{ front: '', back: '', front_audio: true, back_audio: false }])
+    setOffCards(cards.length > 0 ? cards.map(c => ({ ...c, front_audio: false, back_audio: c.back_audio !== false })) : [{ front: '', back: '', front_audio: false, back_audio: true }])
     setActiveModal('officialDeck')
   }
 
@@ -519,7 +519,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       .filter(c => c.front.trim() || c.front_image || c.back.trim() || c.back_image)
       .map(c => ({
         ...c,
-        front_audio: c.front_audio && isEnglishText(c.front),
+        front_audio: false,
         back_audio: c.back_audio && isEnglishText(c.back),
       }))
     
@@ -606,8 +606,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
           back: c.back,
           front_image: c.front_image || undefined,
           back_image: c.back_image || undefined,
-          front_audio: c.front_audio && isEnglishText(c.front),
-          back_audio: c.back_audio && isEnglishText(c.back),
+          front_audio: false,
+          back_audio: isEnglishText(c.back),
         }))
 
       await officialDeckService.createOfficialDeck({
@@ -2692,32 +2692,11 @@ function saveLocalAdminLevels(levelsList: any[]) {
                     {/* Frente Side */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-3 sm:p-3.5 flex flex-col gap-2.5">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Frente (Inglês)</span>
-                        
-                        <div className="flex gap-2 items-center">
-                          <label className={`flex items-center gap-1.5 cursor-pointer text-xs font-semibold ${c.front_audio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
-                            <input 
-                              type="checkbox" 
-                              checked={!!c.front_audio} 
-                              onChange={e => {
-                                const updated = [...offCards]
-                                updated[i].front_audio = e.target.checked
-                                setOffCards(updated)
-                              }}
-                              className="accent-blue-600 w-3.5 h-3.5 cursor-pointer"
-                            />
-                            <Volume2 size={14} /> Áudio (Inglês)
-                          </label>
-                          {c.front_audio && c.front.trim() && isEnglishText(c.front) && (
-                            <button onClick={() => speak(c.front.trim(), 'en-US')} className="w-6 h-6 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center cursor-pointer" title="Ouvir pronúncia">
-                              <Volume2 size={13} />
-                            </button>
-                          )}
-                        </div>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Imagem (Português)</span>
                       </div>
 
                       <textarea 
-                        placeholder="Ex: Apple (palavra ou frase na frente)" 
+                        placeholder="Ex: Maçã (palavra em português com imagem)" 
                         value={c.front} 
                         onChange={e => {
                           const updated = [...offCards]
@@ -2771,7 +2750,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                     {/* Verso Side */}
                     <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-700/80 rounded-xl p-3 sm:p-3.5 flex flex-col gap-2.5">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Verso (Português)</span>
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Resposta (Inglês)</span>
                         
                         <div className="flex gap-2 items-center">
                           <label className={`flex items-center gap-1.5 cursor-pointer text-xs font-semibold ${c.back_audio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
@@ -2796,7 +2775,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                       </div>
 
                       <textarea 
-                        placeholder="Ex: Maçã (tradução no verso)" 
+                        placeholder="Ex: Apple (palavra ou frase em inglês)" 
                         value={c.back} 
                         onChange={e => {
                           const updated = [...offCards]
@@ -2852,7 +2831,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
               <button 
                 type="button" 
-                onClick={() => setOffCards([...offCards, { front: '', back: '', front_audio: true, back_audio: false }])}
+                onClick={() => setOffCards([...offCards, { front: '', back: '', front_audio: false, back_audio: true }])}
                 className="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 font-heading font-semibold text-xs sm:text-sm text-slate-600 dark:text-slate-300 transition-colors flex items-center justify-center gap-2 cursor-pointer bg-slate-50/50 dark:bg-slate-800/30"
               >
                 <Plus size={16} /> Adicionar Mais Um Card

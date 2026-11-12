@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
 import { profileService } from '../services/profile.service'
 import { reviewService } from '../services/review.service'
+import { useSpeech } from '../hooks/useSpeech'
 import { FlashCard } from '../components/study/FlashCard'
 import { Button } from '../components/ui/Button'
 import { ArrowLeft, Home, Clock, Target, BookOpen } from 'lucide-react'
@@ -62,12 +63,14 @@ export function StudyPage() {
   const { addReward: addEconomyReward, recordActivity } = useEconomy()
   const { current, loading, sessionDone, reviewed, total, submitRating, sessionStats } = useStudySession(id!)
   const { refreshStats, recordReviewLocally } = useDecks()
+  const { stop } = useSpeech()
 
   const [sessionXP, setSessionXP] = useState(0)
   const [sessionCoins, setSessionCoins] = useState(0)
   const [floatingXP, setFloatingXP] = useState<{ text: string, id: number } | null>(null)
 
   const handleRating = (rating: Rating) => {
+    stop()
     playRewardSound(rating)
 
     if (current && user) {
@@ -103,8 +106,8 @@ export function StudyPage() {
   }, [sessionDone, refreshStats, user, recordActivity])
 
   useEffect(() => {
-    return () => { if (window.speechSynthesis) window.speechSynthesis.cancel() }
-  }, [])
+    return () => { stop() }
+  }, [stop])
 
   // Cálculo de progresso tátil (garante avanço exato e fluido a cada card concluído)
   const progressPercent = total > 0 

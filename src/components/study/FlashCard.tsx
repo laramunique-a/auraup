@@ -13,7 +13,7 @@ interface FlashCardProps {
 export function FlashCard({ card, onRating }: FlashCardProps) {
   const [flipped, setFlipped] = useState(false)
   const [animating, setAnimating] = useState(false)
-  const { speak } = useSpeech()
+  const { speak, stop } = useSpeech()
 
   const estimates = predictNextIntervals(card.review || {})
 
@@ -22,9 +22,9 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
     setFlipped(false)
     setAnimating(false)
     return () => {
-      if (window.speechSynthesis) window.speechSynthesis.cancel()
+      stop()
     }
-  }, [card.id])
+  }, [card.id, stop])
 
   // Auto-play áudio da Frente: SOMENTE quando configurado (front_audio === true)
   // E SOMENTE palavras/frases em inglês (nunca em português)
@@ -56,7 +56,7 @@ export function FlashCard({ card, onRating }: FlashCardProps) {
   function handleRating(rating: Rating) {
     if (animating) return
     setAnimating(true)
-    if (window.speechSynthesis) window.speechSynthesis.cancel()
+    stop()
     onRating(rating)
   }
 

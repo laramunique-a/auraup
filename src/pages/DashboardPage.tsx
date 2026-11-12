@@ -20,6 +20,7 @@ import { getStudyDayKey } from '../lib/sm2'
 import { wordsOfTheDayService, INITIAL_WORDS_OF_THE_DAY, type WordOfTheDay } from '../data/wordsOfTheDay'
 import { GLOBAL_RANKING_MOCK, CLASS_RANKING_MOCK } from '../mockData'
 import { getAcademicLevel } from '../lib/academicLevels'
+import { useSpeech } from '../hooks/useSpeech'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -39,6 +40,7 @@ export function DashboardPage() {
   } = useEconomy()
 
   const { decks, loading, statsMap, createDeck, deleteDeck, reload, refreshStats } = useDecks()
+  const { speak } = useSpeech()
   const [showCreate, setShowCreate] = useState(false)
   const [deckName, setDeckName] = useState('')
   const [creating, setCreating] = useState(false)
@@ -265,18 +267,9 @@ export function DashboardPage() {
   }, [liveXP, user?.role, user?.level_id, user?.level, user?.id, user?.nickname, user?.name])
 
   function speakWord(word: string) {
-    if ('speechSynthesis' in window) {
-      setIsPlayingAudio(true)
-      const utterance = new SpeechSynthesisUtterance(word)
-      utterance.lang = 'en-US'
-      utterance.rate = 0.9
-      utterance.onend = () => setIsPlayingAudio(false)
-      utterance.onerror = () => setIsPlayingAudio(false)
-      window.speechSynthesis.cancel()
-      window.speechSynthesis.speak(utterance)
-    } else {
-      show('Áudio não suportado neste navegador.', 'info')
-    }
+    setIsPlayingAudio(true)
+    speak(word, 'en-US')
+    setTimeout(() => setIsPlayingAudio(false), 1200)
   }
 
   async function handleCreate() {

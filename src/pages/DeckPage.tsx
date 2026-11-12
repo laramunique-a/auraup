@@ -29,8 +29,7 @@ export function DeckPage() {
   const [frontImageUrl, setFrontImageUrl] = useState('')
   const [backImageUrl, setBackImageUrl] = useState('')
 
-  const [frontAudio, setFrontAudio] = useState(false)
-  const [backAudio, setBackAudio] = useState(false)
+  const [backAudio, setBackAudio] = useState(true)
   
   const [saving, setSaving] = useState(false)
   const [editDeckName, setEditDeckName] = useState(false)
@@ -44,8 +43,7 @@ export function DeckPage() {
     setBackImage(null)
     setFrontImageUrl('')
     setBackImageUrl('')
-    setFrontAudio(true)
-    setBackAudio(false)
+    setBackAudio(true)
   }
 
   function openCreate() { resetForm(); setShowCreate(true) }
@@ -58,8 +56,7 @@ export function DeckPage() {
     setBackImage(card.back_image)
     setFrontImageUrl(card.front_image && card.front_image.startsWith('http') ? card.front_image : '')
     setBackImageUrl(card.back_image && card.back_image.startsWith('http') ? card.back_image : '')
-    setFrontAudio(card.front_audio !== false)
-    setBackAudio(card.back_audio === true)
+    setBackAudio(card.back_audio !== false)
   }
 
   async function handleSaveCard() {
@@ -72,7 +69,7 @@ export function DeckPage() {
       back_image: backImage, 
       front_lang: frontIsEn ? 'en-US' : 'pt-BR', 
       back_lang: backIsEn ? 'en-US' : 'pt-BR', 
-      front_audio: frontAudio && frontIsEn, 
+      front_audio: false, 
       back_audio: backAudio && backIsEn 
     }
     try {
@@ -347,38 +344,16 @@ export function DeckPage() {
           </div>
 
           <div className="flex flex-col gap-6">
-            {/* Frente */}
+            {/* Imagem (Português) */}
             <div className="card-3d p-5 flex flex-col gap-3 rounded-2xl border-2 border-aura-blue/20 bg-white">
               <div className="flex justify-between items-center flex-wrap gap-2">
                 <h3 className="text-xs font-display font-black text-aura-blue uppercase tracking-wider">
-                  Frente (Inglês)
+                  Imagem (Português)
                 </h3>
-                
-                <div className="flex items-center gap-3">
-                  <label className={`flex items-center gap-1.5 cursor-pointer text-xs font-heading font-bold ${frontAudio ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
-                    <input 
-                      type="checkbox" 
-                      checked={frontAudio} 
-                      onChange={e => setFrontAudio(e.target.checked)}
-                      className="accent-blue-600 w-4 h-4 cursor-pointer"
-                    />
-                    <Volume2 size={15} /> Áudio (Inglês)
-                  </label>
-
-                  {frontAudio && front.trim() && isEnglishText(front) && (
-                    <button 
-                      onClick={() => speak(front.trim(), 'en-US')} 
-                      className="btn-3d-icon w-8 h-8 !rounded-xl text-blue-600" 
-                      title="Ouvir pronúncia"
-                    >
-                      <Volume2 size={15} />
-                    </button>
-                  )}
-                </div>
               </div>
 
               <textarea 
-                placeholder="Ex: Apple (palavra ou frase na frente)" 
+                placeholder="Ex: Maçã (palavra em português com imagem)" 
                 value={front} 
                 onChange={e => setFront(e.target.value)} 
                 onPaste={e => handlePaste(e, 'front')} 
@@ -421,11 +396,11 @@ export function DeckPage() {
               </div>
             </div>
 
-            {/* Verso */}
+            {/* Resposta (Inglês) */}
             <div className="card-3d p-5 flex flex-col gap-3 rounded-2xl border-2 border-slate-200 bg-white">
               <div className="flex justify-between items-center flex-wrap gap-2">
                 <h3 className="text-xs font-display font-black text-aura-text-muted uppercase tracking-wider">
-                  Verso (Tradução / Resposta)
+                  Resposta (Inglês)
                 </h3>
                 
                 <div className="flex items-center gap-3">
@@ -452,7 +427,7 @@ export function DeckPage() {
               </div>
 
               <textarea 
-                placeholder="Ex: Maçã (tradução ou resposta no verso)" 
+                placeholder="Ex: Apple (palavra ou frase em inglês)" 
                 value={back} 
                 onChange={e => setBack(e.target.value)} 
                 onPaste={e => handlePaste(e, 'back')} 
