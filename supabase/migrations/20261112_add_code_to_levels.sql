@@ -88,3 +88,4 @@ SET code = r.prefix || LPAD(r.seq::TEXT, 3, '0')
 FROM ranked_levels r
 WHERE l.id = r.id
   AND (l.code IS NULL OR l.code = '');
+

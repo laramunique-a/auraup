@@ -1941,44 +1941,6 @@ function saveLocalAdminLevels(levelsList: any[]) {
             </div>
           </div>
 
-          {/* Barra de Níveis Pedagógicos Cadastrados */}
-          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-2xs">
-            <div className="flex items-center gap-2 min-w-0 flex-wrap">
-              <span className="text-xs font-heading font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 shrink-0">
-                <Award size={14} className="text-amber-500" /> Níveis Pedagógicos:
-              </span>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {availableAcademicLevels.map((lvl) => {
-                  const theme = getAcademicLevelTheme(lvl)
-                  const countTurmas = levels.filter(l => getAcademicLevel(l) === lvl).length
-                  return (
-                    <span 
-                      key={lvl} 
-                      className={`inline-flex items-center gap-1.5 text-xs font-heading font-semibold px-2.5 py-1 rounded-lg border ${theme.bg} ${theme.text} ${theme.border}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: theme.dot }} />
-                      <span>{lvl}</span>
-                      <span className="text-[10px] opacity-75 font-normal">
-                        ({countTurmas} {countTurmas === 1 ? 'turma' : 'turmas'})
-                      </span>
-                    </span>
-                  )
-                })}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                setNewAcademicLevelInput('')
-                setActiveModal('addAcademicLevel')
-              }}
-              className="text-xs font-heading font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 shrink-0 cursor-pointer self-start sm:self-auto"
-            >
-              <Plus size={13} /> Cadastrar Novo Nível
-            </button>
-          </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {levels.map((lvl) => {
               const studentsInTurma = allStudents.filter(s => s.level_id === lvl.id || s.level?.id === lvl.id)

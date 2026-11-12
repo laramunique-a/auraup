@@ -155,6 +155,10 @@
     * Explore: Laranja (#F59E0B)
     * Independence: Vermelho (#EF4444)
 
+• Limpeza Visual na Tela de Turmas:
+  - Removido o box redundante de "Níveis Pedagógicos" no topo da listagem de turmas,
+    deixando o layout mais direto, limpo e focado nos cards das turmas cadastradas.
+
 • Integração Visual em Todo o Sistema:
   - Visualização de Turmas (Admin > Turmas): cada card exibe o código em destaque.
   - Tabela de Alunos (Admin > Alunos): exibe o código junto à turma (ex: H001 · Hello).
