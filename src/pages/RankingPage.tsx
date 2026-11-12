@@ -4,7 +4,7 @@ import { PageHeader } from '../components/common/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
 import { useEconomy } from '../contexts/EconomyContext'
 import { supabase, isLocalMode } from '../services/storage'
-import { getAcademicLevel, getAcademicLevelTheme, getCustomAcademicLevels } from '../lib/academicLevels'
+import { getAcademicLevel, getAcademicLevelTheme, OFFICIAL_ACADEMIC_LEVELS } from '../lib/academicLevels'
 
 const AVATARS: Record<string, string> = {
   avatar_1: '🦊', avatar_2: '🐨', avatar_3: '🦁',
@@ -272,38 +272,58 @@ export function RankingPage() {
   const levelGroups = useMemo<GroupSection[]>(() => {
     if (!isAdmin) return []
 
-    const allAcademicNames = Array.from(new Set([
-      ...getCustomAcademicLevels(),
-      ...allStudents.map((s: any) => getAcademicLevel(s.level || s.level_id))
-    ]))
-
-    return allAcademicNames.map(acadLvl => {
-      const theme = getAcademicLevelTheme(acadLvl)
-      const matching = allStudents
-        .filter((s: any) => getAcademicLevel(s.level || s.level_id) === acadLvl)
-        .sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0))
-        .map((s: any, idx: number): RankEntry => ({
-          id: s.id,
-          name: s.nickname || s.name || s.full_name || 'Aluno',
-          avatar: AVATARS[s.avatar_id] || '🦊',
-          xp: s.xp || 0,
-          streak: s.streak || 0,
-          posicao: idx + 1,
-          levelName: s.level?.name,
-          academicLevel: acadLvl,
-        }))
-
-      return {
-        id: acadLvl,
-        title: `Nível ${acadLvl}`,
-        subtitle: `Alunos de todas as turmas no nível ${acadLvl}`,
-        color: theme.dot,
-        badgeBg: theme.bg,
-        badgeText: theme.text,
-        badgeBorder: theme.border,
-        entries: matching,
+    // Agrupa alunos estritamente pelos níveis pedagógicos normalizados
+    const studentsByLevel = new Map<string, any[]>()
+    allStudents.forEach((s: any) => {
+      const acadLvl = getAcademicLevel(s.level || s.level_id)
+      if (!studentsByLevel.has(acadLvl)) {
+        studentsByLevel.set(acadLvl, [])
       }
+      studentsByLevel.get(acadLvl)!.push(s)
     })
+
+    // Lista apenas os níveis existentes que possuem alunos cadastrados
+    const existingLevelNames = Array.from(studentsByLevel.keys())
+
+    // Ordenação pedagógica oficial (Hello -> Connections -> Explore -> Independence)
+    const officialOrder = OFFICIAL_ACADEMIC_LEVELS.map(l => l.label)
+    existingLevelNames.sort((a, b) => {
+      const idxA = officialOrder.indexOf(a)
+      const idxB = officialOrder.indexOf(b)
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB
+      if (idxA !== -1) return -1
+      if (idxB !== -1) return 1
+      return a.localeCompare(b)
+    })
+
+    return existingLevelNames
+      .map(acadLvl => {
+        const theme = getAcademicLevelTheme(acadLvl)
+        const matching = (studentsByLevel.get(acadLvl) || [])
+          .sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0))
+          .map((s: any, idx: number): RankEntry => ({
+            id: s.id,
+            name: s.nickname || s.name || s.full_name || 'Aluno',
+            avatar: AVATARS[s.avatar_id] || '🦊',
+            xp: s.xp || 0,
+            streak: s.streak || 0,
+            posicao: idx + 1,
+            levelName: s.level?.name,
+            academicLevel: acadLvl,
+          }))
+
+        return {
+          id: acadLvl,
+          title: `Nível ${acadLvl}`,
+          subtitle: `Alunos de todas as turmas no nível ${acadLvl}`,
+          color: theme.dot,
+          badgeBg: theme.bg,
+          badgeText: theme.text,
+          badgeBorder: theme.border,
+          entries: matching,
+        }
+      })
+      .filter(group => group.entries.length > 0)
   }, [isAdmin, allStudents])
 
   // ── 2. GRUPOS POR TURMA (para Admin) ────────────────────────────────────────
@@ -492,9 +512,19 @@ export function RankingPage() {
             <Medal size={15} className="text-amber-500" />
             <span>Alunos agrupados pelo seu nível pedagógico (independente da turma):</span>
           </div>
-          {levelGroups.map((group, idx) => (
-            <AccordionGroupSection key={group.id} group={group} defaultOpen={idx === 0} />
-          ))}
+          {levelGroups.length === 0 ? (
+            <div className="card-3d p-8 sm:p-12 rounded-xl flex flex-col items-center text-center gap-3">
+              <Medal size={40} className="text-slate-300 dark:text-slate-600" />
+              <div>
+                <h3 className="font-heading font-bold text-slate-700 dark:text-slate-300">Nenhum nível com alunos cadastrados</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Os rankings por nível aparecerão automaticamente conforme alunos forem matriculados.</p>
+              </div>
+            </div>
+          ) : (
+            levelGroups.map((group, idx) => (
+              <AccordionGroupSection key={group.id} group={group} defaultOpen={idx === 0} />
+            ))
+          )}
         </div>
       )}
 

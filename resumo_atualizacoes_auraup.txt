@@ -164,6 +164,9 @@
   - Tabela de Alunos (Admin > Alunos): exibe o código junto à turma (ex: H001 · Hello).
   - Seletores de Turma (Novo Aluno, Editar Aluno e Filtros): exibem "H001 - Nome".
   - Migration SQL criada para padronizar as turmas existentes no banco de dados.
+  - Ranking por Nível (Liga dos Campeões): exibe estritamente os níveis que possuem
+    alunos matriculados (ocultando níveis vazios com 0 alunos e unificando turmas
+    legadas aos nomes oficiais como "Connections" e "Explore").
 
 
 ================================================================================

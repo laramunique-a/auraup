@@ -132,47 +132,62 @@ export function addCustomAcademicLevel(newLevelName: string): string[] {
 }
 
 export function getAcademicLevel(level?: Partial<Level> | string | null): string {
-  if (!level) return 'Básico'
+  if (!level) return OFFICIAL_ACADEMIC_LEVELS[0].label
 
   const customLevels = getCustomAcademicLevels()
 
   if (typeof level === 'string') {
     const trimmed = level.trim()
-    if (trimmed === 'lvl_1') return 'Básico'
-    if (trimmed === 'lvl_2') return 'Pré-Intermediário'
-    if (trimmed === 'lvl_3') return 'Intermediário'
-    if (trimmed === 'lvl_4') return 'Avançado'
+    if (trimmed === 'lvl_1') return OFFICIAL_ACADEMIC_LEVELS[0].label
+    if (trimmed === 'lvl_2') return OFFICIAL_ACADEMIC_LEVELS[1].label
+    if (trimmed === 'lvl_3') return OFFICIAL_ACADEMIC_LEVELS[2].label
+    if (trimmed === 'lvl_4') return OFFICIAL_ACADEMIC_LEVELS[3].label
 
     const lower = trimmed.toLowerCase()
-    // Match em níveis customizados ou canônicos
+
+    // Match nos níveis oficiais (canônicos)
+    if (lower.includes('connection') || lower.includes('pré') || lower.includes('pre')) {
+      return OFFICIAL_ACADEMIC_LEVELS[1].label
+    }
+    if (lower.includes('explore') || (lower.includes('interm') && !lower.includes('pre') && !lower.includes('pré'))) {
+      return OFFICIAL_ACADEMIC_LEVELS[2].label
+    }
+    if (lower.includes('independen') || lower.includes('avanç') || lower.includes('adv') || lower.includes('master')) {
+      return OFFICIAL_ACADEMIC_LEVELS[3].label
+    }
+    if (lower.includes('básic') || lower.includes('basic') || lower.includes('hello') || lower.includes('iniciante')) {
+      return OFFICIAL_ACADEMIC_LEVELS[0].label
+    }
+
     const matchCustom = customLevels.find(l => l.toLowerCase() === lower)
     if (matchCustom) return matchCustom
 
-    if (lower.includes('pre') || lower.includes('pré')) return 'Pré-Intermediário'
-    if (lower.includes('interm') || lower.includes('explore')) return 'Intermediário'
-    if (lower.includes('avanç') || lower.includes('adv') || lower.includes('independen')) return 'Avançado'
-    if (lower.includes('básic') || lower.includes('basic') || lower.includes('hello') || lower.includes('iniciante')) return 'Básico'
-
-    return trimmed || 'Básico'
+    return getAcademicLevelConfig(trimmed).label
   }
 
   // Objeto Level
   if (level.academic_level && level.academic_level.trim()) {
-    return level.academic_level.trim()
+    const raw = level.academic_level.trim()
+    const lower = raw.toLowerCase()
+    if (lower.includes('connection') || lower.includes('pré') || lower.includes('pre')) return OFFICIAL_ACADEMIC_LEVELS[1].label
+    if (lower.includes('explore') || (lower.includes('interm') && !lower.includes('pre') && !lower.includes('pré'))) return OFFICIAL_ACADEMIC_LEVELS[2].label
+    if (lower.includes('independen') || lower.includes('avanç') || lower.includes('adv') || lower.includes('master')) return OFFICIAL_ACADEMIC_LEVELS[3].label
+    if (lower.includes('básic') || lower.includes('basic') || lower.includes('hello') || lower.includes('iniciante')) return OFFICIAL_ACADEMIC_LEVELS[0].label
+    return raw
   }
 
-  if (level.id === 'lvl_1') return 'Básico'
-  if (level.id === 'lvl_2') return 'Pré-Intermediário'
-  if (level.id === 'lvl_3') return 'Intermediário'
-  if (level.id === 'lvl_4') return 'Avançado'
+  if (level.id === 'lvl_1') return OFFICIAL_ACADEMIC_LEVELS[0].label
+  if (level.id === 'lvl_2') return OFFICIAL_ACADEMIC_LEVELS[1].label
+  if (level.id === 'lvl_3') return OFFICIAL_ACADEMIC_LEVELS[2].label
+  if (level.id === 'lvl_4') return OFFICIAL_ACADEMIC_LEVELS[3].label
 
   const name = (level.name || '').toLowerCase()
-  if (name.includes('pre') || name.includes('pré')) return 'Pré-Intermediário'
-  if (name.includes('interm') || name.includes('explore')) return 'Intermediário'
-  if (name.includes('avanç') || name.includes('adv') || name.includes('independen')) return 'Avançado'
-  if (name.includes('básic') || name.includes('basic') || name.includes('hello') || name.includes('iniciante')) return 'Básico'
+  if (name.includes('connection') || name.includes('pré') || name.includes('pre')) return OFFICIAL_ACADEMIC_LEVELS[1].label
+  if (name.includes('explore') || (name.includes('interm') && !name.includes('pre') && !name.includes('pré'))) return OFFICIAL_ACADEMIC_LEVELS[2].label
+  if (name.includes('independen') || name.includes('avanç') || name.includes('adv') || name.includes('master')) return OFFICIAL_ACADEMIC_LEVELS[3].label
+  if (name.includes('básic') || name.includes('basic') || name.includes('hello') || name.includes('iniciante')) return OFFICIAL_ACADEMIC_LEVELS[0].label
 
-  return level.name || 'Básico'
+  return getAcademicLevelConfig(level).label
 }
 
 export function getAcademicLevelTheme(levelName?: string) {
