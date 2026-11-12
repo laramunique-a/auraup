@@ -187,6 +187,10 @@
   - Ao cadastrar um novo aluno e selecionar a turma, o professor responsável
     é pré-selecionado de forma automática.
 
+• Pesquisa e Filtro na Aba de Turmas:
+  - Adicionada barra de busca em tempo real por nome da turma, código (ex: H001),
+    nível pedagógico ou professor, além de seletor para filtrar por Nível.
+
 
 ================================================================================
 Status: Todas as alterações foram testadas, compiladas e publicadas na Vercel.

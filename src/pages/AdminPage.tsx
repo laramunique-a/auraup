@@ -122,6 +122,11 @@ export function AdminPage() {
   const [studentSortBy, setStudentSortBy] = useState<'az' | 'za' | 'xp_desc' | 'xp_asc' | 'coins_desc' | 'newest' | 'oldest'>('az')
   const [openFilterDropdown, setOpenFilterDropdown] = useState<'level' | 'teacher' | 'sort' | null>(null)
 
+  // Pesquisa e Filtro da aba Turmas / Níveis
+  const [levelSearchQuery, setLevelSearchQuery] = useState('')
+  const [levelAcademicFilter, setLevelAcademicFilter] = useState<string>('all')
+  const [openLevelFilterDropdown, setOpenLevelFilterDropdown] = useState(false)
+
   // Excluir Usuário State
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState(false)
@@ -1287,6 +1292,29 @@ function saveLocalAdminLevels(levelsList: any[]) {
     studentTeacherFilter !== 'all' ||
     studentSortBy !== 'az'
 
+  // Turmas filtradas por pesquisa de nome, código, nível pedagógico ou professor
+  const filteredLevels = useMemo(() => {
+    const query = normalizeSearchText(levelSearchQuery)
+    return levels.filter(lvl => {
+      const acadLvl = getAcademicLevel(lvl)
+      if (levelAcademicFilter !== 'all' && acadLvl !== levelAcademicFilter) {
+        return false
+      }
+      if (query) {
+        const nameMatch = normalizeSearchText(lvl.name).includes(query)
+        const codeMatch = normalizeSearchText(lvl.code).includes(query)
+        const acadMatch = normalizeSearchText(acadLvl).includes(query)
+        const teacherMatch = normalizeSearchText(lvl.teacher_name).includes(query)
+        if (!nameMatch && !codeMatch && !acadMatch && !teacherMatch) return false
+      }
+      return true
+    })
+  }, [levels, levelSearchQuery, levelAcademicFilter])
+
+  const hasActiveLevelFilters =
+    levelSearchQuery.trim() !== '' ||
+    levelAcademicFilter !== 'all'
+
   // Combina opções de Níveis (Todos + Ligas do Sistema + Níveis já usados em baralhos)
   const availableLevelOptions = useMemo(() => {
     const set = new Set<string>(['Todos'])
@@ -2050,7 +2078,10 @@ function saveLocalAdminLevels(levelsList: any[]) {
             <div className="flex items-center gap-2.5">
               <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Turmas & Níveis Cadastrados</h2>
               <span className="text-xs font-heading font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2.5 py-0.5 rounded-md border border-indigo-200/60 dark:border-indigo-800 shadow-xs">
-                <span className="font-bold">{levels.length}</span> {levels.length === 1 ? 'turma' : 'turmas'}
+                <span className="font-bold">
+                  {filteredLevels.length === levels.length ? levels.length : `${filteredLevels.length} de ${levels.length}`}
+                </span>{' '}
+                {levels.length === 1 ? 'turma' : 'turmas'}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -2085,8 +2116,137 @@ function saveLocalAdminLevels(levelsList: any[]) {
             </div>
           </div>
 
+          {/* Barra de Pesquisa e Filtro de Turmas */}
+          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs relative">
+            {openLevelFilterDropdown && (
+              <div
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setOpenLevelFilterDropdown(false)}
+              />
+            )}
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              {/* Campo de Pesquisa por Nome, Código ou Nível */}
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={levelSearchQuery}
+                  onChange={e => setLevelSearchQuery(e.target.value)}
+                  placeholder="Pesquisar turma por nome, código (ex: H001) ou nível..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs"
+                />
+                {levelSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setLevelSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full cursor-pointer"
+                    title="Limpar pesquisa"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Filtro por Nível Pedagógico + Botão Limpar */}
+              <div className="flex items-center gap-2 relative z-40">
+                <div className="relative flex-1 sm:flex-none">
+                  <button
+                    type="button"
+                    onClick={() => setOpenLevelFilterDropdown(!openLevelFilterDropdown)}
+                    className={`h-9 w-full sm:w-auto px-3 rounded-xl text-xs font-semibold border flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                      levelAcademicFilter !== 'all'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                    title="Filtrar por Nível Pedagógico"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Award size={13} className="shrink-0" />
+                      <span className="truncate max-w-[160px]">
+                        {levelAcademicFilter === 'all' ? 'Todos os Níveis' : levelAcademicFilter}
+                      </span>
+                    </span>
+                    <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${openLevelFilterDropdown ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {openLevelFilterDropdown && (
+                    <div className="absolute right-0 sm:left-0 sm:right-auto top-full mt-1.5 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1.5 max-h-64 overflow-y-auto">
+                      <button
+                        type="button"
+                        onClick={() => { setLevelAcademicFilter('all'); setOpenLevelFilterDropdown(false) }}
+                        className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer ${
+                          levelAcademicFilter === 'all' ? 'font-bold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-200'
+                        }`}
+                      >
+                        <span>Todos os Níveis</span>
+                        {levelAcademicFilter === 'all' && <Check size={13} />}
+                      </button>
+                      {OFFICIAL_ACADEMIC_LEVELS.map(cfg => (
+                        <button
+                          key={cfg.key}
+                          type="button"
+                          onClick={() => { setLevelAcademicFilter(cfg.label); setOpenLevelFilterDropdown(false) }}
+                          className={`w-full px-3.5 py-2 text-left text-xs flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors cursor-pointer ${
+                            levelAcademicFilter === cfg.label ? 'font-bold text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-950/30' : 'text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 truncate">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cfg.color }} />
+                            <span className="truncate">{cfg.label}</span>
+                          </span>
+                          {levelAcademicFilter === cfg.label && <Check size={13} />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {hasActiveLevelFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLevelSearchQuery('')
+                      setLevelAcademicFilter('all')
+                      setOpenLevelFilterDropdown(false)
+                    }}
+                    className="h-9 px-2.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                    title="Limpar filtros"
+                  >
+                    <X size={13} /> Limpar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {filteredLevels.length === 0 ? (
+            <div className="card-3d p-8 sm:p-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col items-center text-center gap-3">
+              <Search size={36} className="text-slate-300 dark:text-slate-600" />
+              <div>
+                <h3 className="font-heading font-bold text-slate-700 dark:text-slate-200 text-sm sm:text-base">
+                  Nenhuma turma encontrada
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Não há turmas correspondentes ao termo pesquisado ou nível selecionado.
+                </p>
+              </div>
+              {hasActiveLevelFilters && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setLevelSearchQuery('')
+                    setLevelAcademicFilter('all')
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {levels.map((lvl) => {
+            {filteredLevels.map((lvl) => {
               const studentsInTurma = allStudents.filter(s => s.level_id === lvl.id || s.level?.id === lvl.id)
               const acadLvl = getAcademicLevel(lvl)
               const theme = getAcademicLevelTheme(acadLvl)
@@ -2204,6 +2364,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               )
             })}
           </div>
+          )}
         </section>
       ) : activeTab === 'decks' ? (
         /* Gestão de Baralhos Padrões (Organização por Pastas de Nível) */
