@@ -9,9 +9,18 @@ interface ModalProps {
   children: ReactNode
   footer?: ReactNode
   maxWidth?: string
+  closeOnBackdropClick?: boolean
 }
 
-export function Modal({ open, onClose, title, children, footer, maxWidth = '520px' }: ModalProps) {
+export function Modal({ 
+  open, 
+  onClose, 
+  title, 
+  children, 
+  footer, 
+  maxWidth = '520px',
+  closeOnBackdropClick = false
+}: ModalProps) {
   useEffect(() => {
     if (!open) return
 
@@ -30,7 +39,7 @@ export function Modal({ open, onClose, title, children, footer, maxWidth = '520p
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/75 backdrop-blur-xs animate-fade-in"
-      onClick={onClose}
+      onClick={closeOnBackdropClick ? onClose : undefined}
       role="dialog"
       aria-modal="true"
     >

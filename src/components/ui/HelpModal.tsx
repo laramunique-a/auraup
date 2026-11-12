@@ -178,7 +178,6 @@ export function HelpModal({ open, onClose }: HelpModalProps) {
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/75 backdrop-blur-xs animate-fade-in"
-      onClick={handleClose}
       role="dialog"
       aria-modal="true"
       aria-label="Ajuda e Feedback"
