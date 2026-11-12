@@ -173,6 +173,63 @@ async function getDeckStats(deckId: string, userId: string): Promise<DeckStats> 
   return { total: cards.length, due, new: newCards, lastReview }
 }
 
+/**
+ * Calcula as estatísticas de TODOS os baralhos do aluno de uma só vez com apenas
+ * 2 requisições paralelas (em vez de 2 * N requisições individuais por baralho).
+ */
+async function getAllDeckStats(decks: Deck[], userId: string): Promise<Record<string, DeckStats>> {
+  if (!decks || decks.length === 0) return {}
+
+  const [allCards, allReviews] = await Promise.all([
+    cardService.getAllUserCardIds(userId),
+    reviewService.getReviewsForDeck('all', userId),
+  ])
+
+  const reviewMap = new Map<string, any>(allReviews.map(r => [r.card_id, r] as [string, any]))
+  const cardsByDeck = new Map<string, { id: string }[]>()
+
+  for (const deck of decks) {
+    cardsByDeck.set(deck.id, [])
+  }
+
+  for (const card of allCards) {
+    const list = cardsByDeck.get(card.deck_id)
+    if (list) {
+      list.push(card)
+    }
+  }
+
+  const result: Record<string, DeckStats> = {}
+
+  for (const deck of decks) {
+    const cards = cardsByDeck.get(deck.id) || []
+    let due = 0
+    let newCards = 0
+    let lastReview: string | undefined = undefined
+
+    for (const card of cards) {
+      const review = reviewMap.get(card.id)
+      if (!review) {
+        newCards++
+        due++ // Cards novos também estão disponíveis para estudo
+      } else {
+        if (isCardDue(review.due_date)) {
+          due++
+        }
+        if (review.last_reviewed) {
+          if (!lastReview || review.last_reviewed > lastReview) {
+            lastReview = review.last_reviewed
+          }
+        }
+      }
+    }
+
+    result[deck.id] = { total: cards.length, due, new: newCards, lastReview }
+  }
+
+  return result
+}
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 export const deckService = {
@@ -181,4 +238,5 @@ export const deckService = {
   updateDeck: isLocalMode ? localUpdateDeck : supabaseUpdateDeck,
   deleteDeck: isLocalMode ? localDeleteDeck : supabaseDeleteDeck,
   getDeckStats,
+  getAllDeckStats,
 }

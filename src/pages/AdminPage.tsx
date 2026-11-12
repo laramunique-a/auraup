@@ -12,7 +12,7 @@ import {
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
   ChevronDown, KeyRound, GraduationCap, FileUp, Award, MessageSquareText,
-  Folder, FolderOpen, Globe, Layers
+  Folder, FolderOpen, Globe, Layers, Search
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -31,6 +31,27 @@ const AVATARS: Record<string, string> = {
 
 function getStudentDisplayName(u: any): string {
   return u?.name || u?.full_name || u?.nickname || u?.email?.split('@')[0] || 'Aluno'
+}
+
+function normalizeAdminTeacherName(u: any): string {
+  const email = (u?.email || '').trim().toLowerCase()
+  const rawName = (u?.name || u?.full_name || u?.nickname || '').trim()
+  if (email === 'auraenglish7@gmail.com' || rawName === 'Professor Aura' || rawName === 'Professor') {
+    return 'Juliano'
+  }
+  if (email === 'juliantessaro@outlook.com' || rawName === 'Julian Tessaro') {
+    return 'Julian'
+  }
+  return u?.nickname || rawName.split(' ')[0] || email.split('@')[0] || ''
+}
+
+function normalizeSearchText(text?: string | null): string {
+  if (!text) return ''
+  return text
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
 }
 
 export function AdminPage() {
@@ -59,6 +80,7 @@ export function AdminPage() {
   const [newName, setNewName] = useState('')
   const [newInitialPassword, setNewInitialPassword] = useState('aura123')
   const [selectedLevelId, setSelectedLevelId] = useState('')
+  const [newTeacherName, setNewTeacherName] = useState('')
   const [showLevelDropdown, setShowLevelDropdown] = useState(false)
   const [creating, setCreating] = useState(false)
 
@@ -68,10 +90,17 @@ export function AdminPage() {
   const [editEmail, setEditEmail] = useState('')
   const [editPassword, setEditPassword] = useState('')
   const [editLevelId, setEditLevelId] = useState('')
+  const [editTeacherName, setEditTeacherName] = useState('')
   const [editIsActive, setEditIsActive] = useState(true)
   const [editMustChangePassword, setEditMustChangePassword] = useState(false)
   const [showEditLevelDropdown, setShowEditLevelDropdown] = useState(false)
   const [savingUser, setSavingUser] = useState(false)
+
+  // Pesquisa, Filtros e Ordenação da aba Alunos
+  const [studentSearchQuery, setStudentSearchQuery] = useState('')
+  const [studentLevelFilter, setStudentLevelFilter] = useState<string>('all')
+  const [studentTeacherFilter, setStudentTeacherFilter] = useState<string>('all')
+  const [studentSortBy, setStudentSortBy] = useState<'az' | 'za' | 'xp_desc' | 'xp_asc' | 'coins_desc' | 'newest' | 'oldest'>('az')
 
   // Excluir Usuário State
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
@@ -237,6 +266,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       const trimmedEmail = newEmail.trim().toLowerCase()
       const trimmedName = newName.trim()
       const trimmedPassword = newInitialPassword.trim() || 'aura123'
+      const cleanTeacher = newTeacherName.trim() || null
 
       let createdUserId: string | null = null
 
@@ -282,7 +312,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
               student_password: trimmedPassword,
               student_name: trimmedName,
               student_level_id: selectedLevelId || 'lvl_1',
-              student_xp: initialXP
+              student_xp: initialXP,
+              student_teacher: cleanTeacher
             })
             if (!rpcErr && rpcUserId) {
               createdUserId = rpcUserId
@@ -302,6 +333,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               nickname: trimmedName.split(' ')[0],
               role: 'user',
               level_id: selectedLevelId || 'lvl_1',
+              teacher_name: cleanTeacher,
               xp: initialXP,
               must_change_password: true,
               is_active: true
@@ -320,7 +352,8 @@ function saveLocalAdminLevels(levelsList: any[]) {
           initialPassword: trimmedPassword,
           level_id: selectedLevelId || 'lvl_1',
           level: selectedLvl,
-          initialXP
+          initialXP,
+          teacher_name: cleanTeacher
         })
         const currentList = getLocalAdminUsers()
         if (!currentList.some(u => u.email.toLowerCase() === trimmedEmail)) {
@@ -336,6 +369,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
       setNewName('')
       setNewInitialPassword('aura123')
       setSelectedLevelId('')
+      setNewTeacherName('')
       show(`Aluno cadastrado com sucesso com ${initialXP} XP inicial!`, 'success')
       await loadUsers()
     } catch (err: any) {
@@ -351,6 +385,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     setEditEmail(u.email)
     setEditPassword('')
     setEditLevelId(u.level_id || u.level?.id || 'lvl_1')
+    setEditTeacherName(u.teacher_name || '')
     setEditIsActive(u.is_active !== false)
     setEditMustChangePassword(u.must_change_password ?? false)
     setShowEditLevelDropdown(false)
@@ -379,6 +414,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
         newPassword: editPassword.trim() || undefined,
         level_id: editLevelId,
         level: selectedLvl,
+        teacher_name: editTeacherName.trim() || null,
         is_active: editIsActive,
         must_change_password: editMustChangePassword
       })
@@ -987,8 +1023,102 @@ function saveLocalAdminLevels(levelsList: any[]) {
   }
 
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string | null>(null)
-  const allStudents = users.filter(u => u.role === 'user')
+  const allStudents = useMemo(() => users.filter(u => u.role === 'user'), [users])
   const leagueStudents = users.filter(u => u.role === 'user' && u.level_id === selectedLevelFilter)
+
+  // Lista dinâmica de Professores (todos os usuários com perfil admin)
+  const adminTeachers = useMemo(() => {
+    const teacherSet = new Set<string>(['Juliano', 'Julian'])
+    users
+      .filter(u => u.role === 'admin')
+      .forEach(admin => {
+        const clean = normalizeAdminTeacherName(admin)
+        if (clean) teacherSet.add(clean)
+      })
+    users
+      .filter(u => u.role === 'user' && u.teacher_name?.trim())
+      .forEach(student => {
+        if (student.teacher_name?.trim()) {
+          teacherSet.add(student.teacher_name.trim())
+        }
+      })
+    return Array.from(teacherSet)
+  }, [users])
+
+  // Alunos filtrados por pesquisa de nome, turma, professor e ordenados
+  const filteredStudents = useMemo(() => {
+    const query = normalizeSearchText(studentSearchQuery)
+
+    const filtered = allStudents.filter(u => {
+      // 1. Filtro por nome / apelido / email (simultâneo conforme digita)
+      if (query) {
+        const displayName = normalizeSearchText(getStudentDisplayName(u))
+        const fullName = normalizeSearchText((u as any).full_name)
+        const nickname = normalizeSearchText(u.nickname)
+        const email = normalizeSearchText(u.email)
+        const matchesQuery =
+          displayName.includes(query) ||
+          fullName.includes(query) ||
+          nickname.includes(query) ||
+          email.includes(query)
+        if (!matchesQuery) return false
+      }
+
+      // 2. Filtro por Turma
+      if (studentLevelFilter !== 'all') {
+        const userLvlId = u.level_id || u.level?.id || ''
+        if (userLvlId !== studentLevelFilter) return false
+      }
+
+      // 3. Filtro por Professor
+      if (studentTeacherFilter !== 'all') {
+        const teacher = (u.teacher_name || '').trim()
+        if (studentTeacherFilter === '__unassigned__') {
+          if (teacher !== '') return false
+        } else {
+          if (teacher.toLowerCase() !== studentTeacherFilter.toLowerCase()) return false
+        }
+      }
+
+      return true
+    })
+
+    // 4. Ordenação
+    return [...filtered].sort((a, b) => {
+      if (studentSortBy === 'az') {
+        return getStudentDisplayName(a).localeCompare(getStudentDisplayName(b), 'pt-BR', { sensitivity: 'base' })
+      }
+      if (studentSortBy === 'za') {
+        return getStudentDisplayName(b).localeCompare(getStudentDisplayName(a), 'pt-BR', { sensitivity: 'base' })
+      }
+      if (studentSortBy === 'xp_desc') {
+        return (b.xp || 0) - (a.xp || 0)
+      }
+      if (studentSortBy === 'xp_asc') {
+        return (a.xp || 0) - (b.xp || 0)
+      }
+      if (studentSortBy === 'coins_desc') {
+        return (b.coins || 0) - (a.coins || 0)
+      }
+      if (studentSortBy === 'newest') {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return dateB - dateA
+      }
+      if (studentSortBy === 'oldest') {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return dateA - dateB
+      }
+      return 0
+    })
+  }, [allStudents, studentSearchQuery, studentLevelFilter, studentTeacherFilter, studentSortBy])
+
+  const hasActiveStudentFilters =
+    studentSearchQuery.trim() !== '' ||
+    studentLevelFilter !== 'all' ||
+    studentTeacherFilter !== 'all' ||
+    studentSortBy !== 'az'
 
   // Combina opções de Níveis (Todos + Ligas do Sistema + Níveis já usados em baralhos)
   const availableLevelOptions = useMemo(() => {
@@ -1224,12 +1354,111 @@ function saveLocalAdminLevels(levelsList: any[]) {
             <div className="flex items-center gap-2.5">
               <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Alunos Cadastrados</h2>
               <span className="text-xs font-heading font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-0.5 rounded-md border border-blue-200/60 dark:border-blue-800 shadow-xs">
-                <span className="font-bold">{allStudents.length}</span> {allStudents.length === 1 ? 'aluno' : 'alunos'}
+                {hasActiveStudentFilters ? (
+                  <>
+                    Exibindo <span className="font-bold">{filteredStudents.length}</span> de {allStudents.length} alunos
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold">{allStudents.length}</span> {allStudents.length === 1 ? 'aluno' : 'alunos'}
+                  </>
+                )}
               </span>
             </div>
             <Button variant="primary" size="sm" onClick={() => setActiveModal('addUser')}>
               <UserPlus size={15} /> Novo Aluno
             </Button>
+          </div>
+
+          {/* Barra de Pesquisa, Filtros e Ordenação de Alunos */}
+          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 shadow-2xs">
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+              {/* Campo de Pesquisa em Tempo Real */}
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={studentSearchQuery}
+                  onChange={e => setStudentSearchQuery(e.target.value)}
+                  placeholder="Pesquisar aluno por nome ou e-mail..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs"
+                />
+                {studentSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setStudentSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
+                    title="Limpar busca"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Controles de Filtros e Ordenação */}
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                {/* Filtro: Turma */}
+                <select
+                  value={studentLevelFilter}
+                  onChange={e => setStudentLevelFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 shadow-2xs cursor-pointer"
+                  title="Filtrar por Turma"
+                >
+                  <option value="all">🎓 Todas as Turmas</option>
+                  {levels.map(l => (
+                    <option key={l.id} value={l.id}>{l.name}</option>
+                  ))}
+                </select>
+
+                {/* Filtro: Professor */}
+                <select
+                  value={studentTeacherFilter}
+                  onChange={e => setStudentTeacherFilter(e.target.value)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 shadow-2xs cursor-pointer"
+                  title="Filtrar por Professor"
+                >
+                  <option value="all">👨‍🏫 Todos os Professores</option>
+                  <option value="__unassigned__">⏳ A definir</option>
+                  {adminTeachers.map(t => (
+                    <option key={t} value={t}>👨‍🏫 {t}</option>
+                  ))}
+                </select>
+
+                {/* Ordenação */}
+                <div className="col-span-2 sm:col-span-1 flex items-center gap-1.5">
+                  <select
+                    value={studentSortBy}
+                    onChange={e => setStudentSortBy(e.target.value as any)}
+                    className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 shadow-2xs cursor-pointer"
+                    title="Ordenar lista de alunos"
+                  >
+                    <option value="az">🔤 A-Z (Ordem Alfabética)</option>
+                    <option value="za">🔤 Z-A (Inversa)</option>
+                    <option value="xp_desc">⚡ Maior XP</option>
+                    <option value="xp_asc">⚡ Menor XP</option>
+                    <option value="coins_desc">🪙 Mais Moedas</option>
+                    <option value="newest">🕒 Mais Recentes</option>
+                    <option value="oldest">🕒 Mais Antigos</option>
+                  </select>
+
+                  {hasActiveStudentFilters && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStudentSearchQuery('')
+                        setStudentLevelFilter('all')
+                        setStudentTeacherFilter('all')
+                        setStudentSortBy('az')
+                      }}
+                      className="px-2.5 py-2 text-xs font-heading font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 rounded-xl border border-rose-200 dark:border-rose-900 transition-colors shrink-0 cursor-pointer shadow-2xs"
+                      title="Limpar todos os filtros"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="card-3d border border-slate-200 dark:border-slate-700 shadow-xs rounded-xl bg-white dark:bg-slate-800 overflow-hidden">
@@ -1240,6 +1469,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200/80 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400">
                     <th className="py-2.5 px-3 sm:px-4">Aluno</th>
                     <th className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">Turma</th>
+                    <th className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">Professor</th>
                     <th className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">Saldo</th>
                     <th className="py-2.5 px-3 sm:px-4 text-right whitespace-nowrap">Ações</th>
                   </tr>
@@ -1247,12 +1477,32 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
                   {allStudents.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="py-8 text-center text-slate-400">
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
                         Nenhum aluno cadastrado ainda.
                       </td>
                     </tr>
+                  ) : filteredStudents.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Nenhum aluno encontrado com os filtros selecionados.</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setStudentSearchQuery('')
+                              setStudentLevelFilter('all')
+                              setStudentTeacherFilter('all')
+                              setStudentSortBy('az')
+                            }}
+                            className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                          >
+                            Limpar filtros de pesquisa
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   ) : (
-                    allStudents.map((u) => (
+                    filteredStudents.map((u) => (
                       <tr key={u.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-700/40 transition-colors">
                         <td className="py-2.5 px-3 sm:px-4">
                           <div className="flex items-center gap-2.5">
@@ -1277,6 +1527,23 @@ function saveLocalAdminLevels(levelsList: any[]) {
                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: u.level?.color || '#3B82F6' }} />
                             {u.level?.name || 'Iniciante'}
                           </span>
+                        </td>
+                        <td className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">
+                          {u.teacher_name ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] sm:text-xs font-heading font-semibold bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800 shadow-2xs whitespace-nowrap">
+                              👨‍🏫 {u.teacher_name}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditUser(u)}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-heading font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-dashed border-amber-300 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors cursor-pointer whitespace-nowrap"
+                              title="Clique para definir o professor responsável"
+                            >
+                              <span>A definir</span>
+                              <Pencil size={11} className="opacity-70" />
+                            </button>
+                          )}
                         </td>
                         <td className="py-2.5 px-2 sm:px-3 text-center whitespace-nowrap">
                           <div className="inline-flex items-center gap-2 text-xs font-medium">
@@ -1341,8 +1608,24 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 <div className="py-8 text-center text-slate-400 text-sm font-medium">
                   Nenhum aluno cadastrado ainda.
                 </div>
+              ) : filteredStudents.length === 0 ? (
+                <div className="py-8 text-center text-slate-400 text-sm font-medium space-y-2">
+                  <p>Nenhum aluno encontrado com os filtros selecionados.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStudentSearchQuery('')
+                      setStudentLevelFilter('all')
+                      setStudentTeacherFilter('all')
+                      setStudentSortBy('az')
+                    }}
+                    className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                  >
+                    Limpar filtros de pesquisa
+                  </button>
+                </div>
               ) : (
-                allStudents.map((u) => (
+                filteredStudents.map((u) => (
                   <div key={u.id} className="p-3.5 space-y-2.5">
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -1402,13 +1685,30 @@ function saveLocalAdminLevels(levelsList: any[]) {
                       </div>
                     </div>
 
-                    {/* Linha Inferior: Turma e Saldo */}
-                    <div className="flex items-center justify-between text-xs pt-1.5 border-t border-slate-100/80 dark:border-slate-700/60">
+                    {/* Linha do Meio: Turma e Professor */}
+                    <div className="flex items-center justify-between gap-2 text-xs pt-1.5 border-t border-slate-100/80 dark:border-slate-700/60 flex-wrap">
                       <span className="inline-flex items-center gap-1.5 text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200">
                         <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: u.level?.color || '#3B82F6' }} />
                         {u.level?.name || 'Iniciante'}
                       </span>
 
+                      {u.teacher_name ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/80 dark:border-blue-800">
+                          👨‍🏫 {u.teacher_name}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditUser(u)}
+                          className="inline-flex items-center gap-1 text-[11px] font-heading font-medium px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-dashed border-amber-300 dark:border-amber-800 cursor-pointer"
+                        >
+                          A definir <Pencil size={10} className="opacity-70" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Linha Inferior: Saldo */}
+                    <div className="flex items-center justify-end text-xs pt-1 border-t border-slate-100/60 dark:border-slate-700/40">
                       <div className="inline-flex items-center gap-2.5 text-xs font-semibold">
                         <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                           <Sparkles size={12} className="fill-amber-500 text-amber-500" />
@@ -2656,6 +2956,25 @@ function saveLocalAdminLevels(levelsList: any[]) {
               </p>
             )}
           </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Professor Responsável
+            </label>
+            <select
+              value={newTeacherName}
+              onChange={e => setNewTeacherName(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
+            >
+              <option value="">A definir</option>
+              {adminTeachers.map(t => (
+                <option key={t} value={t}>👨‍🏫 {t}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              Professores disponíveis: {adminTeachers.join(', ')}.
+            </p>
+          </div>
         </div>
       </Modal>
 
@@ -2746,6 +3065,22 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 </div>
               )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Professor Responsável
+            </label>
+            <select
+              value={editTeacherName}
+              onChange={e => setEditTeacherName(e.target.value)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
+            >
+              <option value="">A definir</option>
+              {adminTeachers.map(t => (
+                <option key={t} value={t}>👨‍🏫 {t}</option>
+              ))}
+            </select>
           </div>
 
           {/* Status da Conta */}

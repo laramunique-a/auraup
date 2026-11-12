@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   coins INTEGER DEFAULT 0,
   streak INTEGER DEFAULT 0,
   level_id TEXT REFERENCES public.levels(id) ON DELETE SET NULL,
+  teacher_name TEXT DEFAULT NULL,
   is_active BOOLEAN DEFAULT TRUE,
   must_change_password BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),

@@ -21,8 +21,10 @@ export interface User {
   streak: number
   level_id?: string
   level?: Level
+  teacher_name?: string | null
   is_active?: boolean
   must_change_password?: boolean
+  created_at?: string
 }
 
 export interface Deck {

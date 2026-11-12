@@ -18,6 +18,7 @@ export interface UserAccount {
   streak: number
   level_id?: string
   level?: any
+  teacher_name?: string | null
   is_active: boolean
   must_change_password: boolean
 }
@@ -40,8 +41,8 @@ const INITIAL_ACCOUNTS: UserAccount[] = [
     id: 'admin_professor_official',
     email: 'auraenglish7@gmail.com',
     password: '',
-    name: 'Professor Aura',
-    nickname: 'Professor',
+    name: 'Juliano',
+    nickname: 'Juliano',
     role: 'admin',
     avatar_id: 'admin',
     xp: 5000,
@@ -85,6 +86,14 @@ function getLocalAccounts(): UserAccount[] {
             parsed[idx].is_active = true
             changed = true
           }
+          if (
+            adminAcc.email.toLowerCase() === 'auraenglish7@gmail.com' &&
+            (parsed[idx].name === 'Professor Aura' || parsed[idx].nickname === 'Professor')
+          ) {
+            parsed[idx].name = 'Juliano'
+            parsed[idx].nickname = 'Juliano'
+            changed = true
+          }
         }
       }
 
@@ -118,6 +127,7 @@ function toUser(acc: UserAccount): User {
     streak: acc.streak,
     level_id: acc.level_id,
     level: acc.level,
+    teacher_name: acc.teacher_name ?? null,
     is_active: acc.is_active,
     must_change_password: acc.must_change_password,
   }
@@ -364,11 +374,14 @@ export const authService = {
     level_id?: string
     level?: any
     initialXP?: number
+    teacher_name?: string | null
   }): Promise<User> {
     const email = userData.email.trim().toLowerCase()
     const initialPassword = (userData.initialPassword || 'aura123').trim()
     const val = validatePassword(initialPassword)
     if (!val.valid) throw new Error(`Senha padrão inválida: ${val.error}`)
+
+    const cleanTeacher = userData.teacher_name?.trim() || null
 
     const newAccount: UserAccount = {
       id: 'user_' + generateId(),
@@ -383,6 +396,7 @@ export const authService = {
       streak: 1,
       level_id: userData.level_id || 'lvl_1',
       level: userData.level,
+      teacher_name: cleanTeacher,
       is_active: true,
       must_change_password: true, // Força primeiro acesso
     }
@@ -407,6 +421,7 @@ export const authService = {
     newPassword?: string
     level_id?: string
     level?: any
+    teacher_name?: string | null
     is_active?: boolean
     must_change_password?: boolean
   }): Promise<User> {
@@ -438,6 +453,9 @@ export const authService = {
       }
       if (data.level_id !== undefined) {
         updates.level_id = data.level_id
+      }
+      if (data.teacher_name !== undefined) {
+        updates.teacher_name = data.teacher_name?.trim() || null
       }
       if (data.is_active !== undefined) {
         updates.is_active = data.is_active
@@ -471,6 +489,7 @@ export const authService = {
         }
         if (data.level_id) accounts[idx].level_id = data.level_id
         if (data.level) accounts[idx].level = data.level
+        if (data.teacher_name !== undefined) accounts[idx].teacher_name = data.teacher_name?.trim() || null
         if (data.is_active !== undefined) accounts[idx].is_active = data.is_active
         if (data.must_change_password !== undefined) accounts[idx].must_change_password = data.must_change_password
         saveLocalAccounts(accounts)
@@ -488,6 +507,7 @@ export const authService = {
         streak: updatedProfile.streak || 0,
         level_id: updatedProfile.level_id,
         level: updatedProfile.level || data.level,
+        teacher_name: updatedProfile.teacher_name ?? null,
         is_active: updatedProfile.is_active,
         must_change_password: updatedProfile.must_change_password,
         created_at: updatedProfile.created_at,
@@ -521,6 +541,10 @@ export const authService = {
     if (data.level_id) {
       accounts[idx].level_id = data.level_id
       if (data.level) accounts[idx].level = data.level
+    }
+
+    if (data.teacher_name !== undefined) {
+      accounts[idx].teacher_name = data.teacher_name?.trim() || null
     }
 
     if (data.is_active !== undefined) {
