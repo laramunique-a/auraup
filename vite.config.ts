@@ -5,7 +5,23 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     host: '0.0.0.0',
-    port: 5173
+    port: 5173,
+    proxy: {
+      '/api/tts': {
+        target: 'https://translate.google.com',
+        changeOrigin: true,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': '',
+        },
+        rewrite: (path) => {
+          const url = new URL(`http://localhost${path}`)
+          const text = url.searchParams.get('text') || ''
+          const lang = url.searchParams.get('lang') || 'en-US'
+          return `/translate_tts?ie=UTF-8&tl=${encodeURIComponent(lang)}&client=tw-ob&q=${encodeURIComponent(text)}`
+        }
+      }
+    }
   },
   plugins: [
     react(),
