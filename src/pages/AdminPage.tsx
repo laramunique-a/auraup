@@ -12,7 +12,7 @@ import {
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
   ChevronDown, KeyRound, GraduationCap, FileUp, Award, MessageSquareText,
-  Folder, FolderOpen, Globe, Layers, Search
+  Folder, FolderOpen, Globe, Layers, Search, ArrowUpDown
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -28,6 +28,16 @@ const AVATARS: Record<string, string> = {
   avatar_4: '🐼', avatar_5: '🦉', avatar_6: '🦖',
   admin: '👑',
 }
+
+const SORT_OPTIONS: Array<{ id: 'az' | 'za' | 'xp_desc' | 'xp_asc' | 'coins_desc' | 'newest' | 'oldest'; label: string; shortLabel: string }> = [
+  { id: 'az', label: 'A-Z (Ordem Alfabética)', shortLabel: 'A-Z' },
+  { id: 'za', label: 'Z-A (Inversa)', shortLabel: 'Z-A' },
+  { id: 'xp_desc', label: 'Maior XP', shortLabel: 'Maior XP' },
+  { id: 'xp_asc', label: 'Menor XP', shortLabel: 'Menor XP' },
+  { id: 'coins_desc', label: 'Mais Moedas', shortLabel: 'Mais Moedas' },
+  { id: 'newest', label: 'Mais Recentes', shortLabel: 'Mais Recentes' },
+  { id: 'oldest', label: 'Mais Antigos', shortLabel: 'Mais Antigos' },
+]
 
 function getStudentDisplayName(u: any): string {
   return u?.name || u?.full_name || u?.nickname || u?.email?.split('@')[0] || 'Aluno'
@@ -82,6 +92,7 @@ export function AdminPage() {
   const [selectedLevelId, setSelectedLevelId] = useState('')
   const [newTeacherName, setNewTeacherName] = useState('')
   const [showLevelDropdown, setShowLevelDropdown] = useState(false)
+  const [showTeacherDropdown, setShowTeacherDropdown] = useState(false)
   const [creating, setCreating] = useState(false)
 
   // Editar Usuário Form
@@ -94,6 +105,7 @@ export function AdminPage() {
   const [editIsActive, setEditIsActive] = useState(true)
   const [editMustChangePassword, setEditMustChangePassword] = useState(false)
   const [showEditLevelDropdown, setShowEditLevelDropdown] = useState(false)
+  const [showEditTeacherDropdown, setShowEditTeacherDropdown] = useState(false)
   const [savingUser, setSavingUser] = useState(false)
 
   // Pesquisa, Filtros e Ordenação da aba Alunos
@@ -101,6 +113,7 @@ export function AdminPage() {
   const [studentLevelFilter, setStudentLevelFilter] = useState<string>('all')
   const [studentTeacherFilter, setStudentTeacherFilter] = useState<string>('all')
   const [studentSortBy, setStudentSortBy] = useState<'az' | 'za' | 'xp_desc' | 'xp_asc' | 'coins_desc' | 'newest' | 'oldest'>('az')
+  const [openFilterDropdown, setOpenFilterDropdown] = useState<'level' | 'teacher' | 'sort' | null>(null)
 
   // Excluir Usuário State
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
@@ -389,6 +402,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     setEditIsActive(u.is_active !== false)
     setEditMustChangePassword(u.must_change_password ?? false)
     setShowEditLevelDropdown(false)
+    setShowEditTeacherDropdown(false)
     setActiveModal('editUser')
   }
 
@@ -1026,21 +1040,16 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const allStudents = useMemo(() => users.filter(u => u.role === 'user'), [users])
   const leagueStudents = users.filter(u => u.role === 'user' && u.level_id === selectedLevelFilter)
 
-  // Lista dinâmica de Professores (todos os usuários com perfil admin)
+  // Lista dinâmica de Professores (apenas perfis com acesso de administrador)
   const adminTeachers = useMemo(() => {
-    const teacherSet = new Set<string>(['Juliano', 'Julian'])
+    const teacherSet = new Set<string>()
+    teacherSet.add('Juliano')
+    teacherSet.add('Julian')
     users
       .filter(u => u.role === 'admin')
       .forEach(admin => {
         const clean = normalizeAdminTeacherName(admin)
         if (clean) teacherSet.add(clean)
-      })
-    users
-      .filter(u => u.role === 'user' && u.teacher_name?.trim())
-      .forEach(student => {
-        if (student.teacher_name?.trim()) {
-          teacherSet.add(student.teacher_name.trim())
-        }
       })
     return Array.from(teacherSet)
   }, [users])
@@ -1070,14 +1079,10 @@ function saveLocalAdminLevels(levelsList: any[]) {
         if (userLvlId !== studentLevelFilter) return false
       }
 
-      // 3. Filtro por Professor
+      // 3. Filtro por Professor (apenas professores válidos cadastrados)
       if (studentTeacherFilter !== 'all') {
         const teacher = (u.teacher_name || '').trim()
-        if (studentTeacherFilter === '__unassigned__') {
-          if (teacher !== '') return false
-        } else {
-          if (teacher.toLowerCase() !== studentTeacherFilter.toLowerCase()) return false
-        }
+        if (teacher.toLowerCase() !== studentTeacherFilter.toLowerCase()) return false
       }
 
       return true
@@ -1365,13 +1370,34 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 )}
               </span>
             </div>
-            <Button variant="primary" size="sm" onClick={() => setActiveModal('addUser')}>
+            <Button 
+              variant="primary" 
+              size="sm" 
+              onClick={() => {
+                setNewEmail('')
+                setNewName('')
+                setNewInitialPassword('aura123')
+                setSelectedLevelId('')
+                setNewTeacherName('')
+                setShowLevelDropdown(false)
+                setShowTeacherDropdown(false)
+                setActiveModal('addUser')
+              }}
+            >
               <UserPlus size={15} /> Novo Aluno
             </Button>
           </div>
 
           {/* Barra de Pesquisa, Filtros e Ordenação de Alunos */}
-          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 shadow-2xs">
+          <div className="p-3 sm:p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 space-y-2.5 shadow-2xs relative">
+            {/* Backdrop para fechar menus de filtro ao clicar fora */}
+            {openFilterDropdown && (
+              <div
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setOpenFilterDropdown(null)}
+              />
+            )}
+
             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
               {/* Campo de Pesquisa em Tempo Real */}
               <div className="relative flex-1">
@@ -1395,51 +1421,179 @@ function saveLocalAdminLevels(levelsList: any[]) {
                 )}
               </div>
 
-              {/* Controles de Filtros e Ordenação */}
-              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+              {/* Controles de Filtros e Ordenação com Menus Customizados */}
+              <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 relative z-40">
                 {/* Filtro: Turma */}
-                <select
-                  value={studentLevelFilter}
-                  onChange={e => setStudentLevelFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 shadow-2xs cursor-pointer"
-                  title="Filtrar por Turma"
-                >
-                  <option value="all">🎓 Todas as Turmas</option>
-                  {levels.map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFilterDropdown(openFilterDropdown === 'level' ? null : 'level')}
+                    className={`h-9 w-full sm:w-auto px-3 rounded-xl text-xs font-semibold border flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                      studentLevelFilter !== 'all'
+                        ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                    title="Filtrar por Turma"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <GraduationCap size={14} className={studentLevelFilter !== 'all' ? 'text-indigo-600 dark:text-indigo-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                      <span className="truncate max-w-[110px]">
+                        {studentLevelFilter === 'all'
+                          ? 'Turma: Todas'
+                          : levels.find(l => l.id === studentLevelFilter)?.name || 'Turma'}
+                      </span>
+                    </span>
+                    <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${openFilterDropdown === 'level' ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {openFilterDropdown === 'level' && (
+                    <div className="absolute top-full left-0 mt-1.5 w-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100 max-h-64 overflow-y-auto">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-700/60">
+                        Filtrar por Turma
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setStudentLevelFilter('all'); setOpenFilterDropdown(null) }}
+                        className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors ${
+                          studentLevelFilter === 'all'
+                            ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <GraduationCap size={14} className="text-slate-400" />
+                          <span>Todas as Turmas</span>
+                        </span>
+                        {studentLevelFilter === 'all' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                      </button>
+
+                      {levels.map(l => (
+                        <button
+                          key={l.id}
+                          type="button"
+                          onClick={() => { setStudentLevelFilter(l.id); setOpenFilterDropdown(null) }}
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors border-t border-slate-100 dark:border-slate-700/40 ${
+                            studentLevelFilter === l.id
+                              ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: l.color || '#3B82F6' }} />
+                            <span className="truncate">{l.name}</span>
+                          </div>
+                          {studentLevelFilter === l.id && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Filtro: Professor */}
-                <select
-                  value={studentTeacherFilter}
-                  onChange={e => setStudentTeacherFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 shadow-2xs cursor-pointer"
-                  title="Filtrar por Professor"
-                >
-                  <option value="all">👨‍🏫 Todos os Professores</option>
-                  <option value="__unassigned__">⏳ A definir</option>
-                  {adminTeachers.map(t => (
-                    <option key={t} value={t}>👨‍🏫 {t}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFilterDropdown(openFilterDropdown === 'teacher' ? null : 'teacher')}
+                    className={`h-9 w-full sm:w-auto px-3 rounded-xl text-xs font-semibold border flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                      studentTeacherFilter !== 'all'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                    title="Filtrar por Professor"
+                  >
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Users size={14} className={studentTeacherFilter !== 'all' ? 'text-blue-600 dark:text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                      <span className="truncate max-w-[120px]">
+                        {studentTeacherFilter === 'all'
+                          ? 'Professor: Todos'
+                          : `Prof. ${studentTeacherFilter}`}
+                      </span>
+                    </span>
+                    <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${openFilterDropdown === 'teacher' ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {openFilterDropdown === 'teacher' && (
+                    <div className="absolute top-full left-0 mt-1.5 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-700/60">
+                        Filtrar por Professor
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setStudentTeacherFilter('all'); setOpenFilterDropdown(null) }}
+                        className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors ${
+                          studentTeacherFilter === 'all'
+                            ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                        }`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <Users size={14} className="text-slate-400" />
+                          <span>Todos os Professores</span>
+                        </span>
+                        {studentTeacherFilter === 'all' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                      </button>
+
+                      {adminTeachers.map(t => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => { setStudentTeacherFilter(t); setOpenFilterDropdown(null) }}
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors border-t border-slate-100 dark:border-slate-700/40 ${
+                            studentTeacherFilter === t
+                              ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 font-medium">
+                            <span>👨‍🏫</span>
+                            <span>{t}</span>
+                          </span>
+                          {studentTeacherFilter === t && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 {/* Ordenação */}
-                <div className="col-span-2 sm:col-span-1 flex items-center gap-1.5">
-                  <select
-                    value={studentSortBy}
-                    onChange={e => setStudentSortBy(e.target.value as any)}
-                    className="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100 shadow-2xs cursor-pointer"
+                <div className="col-span-2 sm:col-span-1 flex items-center gap-1.5 relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenFilterDropdown(openFilterDropdown === 'sort' ? null : 'sort')}
+                    className="h-9 w-full sm:w-auto px-3 rounded-xl text-xs font-semibold border flex items-center justify-between sm:justify-start gap-1.5 transition-all shadow-2xs cursor-pointer bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                     title="Ordenar lista de alunos"
                   >
-                    <option value="az">🔤 A-Z (Ordem Alfabética)</option>
-                    <option value="za">🔤 Z-A (Inversa)</option>
-                    <option value="xp_desc">⚡ Maior XP</option>
-                    <option value="xp_asc">⚡ Menor XP</option>
-                    <option value="coins_desc">🪙 Mais Moedas</option>
-                    <option value="newest">🕒 Mais Recentes</option>
-                    <option value="oldest">🕒 Mais Antigos</option>
-                  </select>
+                    <span className="flex items-center gap-1.5 truncate">
+                      <ArrowUpDown size={14} className="text-slate-400 shrink-0" />
+                      <span className="truncate max-w-[130px]">
+                        {SORT_OPTIONS.find(o => o.id === studentSortBy)?.label || 'Ordenar'}
+                      </span>
+                    </span>
+                    <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${openFilterDropdown === 'sort' ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {openFilterDropdown === 'sort' && (
+                    <div className="absolute top-full right-0 mt-1.5 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-700/60">
+                        Ordenar Alunos Por
+                      </div>
+                      {SORT_OPTIONS.map(opt => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => { setStudentSortBy(opt.id); setOpenFilterDropdown(null) }}
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors ${
+                            studentSortBy === opt.id
+                              ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {studentSortBy === opt.id && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {hasActiveStudentFilters && (
                     <button
@@ -1449,6 +1603,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                         setStudentLevelFilter('all')
                         setStudentTeacherFilter('all')
                         setStudentSortBy('az')
+                        setOpenFilterDropdown(null)
                       }}
                       className="px-2.5 py-2 text-xs font-heading font-semibold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 rounded-xl border border-rose-200 dark:border-rose-900 transition-colors shrink-0 cursor-pointer shadow-2xs"
                       title="Limpar todos os filtros"
@@ -2961,16 +3116,45 @@ function saveLocalAdminLevels(levelsList: any[]) {
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               Professor Responsável
             </label>
-            <select
-              value={newTeacherName}
-              onChange={e => setNewTeacherName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
-            >
-              <option value="">A definir</option>
-              {adminTeachers.map(t => (
-                <option key={t} value={t}>👨‍🏫 {t}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowTeacherDropdown(!showTeacherDropdown)}
+                className="w-full rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-all text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
+              >
+                <span>
+                  {newTeacherName ? (
+                    <span className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                      <span className="text-sm">👨‍🏫</span> {newTeacherName}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 font-normal text-xs sm:text-sm">Selecione o professor...</span>
+                  )}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-400 transition-transform duration-200 ${showTeacherDropdown ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {showTeacherDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+                  {adminTeachers.map(t => (
+                    <div
+                      key={t}
+                      onClick={() => { setNewTeacherName(t); setShowTeacherDropdown(false) }}
+                      className="px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">👨‍🏫</span>
+                        <span className="font-medium">{t}</span>
+                      </div>
+                      {newTeacherName === t && <Check size={14} className="text-blue-600" />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
               Professores disponíveis: {adminTeachers.join(', ')}.
             </p>
@@ -3071,16 +3255,45 @@ function saveLocalAdminLevels(levelsList: any[]) {
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
               Professor Responsável
             </label>
-            <select
-              value={editTeacherName}
-              onChange={e => setEditTeacherName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer"
-            >
-              <option value="">A definir</option>
-              {adminTeachers.map(t => (
-                <option key={t} value={t}>👨‍🏫 {t}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowEditTeacherDropdown(!showEditTeacherDropdown)}
+                className="w-full rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80 focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 focus:outline-none transition-all text-slate-900 dark:text-white flex items-center justify-between text-left cursor-pointer shadow-2xs"
+              >
+                <span>
+                  {editTeacherName ? (
+                    <span className="font-semibold text-slate-800 dark:text-white flex items-center gap-2">
+                      <span className="text-sm">👨‍🏫</span> {editTeacherName}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 font-normal text-xs sm:text-sm">Selecione o professor...</span>
+                  )}
+                </span>
+                <ChevronDown
+                  size={16}
+                  className={`text-slate-400 transition-transform duration-200 ${showEditTeacherDropdown ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {showEditTeacherDropdown && (
+                <div className="absolute top-full left-0 right-0 mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden py-1">
+                  {adminTeachers.map(t => (
+                    <div
+                      key={t}
+                      onClick={() => { setEditTeacherName(t); setShowEditTeacherDropdown(false) }}
+                      className="px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">👨‍🏫</span>
+                        <span className="font-medium">{t}</span>
+                      </div>
+                      {editTeacherName === t && <Check size={14} className="text-blue-600" />}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Status da Conta */}
