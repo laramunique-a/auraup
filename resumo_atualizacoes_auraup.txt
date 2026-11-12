@@ -19,7 +19,7 @@
   para acelerar as respostas de busca dos cards e revisões.
 
 
-2. GESTÃO DO PROFESSOR RESPONSÁVEL
+2. GESTÃO DO PROFESSOR RESPONSÁVEL (ADMIN > ALUNOS)
 --------------------------------------------------------------------------------
 • Seletor no Cadastro e Edição:
   Adicionado campo de seleção de Professor nos formulários de "Novo Aluno" e
@@ -27,8 +27,8 @@
   Julian).
 
 • Coluna Professor na Listagem:
-  Nova coluna adicionada na tabela de alunos e também nos
-  cards para celular/PWA.
+  Nova coluna adicionada na tabela de alunos (desktop) e nos cards de visualização
+  no celular/PWA.
 
 • Alerta "A definir":
   Alunos que não possuem professor exibem um aviso visual em destaque "A definir".
@@ -47,8 +47,8 @@
   qualquer parte do nome ou e-mail, sem distinção de acentos ou maiúsculas.
 
 • Filtros com Visual Moderno:
-  Substituição das listas nativas do navegador por seletores suspensos
-  personalizados (dropdowns) com o design oficial da plataforma para filtrar por:
+  Substituição das listas nativas por seletores suspensos personalizados (dropdowns)
+  com o design oficial da plataforma para filtrar por:
   - Turma / Nível
   - Professor (Juliano / Julian)
 
@@ -79,7 +79,7 @@
   superior direito, botão "Cancelar" ou ao salvar a ação).
 
 
-5. ORGANIZAÇÃO DE BARALHOS EM PASTAS & CORREÇÃO DE CARDS
+5. ORGANIZAÇÃO DE BARALHOS EM PASTAS & CONTAGEM DE CARDS
 --------------------------------------------------------------------------------
 • Visualização em Pastas:
   Aba Admin > Baralhos agora organiza os baralhos oficiais dentro de pastas por
@@ -90,31 +90,47 @@
   total real é calculado e sincronizado automaticamente pelo banco de dados.
 
 
-6. NOVO FORMULÁRIO DE CARDS & VOZ NATURAL DE PRONÚNCIA (AWESOMETTS / GOOGLE TRANSLATE)
+6. NOVO FORMULÁRIO DE CRIAÇÃO DE CARDS
 --------------------------------------------------------------------------------
-• Novo Fluxo de Associação:
+• Novo Fluxo de Associação Pedagógica:
   - Frente: renomeada para "IMAGEM (PORTUGUÊS)" com placeholder
     "Ex: Maçã (palavra em português com imagem)", sem opção de áudio.
   - Verso: renomeado para "RESPOSTA (INGLÊS)" com placeholder
     "Ex: Apple (palavra ou frase em inglês)".
-  - Opção de áudio marcada por padrão ("Áudio (Inglês)": ativado) apenas para
-    novos cards, podendo o usuário desmarcar manualmente se quiser.
+  - Opção de áudio marcada por padrão ("Áudio (Inglês)": ativado) para novos cards,
+    com botão de teste da pronúncia e opção de desmarcar manualmente se quiser.
   - Aplicado tanto no menu dos alunos (Meus Baralhos) quanto no painel do
     administrador (Baralhos Padrão e Importação APKG).
+  - Cards já existentes foram 100% preservados no banco de dados.
 
-• Voz Natural Studio (AwesomeTTS do Anki):
-  - Substituição da voz mecânica/robótica local do Windows pelo mesmo motor do
-    Google Translate TTS em inglês americano (en-US) usado no AwesomeTTS.
-  - Pronúncia humana nítida em velocidade normal (1.0x).
-  - Cache de áudio inteligente em memória (reprodução instantânea em 0ms).
-  - Fallback automático para vozes de alta definição do navegador em caso de uso
-    offline.
-  - Zero impacto em armazenamento no banco de dados e zero impacto na velocidade
-    de carregamento do site.
-  - 100% sincronizado com o PWA (celular e desktop).
+
+7. VOZ NATURAL DE PRONÚNCIA EM INGLÊS AMERICANO (AWESOMETTS / GOOGLE TRANSLATE)
+--------------------------------------------------------------------------------
+• Motor Google Translate Oficial (AwesomeTTS do Anki):
+  - Substituição da voz mecânica/robótica local do Windows por áudio em MP3 com
+    pronúncia humana autêntica em Inglês Americano (en-US).
+  - Velocidade calibrada em 1.0x (normal, nítida e fluida para estudo).
+
+• Servidor de Streaming de Áudio Próprio (/api/tts):
+  - Criado endpoint direto no backend da Vercel (api/tts.js) para contornar
+    bloqueios de cabeçalho do navegador (Referer) e garantir entrega imediata
+    do áudio MP3 original do Google sem erros 404.
+
+• Bloqueio Rígido de Voz em Português:
+  - Implementada trava no sistema: para qualquer palavra em inglês, o sistema
+    filtra estritamente vozes em Inglês Americano (en-US).
+  - Fica terminantemente proibido qualquer sintetizador em português (pt-BR)
+    tentar ler palavras ou frases em inglês.
+
+• Performance, Banco de Dados e PWA:
+  - Consumo de Banco de Dados: ZERO impacto (nenhum arquivo de áudio é salvo no
+    Supabase; salva apenas 1 bit de configuração).
+  - Velocidade do Site: ZERO impacto no carregamento do site (áudio é baixado sob
+    demanda apenas ao clicar/revisar, com cache de memória de 0ms).
+  - Sincronização PWA: 100% ativo e sincronizado no celular (iOS/Android) e no
+    computador, com atualização automática do Service Worker.
 
 
 ================================================================================
-Status: Todas as alterações foram testadas, compiladas e validadas com sucesso.
+Status: Todas as alterações foram testadas, compiladas e publicadas na Vercel.
 ================================================================================
-
