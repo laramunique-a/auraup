@@ -131,6 +131,37 @@
     computador, com atualização automática do Service Worker.
 
 
+8. CÓDIGOS ÚNICOS E IDENTIDADE VISUAL DAS TURMAS (H001, C001, E001, I001)
+--------------------------------------------------------------------------------
+• Geração Automática Rigorosa do Código da Turma:
+  - O sistema calcula e gera automaticamente o código sequencial de 3 dígitos com
+    base na inicial do nível pedagógico:
+    * H001, H002... -> Hello (Básico)
+    * C001, C002... -> Connections (Pré-Intermediário)
+    * E001, E002... -> Explore (Intermediário)
+    * I001, I002... -> Independence (Avançado)
+  - Campo "Código da Turma" limpo, discreto e não editável no modal, garantindo
+    padronização institucional permanente.
+
+• Liberdade Total no Nome da Turma:
+  - O administrador tem total liberdade para definir o nome descritivo que
+    desejar para a turma (ex: "Sábado Manhã", "VIP Noturno", "Turma 01", etc.).
+
+• Cores Oficiais Pré-selecionadas:
+  - Ao escolher o nível pedagógico, a cor correspondente da turma é selecionada
+    automaticamente:
+    * Hello: Azul (#2563EB)
+    * Connections: Verde (#10B981)
+    * Explore: Laranja (#F59E0B)
+    * Independence: Vermelho (#EF4444)
+
+• Integração Visual em Todo o Sistema:
+  - Visualização de Turmas (Admin > Turmas): cada card exibe o código em destaque.
+  - Tabela de Alunos (Admin > Alunos): exibe o código junto à turma (ex: H001 · Hello).
+  - Seletores de Turma (Novo Aluno, Editar Aluno e Filtros): exibem "H001 - Nome".
+  - Migration SQL criada para padronizar as turmas existentes no banco de dados.
+
+
 ================================================================================
 Status: Todas as alterações foram testadas, compiladas e publicadas na Vercel.
 ================================================================================

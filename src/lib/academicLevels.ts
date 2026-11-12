@@ -1,15 +1,101 @@
 import type { Level } from '../types'
 
-export const DEFAULT_ACADEMIC_LEVELS = [
-  'Básico',
-  'Pré-Intermediário',
-  'Intermediário',
-  'Avançado',
-] as const
+export interface AcademicLevelConfig {
+  key: string
+  name: string
+  pedagogical: string
+  label: string
+  prefix: string
+  color: string
+}
+
+export const OFFICIAL_ACADEMIC_LEVELS: AcademicLevelConfig[] = [
+  {
+    key: 'hello',
+    name: 'Hello',
+    pedagogical: 'Básico',
+    label: 'Hello (Básico)',
+    prefix: 'H',
+    color: '#2563EB', // Azul
+  },
+  {
+    key: 'connections',
+    name: 'Connections',
+    pedagogical: 'Pré-Intermediário',
+    label: 'Connections (Pré-Intermediário)',
+    prefix: 'C',
+    color: '#10B981', // Verde
+  },
+  {
+    key: 'explore',
+    name: 'Explore',
+    pedagogical: 'Intermediário',
+    label: 'Explore (Intermediário)',
+    prefix: 'E',
+    color: '#F59E0B', // Laranja
+  },
+  {
+    key: 'independence',
+    name: 'Independence',
+    pedagogical: 'Avançado',
+    label: 'Independence (Avançado)',
+    prefix: 'I',
+    color: '#EF4444', // Vermelha
+  },
+]
+
+export const DEFAULT_ACADEMIC_LEVELS = OFFICIAL_ACADEMIC_LEVELS.map(l => l.label)
 
 export type AcademicLevel = typeof DEFAULT_ACADEMIC_LEVELS[number] | string
 
 const LS_ACADEMIC_LEVELS = 'uply_academic_levels'
+
+export function getAcademicLevelConfig(levelOrName?: Partial<Level> | string | null): AcademicLevelConfig {
+  if (!levelOrName) return OFFICIAL_ACADEMIC_LEVELS[0]
+
+  const text = typeof levelOrName === 'string' 
+    ? levelOrName.toLowerCase() 
+    : ((levelOrName.academic_level || levelOrName.name || levelOrName.id || '').toLowerCase())
+
+  if (text.includes('connection') || text.includes('pré') || text.includes('pre')) {
+    return OFFICIAL_ACADEMIC_LEVELS[1] // Connections
+  }
+  if (text.includes('explore') || (text.includes('interm') && !text.includes('pre') && !text.includes('pré'))) {
+    return OFFICIAL_ACADEMIC_LEVELS[2] // Explore
+  }
+  if (text.includes('independen') || text.includes('avanç') || text.includes('adv') || text.includes('master')) {
+    return OFFICIAL_ACADEMIC_LEVELS[3] // Independence
+  }
+  return OFFICIAL_ACADEMIC_LEVELS[0] // Hello
+}
+
+/**
+ * Gera automaticamente o próximo código sequencial de turma (ex: H001, H002, C001, E001, I001)
+ * baseado na letra inicial do nível e na quantidade de turmas já existentes daquele nível.
+ */
+export function generateNextTurmaCode(prefix: string, existingLevels: Level[] = []): string {
+  const cleanPrefix = (prefix || 'H').toUpperCase().slice(0, 1)
+
+  // Encontra turmas que já usam esse prefixo no código
+  const matchingCodes = existingLevels
+    .filter(lvl => {
+      if (lvl.code && lvl.code.toUpperCase().startsWith(cleanPrefix)) return true
+      const cfg = getAcademicLevelConfig(lvl)
+      return cfg.prefix === cleanPrefix
+    })
+    .map(lvl => {
+      if (lvl.code && lvl.code.toUpperCase().startsWith(cleanPrefix)) {
+        const numPart = parseInt(lvl.code.replace(new RegExp(`^${cleanPrefix}`, 'i'), ''), 10)
+        return isNaN(numPart) ? 0 : numPart
+      }
+      return 0
+    })
+
+  const maxSeq = matchingCodes.length > 0 ? Math.max(0, ...matchingCodes) : 0
+  const nextSeq = Math.max(maxSeq + 1, existingLevels.filter(lvl => getAcademicLevelConfig(lvl).prefix === cleanPrefix).length + 1)
+
+  return `${cleanPrefix}${String(nextSeq).padStart(3, '0')}`
+}
 
 export function getCustomAcademicLevels(): string[] {
   try {
@@ -91,34 +177,38 @@ export function getAcademicLevel(level?: Partial<Level> | string | null): string
 
 export function getAcademicLevelTheme(levelName?: string) {
   const norm = (levelName || '').toLowerCase()
-  if (norm.includes('pre') || norm.includes('pré')) {
+  if (norm.includes('pre') || norm.includes('pré') || norm.includes('connection')) {
+    // Verde (#10B981) - Connections
     return {
-      bg: 'bg-sky-50 dark:bg-sky-950/60',
-      text: 'text-sky-700 dark:text-sky-300',
-      border: 'border-sky-200/80 dark:border-sky-800',
-      dot: '#0284c7',
+      bg: 'bg-emerald-50 dark:bg-emerald-950/60',
+      text: 'text-emerald-700 dark:text-emerald-300',
+      border: 'border-emerald-200/80 dark:border-emerald-800',
+      dot: '#10b981',
     }
   }
   if (norm.includes('interm') || norm.includes('explore')) {
+    // Laranja (#F59E0B) - Explore
     return {
       bg: 'bg-amber-50 dark:bg-amber-950/60',
       text: 'text-amber-700 dark:text-amber-300',
       border: 'border-amber-200/80 dark:border-amber-800',
-      dot: '#d97706',
+      dot: '#f59e0b',
     }
   }
   if (norm.includes('avanç') || norm.includes('adv') || norm.includes('independen')) {
+    // Vermelho (#EF4444) - Independence
     return {
-      bg: 'bg-purple-50 dark:bg-purple-950/60',
-      text: 'text-purple-700 dark:text-purple-300',
-      border: 'border-purple-200/80 dark:border-purple-800',
-      dot: '#9333ea',
+      bg: 'bg-rose-50 dark:bg-rose-950/60',
+      text: 'text-rose-700 dark:text-rose-300',
+      border: 'border-rose-200/80 dark:border-rose-800',
+      dot: '#ef4444',
     }
   }
+  // Azul (#2563EB) - Hello (Básico)
   return {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/60',
-    text: 'text-emerald-700 dark:text-emerald-300',
-    border: 'border-emerald-200/80 dark:border-emerald-800',
-    dot: '#10b981',
+    bg: 'bg-blue-50 dark:bg-blue-950/60',
+    text: 'text-blue-700 dark:text-blue-300',
+    border: 'border-blue-200/80 dark:border-blue-800',
+    dot: '#2563eb',
   }
 }

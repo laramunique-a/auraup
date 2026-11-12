@@ -7,6 +7,7 @@ export interface Level {
   color: string
   icon?: string
   academic_level?: string
+  code?: string
 }
 
 export interface User {
