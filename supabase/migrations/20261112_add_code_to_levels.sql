@@ -4,9 +4,10 @@
 -- Objetivo: Identificadores únicos de turma (H001, C001, E001, I001) e cores oficiais
 -- ==============================================================================
 
--- 1. Cria as colunas code e academic_level se não existirem
+-- 1. Cria as colunas code, academic_level e teacher_name se não existirem
 ALTER TABLE public.levels ADD COLUMN IF NOT EXISTS academic_level TEXT;
 ALTER TABLE public.levels ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE public.levels ADD COLUMN IF NOT EXISTS teacher_name TEXT;
 
 -- 2. Padronização dos Níveis Pedagógicos e Cores Institucionais
 -- Hello (Básico) -> Cor Azul (#2563EB)

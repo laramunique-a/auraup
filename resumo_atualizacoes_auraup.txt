@@ -169,6 +169,25 @@
     legadas aos nomes oficiais como "Connections" e "Explore").
 
 
+9. VÍNCULO DE PROFESSORES ÀS TURMAS E PROPAGAÇÃO AUTOMÁTICA
+--------------------------------------------------------------------------------
+• Campo "Professor Responsável" no Cadastro da Turma:
+  - Adicionado seletor de professores no formulário de Nova Turma e Editar Turma.
+  - Seletor alimentado dinamicamente pelos professores ativos na plataforma.
+
+• Aviso "Definir Professor" nos Cards de Turmas:
+  - Turmas sem professor exibem um botão/aviso interativo em destaque:
+    "⚠️ Definir professor →" (com clique direto para configurar).
+  - Turmas com professor exibem o selo institucional: "👨‍🏫 Prof. {Nome}".
+
+• Propagação Automática aos Alunos:
+  - Ao definir ou alterar o professor na turma, todos os alunos matriculados
+    naquela turma são atualizados automaticamente tanto no banco de dados
+    do Supabase quanto no armazenamento local.
+  - Ao cadastrar um novo aluno e selecionar a turma, o professor responsável
+    é pré-selecionado de forma automática.
+
+
 ================================================================================
 Status: Todas as alterações foram testadas, compiladas e publicadas na Vercel.
 ================================================================================

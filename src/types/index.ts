@@ -8,6 +8,7 @@ export interface Level {
   icon?: string
   academic_level?: string
   code?: string
+  teacher_name?: string | null
 }
 
 export interface User {

@@ -12,7 +12,7 @@ import {
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
   ChevronDown, KeyRound, GraduationCap, FileUp, Award, MessageSquareText,
-  Folder, FolderOpen, Globe, Layers, Search, ArrowUpDown
+  Folder, FolderOpen, Globe, Layers, Search, ArrowUpDown, AlertTriangle
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -848,6 +848,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const [newLevelXP, setNewLevelXP] = useState<string | number>(0)
   const [newLevelColor, setNewLevelColor] = useState('#2563EB')
   const [newLevelAcademicLevel, setNewLevelAcademicLevel] = useState<string>(OFFICIAL_ACADEMIC_LEVELS[0].label)
+  const [newLevelTeacherName, setNewLevelTeacherName] = useState<string>('')
   const [availableAcademicLevels, setAvailableAcademicLevels] = useState<string[]>(() => OFFICIAL_ACADEMIC_LEVELS.map(l => l.label))
   const [newAcademicLevelInput, setNewAcademicLevelInput] = useState('')
 
@@ -879,7 +880,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
 
   const LS_TURMAS_META = 'auraup_turmas_metadata'
 
-  function getTurmasLocalMeta(): Record<string, { code?: string; academic_level?: string; color?: string }> {
+  function getTurmasLocalMeta(): Record<string, { code?: string; academic_level?: string; color?: string; teacher_name?: string | null }> {
     try {
       const raw = localStorage.getItem(LS_TURMAS_META)
       return raw ? JSON.parse(raw) : {}
@@ -888,7 +889,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     }
   }
 
-  function saveTurmaLocalMeta(id: string, meta: { code?: string; academic_level?: string; color?: string }) {
+  function saveTurmaLocalMeta(id: string, meta: { code?: string; academic_level?: string; color?: string; teacher_name?: string | null }) {
     try {
       const all = getTurmasLocalMeta()
       all[id] = { ...all[id], ...meta }
@@ -899,11 +900,18 @@ function saveLocalAdminLevels(levelsList: any[]) {
   async function loadLevels() {
     if (isLocalMode || !supabase) {
       const local = getLocalAdminLevels()
+      const localMeta = getTurmasLocalMeta()
       const withCodes = local.map((l: any, idx: number) => {
-        if (l.code) return l
+        const meta = localMeta[l.id] || {}
         const cfg = getAcademicLevelConfig(l)
         const countBefore = local.slice(0, idx).filter((x: any) => getAcademicLevelConfig(x).prefix === cfg.prefix).length
-        return { ...l, code: `${cfg.prefix}${String(countBefore + 1).padStart(3, '0')}`, color: l.color || cfg.color }
+        const teacher = (l.teacher_name !== undefined && l.teacher_name !== null) ? l.teacher_name : (meta.teacher_name || null)
+        return { 
+          ...l, 
+          code: l.code || meta.code || `${cfg.prefix}${String(countBefore + 1).padStart(3, '0')}`, 
+          color: l.color || meta.color || cfg.color,
+          teacher_name: teacher
+        }
       })
       setLevels(withCodes)
       return
@@ -925,11 +933,15 @@ function saveLocalAdminLevels(levelsList: any[]) {
           return getAcademicLevelConfig(xAcad).prefix === cfg.prefix
         }).length
         const fallbackCode = `${cfg.prefix}${String(countBefore + 1).padStart(3, '0')}`
+        const teacher = (lvl.teacher_name !== undefined && lvl.teacher_name !== null) 
+          ? lvl.teacher_name 
+          : (meta.teacher_name || null)
         return {
           ...lvl,
           academic_level: acadLevel,
           code: lvl.code || meta.code || fallbackCode,
-          color: lvl.color || meta.color || cfg.color
+          color: lvl.color || meta.color || cfg.color,
+          teacher_name: teacher
         }
       })
       setLevels(enriched)
@@ -944,6 +956,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     const cfg = getAcademicLevelConfig(acadLevel)
     const code = newLevelCode || generateNextTurmaCode(cfg.prefix, levels)
     const color = newLevelColor || cfg.color
+    const teacher = newLevelTeacherName.trim() || null
 
     if (isLocalMode || !supabase) {
       const newLvl = {
@@ -953,16 +966,19 @@ function saveLocalAdminLevels(levelsList: any[]) {
         min_xp: minXp,
         color: color,
         academic_level: acadLevel,
+        teacher_name: teacher,
       }
       const list = getLocalAdminLevels()
       list.push(newLvl)
       list.sort((a, b) => a.min_xp - b.min_xp)
       saveLocalAdminLevels(list)
+      saveTurmaLocalMeta(newLvl.id, { code, academic_level: acadLevel, color, teacher_name: teacher })
       setLevels(list)
       show('Turma criada!', 'success')
       setActiveModal(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelTeacherName('')
       return
     }
 
@@ -972,17 +988,19 @@ function saveLocalAdminLevels(levelsList: any[]) {
       min_xp: minXp,
       color: color,
       academic_level: acadLevel,
+      teacher_name: teacher,
     }
 
-    // 1. Tenta salvar tudo (caso Supabase já tenha code e academic_level)
+    // 1. Tenta salvar tudo (caso Supabase já tenha code, academic_level e teacher_name)
     let res = await supabase.from('levels').insert(payload).select()
     let error = res.error
     let createdItem = res.data?.[0]
 
     // 2. Se falhar por colunas ausentes no schema do Supabase, remove-as
-    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('code') || error.message?.includes('academic_level'))) {
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('code') || error.message?.includes('academic_level') || error.message?.includes('teacher_name'))) {
       delete payload.code
       delete payload.academic_level
+      delete payload.teacher_name
       const retry = await supabase.from('levels').insert(payload).select()
       error = retry.error
       createdItem = retry.data?.[0]
@@ -1005,12 +1023,13 @@ function saveLocalAdminLevels(levelsList: any[]) {
       show('Erro ao criar turma.', 'error')
     } else {
       if (createdItem?.id) {
-        saveTurmaLocalMeta(createdItem.id, { code, academic_level: acadLevel, color })
+        saveTurmaLocalMeta(createdItem.id, { code, academic_level: acadLevel, color, teacher_name: teacher })
       }
       show('Turma criada com sucesso!', 'success')
       setActiveModal(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelTeacherName('')
       loadLevels()
     }
   }
@@ -1022,6 +1041,36 @@ function saveLocalAdminLevels(levelsList: any[]) {
     const cfg = getAcademicLevelConfig(acadLevel)
     const code = newLevelCode || editingLevel.code || generateNextTurmaCode(cfg.prefix, levels.filter(l => l.id !== editingLevel.id))
     const color = newLevelColor || cfg.color
+    const teacher = newLevelTeacherName.trim() || null
+
+    // Propaga o professor para todos os alunos que pertencem a esta turma
+    async function propagateTeacherToStudents(turmaId: string, profName: string | null) {
+      if (!profName) return
+      // 1. Supabase
+      if (supabase && !isLocalMode) {
+        try {
+          await supabase
+            .from('profiles')
+            .update({ teacher_name: profName })
+            .eq('level_id', turmaId)
+        } catch (e) {
+          console.error('Erro ao vincular alunos ao professor no Supabase:', e)
+        }
+      }
+      // 2. Local
+      const currentUsers = getLocalAdminUsers()
+      let updated = false
+      for (const u of currentUsers) {
+        if (u.level_id === turmaId || u.level?.id === turmaId) {
+          u.teacher_name = profName
+          updated = true
+        }
+      }
+      if (updated) {
+        saveLocalAdminUsers(currentUsers)
+        setUsers([...currentUsers])
+      }
+    }
 
     if (isLocalMode || !supabase) {
       const list = getLocalAdminLevels()
@@ -1034,12 +1083,20 @@ function saveLocalAdminLevels(levelsList: any[]) {
           min_xp: minXp,
           color: color,
           academic_level: acadLevel,
+          teacher_name: teacher,
         }
         list.sort((a, b) => a.min_xp - b.min_xp)
         saveLocalAdminLevels(list)
+        saveTurmaLocalMeta(editingLevel.id, { code, academic_level: acadLevel, color, teacher_name: teacher })
         setLevels(list)
-        show('Turma atualizada!', 'success')
+        await propagateTeacherToStudents(editingLevel.id, teacher)
+        show(teacher ? `Turma atualizada e alunos atrelados ao Prof. ${teacher}!` : 'Turma atualizada!', 'success')
         setActiveModal(null)
+        setEditingLevel(null)
+        setNewLevelName('')
+        setNewLevelXP(0)
+        setNewLevelTeacherName('')
+        loadUsers()
       }
       return
     }
@@ -1050,15 +1107,17 @@ function saveLocalAdminLevels(levelsList: any[]) {
       min_xp: minXp,
       color: color,
       academic_level: acadLevel,
+      teacher_name: teacher,
     }
 
-    // 1. Tenta atualizar com todos os campos (se colunas code/academic_level existirem no Supabase)
+    // 1. Tenta atualizar com todos os campos (se colunas code/academic_level/teacher_name existirem no Supabase)
     let { error } = await supabase.from('levels').update(payload).eq('id', editingLevel.id)
 
     // 2. Se falhar por coluna não encontrada (PGRST204 / 42703), remove campos extras
-    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('code') || error.message?.includes('academic_level'))) {
+    if (error && (error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('code') || error.message?.includes('academic_level') || error.message?.includes('teacher_name'))) {
       delete payload.code
       delete payload.academic_level
+      delete payload.teacher_name
       const retry = await supabase.from('levels').update(payload).eq('id', editingLevel.id)
       error = retry.error
     }
@@ -1078,8 +1137,11 @@ function saveLocalAdminLevels(levelsList: any[]) {
       console.error('Erro ao atualizar turma:', error)
       show('Erro ao atualizar turma.', 'error')
     } else {
-      // Salva no cache local para persistir cor, código e nível imediatamente
-      saveTurmaLocalMeta(editingLevel.id, { code, academic_level: acadLevel, color })
+      // Salva no cache local para persistir cor, código, nível e professor imediatamente
+      saveTurmaLocalMeta(editingLevel.id, { code, academic_level: acadLevel, color, teacher_name: teacher })
+
+      // Propaga o professor para todos os alunos que fazem parte desta turma
+      await propagateTeacherToStudents(editingLevel.id, teacher)
 
       try {
         await supabase.rpc('sync_league_xp', {
@@ -1087,11 +1149,13 @@ function saveLocalAdminLevels(levelsList: any[]) {
           new_min_xp: minXp
         })
       } catch { /* ignore */ }
-      show('Turma atualizada com sucesso!', 'success')
+
+      show(teacher ? `Turma atualizada e alunos atrelados ao Prof. ${teacher}!` : 'Turma atualizada com sucesso!', 'success')
       setActiveModal(null)
       setEditingLevel(null)
       setNewLevelName('')
       setNewLevelXP(0)
+      setNewLevelTeacherName('')
       loadLevels()
       loadUsers()
     }
@@ -2012,6 +2076,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   setNewLevelXP(0)
                   setNewLevelColor(firstCfg.color)
                   setNewLevelAcademicLevel(firstCfg.label)
+                  setNewLevelTeacherName('')
                   setActiveModal('addLevel')
                 }}
               >
@@ -2064,6 +2129,38 @@ function saveLocalAdminLevels(levelsList: any[]) {
                             Ingresso: <span className="font-semibold text-amber-600 dark:text-amber-400">{lvl.min_xp} XP</span>
                           </span>
                         </div>
+
+                        {/* Badge de Professor ou Aviso para Definir Professor */}
+                        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                          {lvl.teacher_name ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-heading font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-700/70 px-2 py-0.5 rounded-md border border-slate-200/80 dark:border-slate-600 shadow-2xs">
+                              <GraduationCap size={12} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                              Prof. <strong className="text-blue-600 dark:text-blue-400">{lvl.teacher_name}</strong>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setEditingLevel(lvl)
+                                const cfg = getAcademicLevelConfig(lvl)
+                                setNewLevelName(lvl.name)
+                                setNewLevelCode(lvl.code || generateNextTurmaCode(cfg.prefix, levels.filter(l => l.id !== lvl.id)))
+                                setNewLevelXP(lvl.min_xp)
+                                setNewLevelColor(lvl.color || cfg.color)
+                                setNewLevelAcademicLevel(lvl.academic_level || cfg.label)
+                                setNewLevelTeacherName('')
+                                setActiveModal('editLevel')
+                              }}
+                              className="inline-flex items-center gap-1 text-[11px] font-heading font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/80 px-2 py-0.5 rounded-md border border-amber-300/80 dark:border-amber-700/80 cursor-pointer transition-all shadow-2xs group"
+                              title="Clique para definir o professor responsável por esta turma"
+                            >
+                              <AlertTriangle size={11} className="text-amber-600 dark:text-amber-400 shrink-0" />
+                              <span>Definir professor</span>
+                              <span className="text-[10px] text-amber-500 group-hover:translate-x-0.5 transition-transform">→</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -2076,6 +2173,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
                         setNewLevelXP(lvl.min_xp)
                         setNewLevelColor(lvl.color || cfg.color)
                         setNewLevelAcademicLevel(lvl.academic_level || cfg.label)
+                        setNewLevelTeacherName(lvl.teacher_name || '')
                         setActiveModal('editLevel')
                       }}
                       className="btn-3d-icon w-8 h-8 !rounded-lg text-slate-500 hover:text-blue-600 cursor-pointer shrink-0"
@@ -3156,7 +3254,13 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   {levels.map(l => (
                     <div 
                       key={l.id} 
-                      onClick={() => { setSelectedLevelId(l.id); setShowLevelDropdown(false) }} 
+                      onClick={() => { 
+                        setSelectedLevelId(l.id); 
+                        setShowLevelDropdown(false);
+                        if (l.teacher_name) {
+                          setNewTeacherName(l.teacher_name);
+                        }
+                      }} 
                       className="px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
                     >
                       <div className="flex items-center gap-2">
@@ -3309,7 +3413,13 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   {levels.map(l => (
                     <div 
                       key={l.id} 
-                      onClick={() => { setEditLevelId(l.id); setShowEditLevelDropdown(false) }} 
+                      onClick={() => { 
+                        setEditLevelId(l.id); 
+                        setShowEditLevelDropdown(false);
+                        if (l.teacher_name) {
+                          setEditTeacherName(l.teacher_name);
+                        }
+                      }} 
                       className="px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-200 border-b border-slate-100 dark:border-slate-700/50 last:border-b-0"
                     >
                       <div className="flex items-center gap-2">
@@ -3565,6 +3675,35 @@ function saveLocalAdminLevels(levelsList: any[]) {
             onChange={setNewLevelName} 
             placeholder="Ex: Sábado Manhã, Turma 01, VIP Noturno..." 
           />
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <GraduationCap size={13} className="text-blue-500" />
+                Professor Responsável
+              </label>
+              {!newLevelTeacherName && (
+                <span className="text-[10px] text-amber-700 dark:text-amber-300 font-bold bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded border border-amber-300 dark:border-amber-700 flex items-center gap-1 shadow-2xs">
+                  <AlertTriangle size={10} /> Definir professor
+                </span>
+              )}
+            </div>
+            <select
+              value={newLevelTeacherName}
+              onChange={e => setNewLevelTeacherName(e.target.value)}
+              className={`w-full px-3.5 py-2.5 rounded-xl border ${!newLevelTeacherName ? 'border-amber-400 dark:border-amber-600 bg-amber-50/40 dark:bg-amber-950/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-800/80'} text-xs sm:text-sm font-medium text-slate-900 dark:text-white outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs cursor-pointer`}
+            >
+              <option value="">-- Selecione o Professor Responsável --</option>
+              {adminTeachers.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              {editingLevel 
+                ? 'Ao definir ou alterar o professor, todos os alunos que fazem parte desta turma ficarão atrelados a ele.' 
+                : 'Os alunos adicionados a esta turma ficarão vinculados a este professor.'}
+            </p>
+          </div>
 
           <AdminField label="XP Mínimo para Ingresso" value={newLevelXP} onChange={setNewLevelXP} type="number" />
           
