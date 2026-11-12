@@ -12,7 +12,11 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- 2. FUNÇÃO AUXILIAR DE VERIFICAÇÃO DE ADMIN (Previne recursão em RLS)
 CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN AS $$
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, extensions, auth
+AS $$
 BEGIN
   RETURN (
     LOWER(COALESCE(auth.jwt()->>'email', '')) IN ('auraenglish7@gmail.com', 'juliantessaro@outlook.com')
@@ -22,7 +26,7 @@ BEGIN
     )
   );
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- ==============================================================================
 -- 3. TABELA DE NÍVEIS / TURMAS (public.levels)
@@ -128,7 +132,11 @@ CREATE POLICY "Apenas admin pode deletar perfis"
 
 -- Trava de segurança para impedir escalação de privilégios ou adulteração de status por não-admins
 CREATE OR REPLACE FUNCTION public.protect_profile_changes()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, extensions, auth
+AS $$
 BEGIN
   -- Se o usuário NÃO for administrador (ou seja, for um aluno ou usuário comum)
   IF NOT public.is_admin() THEN
@@ -150,7 +158,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS trg_protect_profile_changes ON public.profiles;
 CREATE TRIGGER trg_protect_profile_changes
@@ -159,7 +167,11 @@ CREATE TRIGGER trg_protect_profile_changes
 
 -- Trigger para criar perfil automaticamente no primeiro login / cadastro
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name, nickname, role, avatar_id, xp, coins, streak, is_active)
   VALUES (
@@ -179,7 +191,7 @@ BEGIN
     full_name = COALESCE(public.profiles.full_name, EXCLUDED.full_name);
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
@@ -284,7 +296,13 @@ CREATE TABLE IF NOT EXISTS public.official_decks (
   category TEXT DEFAULT 'Geral',
   is_published BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  cards JSONB DEFAULT '[]'::jsonb
+  cards JSONB DEFAULT '[]'::jsonb,
+  cards_count INTEGER GENERATED ALWAYS AS (
+    CASE
+      WHEN jsonb_typeof(cards) = 'array' THEN jsonb_array_length(cards)
+      ELSE 0
+    END
+  ) STORED
 );
 
 ALTER TABLE public.official_decks ENABLE ROW LEVEL SECURITY;
@@ -442,7 +460,11 @@ CREATE OR REPLACE FUNCTION public.add_user_reward(
   xp_to_add INTEGER,
   coins_to_add INTEGER
 )
-RETURNS VOID AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public, extensions, auth
+AS $$
 BEGIN
   -- Permite apenas que o próprio usuário receba seus pontos OU que um admin os conceda
   IF auth.uid() != user_id AND NOT public.is_admin() THEN
@@ -456,7 +478,7 @@ BEGIN
     updated_at = NOW()
   WHERE id = user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- ==============================================================================
 -- 11. RPC: ADMIN REDEFINIR SENHA DE ALUNO (admin_update_user_password)
@@ -497,7 +519,11 @@ GRANT EXECUTE ON FUNCTION public.admin_update_user_password(UUID, TEXT) TO authe
 -- 12. RPC: ADMIN EXCLUIR USUÁRIO DEFINITIVAMENTE (admin_delete_user)
 -- ==============================================================================
 CREATE OR REPLACE FUNCTION public.admin_delete_user(target_user_id UUID)
-RETURNS VOID AS $$
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 BEGIN
   IF NOT public.is_admin() THEN
     RAISE EXCEPTION 'Apenas administradores podem excluir usuários.';
@@ -505,7 +531,7 @@ BEGIN
 
   DELETE FROM auth.users WHERE id = target_user_id;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- ==============================================================================
 -- 13. RPC: ADMIN CRIAR OU RESTAURAR ALUNO (admin_create_student)
@@ -517,7 +543,11 @@ CREATE OR REPLACE FUNCTION public.admin_create_student(
   student_level_id TEXT DEFAULT 'lvl_1',
   student_xp INTEGER DEFAULT 0
 )
-RETURNS UUID AS $$
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions, auth
+AS $$
 DECLARE
   target_user_id UUID;
 BEGIN
@@ -645,7 +675,22 @@ BEGIN
     RETURN target_user_id;
   END IF;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.add_user_reward(UUID, INTEGER, INTEGER) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_create_student(TEXT, TEXT, TEXT, TEXT, INTEGER) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_delete_user(UUID) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.admin_update_user_password(UUID, TEXT) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.protect_profile_changes() FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+
+GRANT EXECUTE ON FUNCTION public.add_user_reward(UUID, INTEGER, INTEGER) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_create_student(TEXT, TEXT, TEXT, TEXT, INTEGER) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_delete_user(UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_update_user_password(UUID, TEXT) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.protect_profile_changes() TO authenticated, service_role;
 
 -- ==============================================================================
 -- 14. CURA DE TOKENS NULOS EM auth.users (Previne erro 500: Database error querying schema)
@@ -705,23 +750,37 @@ CREATE TABLE IF NOT EXISTS public.feedback (
 
 ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow anonymous delete on feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Allow anonymous insert on feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Allow anonymous update on feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Allow anonymous select on feedback" ON public.feedback;
 DROP POLICY IF EXISTS "Qualquer usuário pode enviar feedback" ON public.feedback;
-CREATE POLICY "Qualquer usuário pode enviar feedback"
-  ON public.feedback FOR INSERT
-  WITH CHECK (true);
-
 DROP POLICY IF EXISTS "Usuários autenticados podem ler feedbacks" ON public.feedback;
-CREATE POLICY "Usuários autenticados podem ler feedbacks"
-  ON public.feedback FOR SELECT
-  USING (true);
-
 DROP POLICY IF EXISTS "Usuários autenticados podem atualizar status de feedbacks" ON public.feedback;
-CREATE POLICY "Usuários autenticados podem atualizar status de feedbacks"
-  ON public.feedback FOR UPDATE
-  USING (true);
-
 DROP POLICY IF EXISTS "Usuários autenticados podem excluir feedbacks" ON public.feedback;
-CREATE POLICY "Usuários autenticados podem excluir feedbacks"
+DROP POLICY IF EXISTS "Usuarios autenticados enviam seu proprio feedback" ON public.feedback;
+DROP POLICY IF EXISTS "Leitura de feedbacks pelo autor ou admin" ON public.feedback;
+DROP POLICY IF EXISTS "Apenas admins atualizam feedbacks" ON public.feedback;
+DROP POLICY IF EXISTS "Apenas admins excluem feedbacks" ON public.feedback;
+
+CREATE POLICY "Usuarios autenticados enviam seu proprio feedback"
+  ON public.feedback FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() IS NOT NULL AND (user_id IS NULL OR user_id::text = auth.uid()::text));
+
+CREATE POLICY "Leitura de feedbacks pelo autor ou admin"
+  ON public.feedback FOR SELECT
+  TO authenticated
+  USING (user_id IS NULL OR user_id::text = auth.uid()::text OR public.is_admin());
+
+CREATE POLICY "Apenas admins atualizam feedbacks"
+  ON public.feedback FOR UPDATE
+  TO authenticated
+  USING (public.is_admin())
+  WITH CHECK (public.is_admin());
+
+CREATE POLICY "Apenas admins excluem feedbacks"
   ON public.feedback FOR DELETE
-  USING (true);
+  TO authenticated
+  USING (public.is_admin());
 

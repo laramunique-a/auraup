@@ -11,7 +11,8 @@ import {
   UserPlus, Users, Pencil, Trash2, Plus, Coins, Sparkles, 
   ShieldCheck, BookOpen, Eye, EyeOff, Volume2, Image as ImageIcon, 
   Link as LinkIcon, X, Info, ArrowLeft, ArrowRight, Check, LayoutGrid, List,
-  ChevronDown, KeyRound, GraduationCap, FileUp, Award, MessageSquareText
+  ChevronDown, KeyRound, GraduationCap, FileUp, Award, MessageSquareText,
+  Folder, FolderOpen, Globe, Layers
 } from 'lucide-react'
 import type { User } from '../types'
 import { officialDeckService, type OfficialDeck, type OfficialCard } from '../services/officialDeck.service'
@@ -76,7 +77,8 @@ export function AdminPage() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState(false)
 
-  // Form Baralho Padrão (2-Step Modal)
+  // Form Baralho Padrão (2-Step Modal) & Navegação por Pastas
+  const [selectedDeckFolder, setSelectedDeckFolder] = useState<string | null>(null)
   const [deckFormStep, setDeckFormStep] = useState<1 | 2>(1)
   const [officialDecks, setOfficialDecks] = useState<OfficialDeck[]>([])
   const [editingOfficialDeck, setEditingOfficialDeck] = useState<OfficialDeck | null>(null)
@@ -425,18 +427,18 @@ function saveLocalAdminLevels(levelsList: any[]) {
   }
 
   // Official Deck Handlers
-  function resetOfficialDeckForm() {
+  function resetOfficialDeckForm(defaultLevel = 'Todos') {
     setDeckFormStep(1)
     setEditingOfficialDeck(null)
     setOffName('')
     setOffDesc('')
-    setOffLevel('Todos')
+    setOffLevel(defaultLevel)
     setOffPublished(true)
     setOffCards([{ front: '', back: '', front_audio: true, back_audio: false }])
   }
 
   function openCreateOfficialDeck() {
-    resetOfficialDeckForm()
+    resetOfficialDeckForm(selectedDeckFolder || 'Todos')
     setActiveModal('officialDeck')
   }
 
@@ -493,9 +495,11 @@ function saveLocalAdminLevels(levelsList: any[]) {
         })
         show('Baralho padrão criado com sucesso! 🚀', 'success')
       }
+      const targetFolder = offLevel || 'Todos'
       setActiveModal(null)
-      resetOfficialDeckForm()
+      resetOfficialDeckForm(targetFolder)
       await loadOfficialDecks()
+      setSelectedDeckFolder(targetFolder)
     } catch {
       show('Erro ao salvar baralho padrão.', 'error')
     } finally {
@@ -531,7 +535,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
     setSelectedAdminFile(file)
     setAdminImportName(file.name.replace(/\.apkg(\.zip)?$/i, ''))
     setAdminImportDesc('')
-    setAdminImportLevel('Todos')
+    setAdminImportLevel(selectedDeckFolder || 'Todos')
     setAdminImportPublished(true)
     setActiveModal('importOfficialDeck')
   }
@@ -565,12 +569,14 @@ function saveLocalAdminLevels(levelsList: any[]) {
         cards: validCards,
       })
 
-      show(`${validCards.length} cards importados como Baralho Oficial! ✨`, 'success')
+      const targetFolder = adminImportLevel || 'Todos'
+      show(`${validCards.length} cards importados na pasta "${targetFolder}"! ✨`, 'success')
       setActiveModal(null)
       setSelectedAdminFile(null)
       const input = document.getElementById('anki-admin-import') as HTMLInputElement | null
       if (input) input.value = ''
       await loadOfficialDecks()
+      setSelectedDeckFolder(targetFolder)
     } catch (err: any) {
       show(err.message || 'Erro ao importar baralho oficial.', 'error')
     } finally {
@@ -984,8 +990,122 @@ function saveLocalAdminLevels(levelsList: any[]) {
   const allStudents = users.filter(u => u.role === 'user')
   const leagueStudents = users.filter(u => u.role === 'user' && u.level_id === selectedLevelFilter)
 
-  // Combina opções de Níveis (Todos + Ligas do Sistema)
-  const availableLevelOptions = ['Todos', ...new Set(levels.map(l => l.name))]
+  // Combina opções de Níveis (Todos + Ligas do Sistema + Níveis já usados em baralhos)
+  const availableLevelOptions = useMemo(() => {
+    const set = new Set<string>(['Todos'])
+    levels.forEach(l => {
+      if (l.name?.trim()) set.add(l.name.trim())
+    })
+    officialDecks.forEach(d => {
+      const lvl = (d.level || d.category || 'Todos').trim()
+      if (lvl) set.add(lvl)
+    })
+    return Array.from(set)
+  }, [levels, officialDecks])
+
+  // Estrutura de Pastas por Nível para Baralhos Oficiais
+  const deckFolders = useMemo(() => {
+    const getDeckCount = (d: OfficialDeck) => d.cards_count ?? d.cards?.length ?? 0
+    const sortByName = (a: OfficialDeck, b: OfficialDeck) =>
+      a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' })
+
+    const assignedDeckIds = new Set<string>()
+
+    // 1. Pasta Global "Todos"
+    const globalDecks = officialDecks
+      .filter(d => {
+        const lvl = (d.level || d.category || 'Todos').trim().toLowerCase()
+        if (!lvl || lvl === 'todos') {
+          assignedDeckIds.add(d.id)
+          return true
+        }
+        return false
+      })
+      .sort(sortByName)
+
+    const folders: Array<{
+      id: string
+      name: string
+      subtitle: string
+      color: string
+      isGlobal: boolean
+      decks: OfficialDeck[]
+      totalCards: number
+    }> = [
+      {
+        id: 'Todos',
+        name: 'Todos os Níveis (Geral)',
+        subtitle: 'Visível na Loja para alunos de qualquer turma',
+        color: '#3B82F6',
+        isGlobal: true,
+        decks: globalDecks,
+        totalCards: globalDecks.reduce((acc, d) => acc + getDeckCount(d), 0),
+      },
+    ]
+
+    // 2. Uma pasta para cada Turma / Nível cadastrado
+    levels.forEach((l, idx) => {
+      const levelDecks = officialDecks
+        .filter(d => {
+          if (assignedDeckIds.has(d.id)) return false
+          const deckLvl = (d.level || d.category || '').trim()
+          if (
+            deckLvl.toLowerCase() === (l.name || '').trim().toLowerCase() ||
+            deckLvl === l.id
+          ) {
+            assignedDeckIds.add(d.id)
+            return true
+          }
+          return false
+        })
+        .sort(sortByName)
+
+      folders.push({
+        id: l.name,
+        name: l.name,
+        subtitle: `Nível ${idx + 1} • ${getAcademicLevel(l)}`,
+        color: l.color || '#10B981',
+        isGlobal: false,
+        decks: levelDecks,
+        totalCards: levelDecks.reduce((acc, d) => acc + getDeckCount(d), 0),
+      })
+    })
+
+    // 3. Pastas extras caso algum baralho tenha um nível customizado fora de levels
+    const remainingByLevel = new Map<string, OfficialDeck[]>()
+    officialDecks.forEach(d => {
+      if (assignedDeckIds.has(d.id)) return
+      const key = (d.level || d.category || 'Todos').trim() || 'Todos'
+      const list = remainingByLevel.get(key) || []
+      list.push(d)
+      remainingByLevel.set(key, list)
+    })
+
+    remainingByLevel.forEach((list, levelName) => {
+      const sorted = list.sort(sortByName)
+      const theme = getAcademicLevelTheme(levelName)
+      folders.push({
+        id: levelName,
+        name: levelName,
+        subtitle: `Nível • ${getAcademicLevel(levelName)}`,
+        color: theme.dot || '#8B5CF6',
+        isGlobal: false,
+        decks: sorted,
+        totalCards: sorted.reduce((acc, d) => acc + getDeckCount(d), 0),
+      })
+    })
+
+    return folders
+  }, [officialDecks, levels])
+
+  const totalOfficialCards = useMemo(
+    () => officialDecks.reduce((acc, d) => acc + (d.cards_count ?? d.cards?.length ?? 0), 0),
+    [officialDecks]
+  )
+  const activeFolderData = useMemo(
+    () => (selectedDeckFolder ? deckFolders.find(f => f.id === selectedDeckFolder) || null : null),
+    [deckFolders, selectedDeckFolder]
+  )
 
   // Lista de Palavras sempre ordenada alfabeticamente
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
@@ -1454,15 +1574,48 @@ function saveLocalAdminLevels(levelsList: any[]) {
           </div>
         </section>
       ) : activeTab === 'decks' ? (
-        /* Gestão de Baralhos Padrões */
+        /* Gestão de Baralhos Padrões (Organização por Pastas de Nível) */
         <section className="space-y-4">
-          <div className="flex items-center justify-between gap-3 pb-1 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">Baralhos Oficiais</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {activeFolderData && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDeckFolder(null)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-heading font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 transition-colors cursor-pointer shadow-2xs"
+                >
+                  <ArrowLeft size={14} /> Pastas
+                </button>
+              )}
+
+              <div className="flex items-center gap-2">
+                {activeFolderData ? (
+                  activeFolderData.isGlobal ? (
+                    <Globe size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
+                  ) : (
+                    <FolderOpen size={20} style={{ color: activeFolderData.color }} className="shrink-0" />
+                  )
+                ) : (
+                  <Folder size={20} className="text-amber-500 shrink-0" />
+                )}
+                <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">
+                  {activeFolderData ? activeFolderData.name : 'Pastas por Nível (Baralhos Oficiais)'}
+                </h2>
+              </div>
+
               <span className="text-xs font-heading font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-800 shadow-xs">
-                <span className="font-bold">{officialDecks.length}</span> {officialDecks.length === 1 ? 'baralho' : 'baralhos'}
+                <span className="font-bold">
+                  {activeFolderData ? activeFolderData.decks.length : officialDecks.length}
+                </span>{' '}
+                {(activeFolderData ? activeFolderData.decks.length : officialDecks.length) === 1 ? 'baralho' : 'baralhos'}
+                {' • '}
+                <span className="font-bold">
+                  {activeFolderData ? activeFolderData.totalCards : totalOfficialCards}
+                </span>{' '}
+                cards
               </span>
             </div>
+
             <div className="flex items-center gap-2">
               <input 
                 type="file" 
@@ -1485,54 +1638,142 @@ function saveLocalAdminLevels(levelsList: any[]) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {officialDecks.map((deck) => (
-              <div key={deck.id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', background: 'var(--bg-surface)', padding: '4px 10px', borderRadius: '8px' }}>
-                      NÍVEL: {deck.level || 'Todos'}
-                    </span>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 900, marginTop: '0.5rem' }}>{deck.name}</h3>
+          {!activeFolderData ? (
+            /* VISÃO 1: GRADE DE PASTAS POR NÍVEL */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {deckFolders.map(folder => (
+                <div
+                  key={folder.id}
+                  onClick={() => setSelectedDeckFolder(folder.id)}
+                  className={`card-3d-interactive p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer flex items-center justify-between gap-3.5 ${
+                    folder.isGlobal ? 'sm:col-span-2 lg:col-span-3' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs"
+                      style={{
+                        backgroundColor: `${folder.color}18`,
+                        border: `1px solid ${folder.color}45`,
+                        color: folder.color,
+                      }}
+                    >
+                      {folder.isGlobal ? <Globe size={24} /> : <Folder size={24} className="fill-current opacity-85" />}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: folder.color }}
+                        />
+                        <h3 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
+                          {folder.name}
+                        </h3>
+                        {folder.isGlobal && (
+                          <span className="text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                            Pasta Global
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        {folder.subtitle}
+                      </p>
+                    </div>
                   </div>
 
-                  <span style={{ 
-                    fontSize: '0.75rem', fontWeight: 800, padding: '4px 10px', borderRadius: '50px',
-                    background: deck.is_published ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                    color: deck.is_published ? 'var(--success)' : 'var(--danger)'
-                  }}>
-                    {deck.is_published ? 'PUBLICADO' : 'OCULTO'}
-                  </span>
+                  <div className="text-right shrink-0">
+                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-heading font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200/70 dark:border-slate-700">
+                      {folder.decks.length} {folder.decks.length === 1 ? 'baralho' : 'baralhos'}
+                    </div>
+                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-end gap-1">
+                      <Layers size={12} className="text-amber-500" />
+                      <span>{folder.totalCards} cards</span>
+                    </div>
+                  </div>
                 </div>
-
-                <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500, flex: 1 }}>
-                  {deck.description || 'Sem descrição.'}
+              ))}
+            </div>
+          ) : activeFolderData.decks.length === 0 ? (
+            /* PASTA VAZIA */
+            <div className="card-3d p-10 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+              <FolderOpen size={40} className="mx-auto text-slate-400 opacity-60" />
+              <div>
+                <h3 className="text-sm sm:text-base font-heading font-semibold text-slate-700 dark:text-slate-200">
+                  Nenhum baralho cadastrado na pasta "{activeFolderData.name}"
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Clique em <strong>Importar</strong> (para enviar um arquivo .apkg do Anki) ou em <strong>Criar Baralho Padrão</strong> para adicionar a esta pasta.
                 </p>
-
-                <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                  🎴 {deck.cards?.length || 0} cards inclusos
-                </div>
-
-                <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: 'auto' }}>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => handleTogglePublish(deck.id)} 
-                    style={{ flex: 1 }}
-                  >
-                    {deck.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
-                    {deck.is_published ? 'Ocultar' : 'Publicar'}
-                  </Button>
-                  <Button variant="secondary" size="sm" onClick={() => openEditOfficialDeck(deck)}>
-                    <Pencil size={16} />
-                  </Button>
-                  <Button variant="danger" size="sm" onClick={() => handleDeleteOfficialDeck(deck.id)}>
-                    <Trash2 size={16} />
-                  </Button>
-                </div>
               </div>
-            ))}
-          </div>
+              <div className="flex items-center justify-center gap-2 pt-1">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => document.getElementById('anki-admin-import')?.click()}
+                  disabled={importingAdminDeck}
+                >
+                  <FileUp size={15} /> Importar neste Nível
+                </Button>
+                <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
+                  <Plus size={15} /> Criar neste Nível
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* VISÃO 2: BARALHOS DENTRO DA PASTA SELECIONADA */
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {activeFolderData.decks.map((deck) => {
+                const cardsCount = deck.cards_count ?? deck.cards?.length ?? 0
+                return (
+                  <div key={deck.id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', background: 'var(--bg-surface)', padding: '4px 10px', borderRadius: '8px' }}>
+                          NÍVEL: {deck.level || 'Todos'}
+                        </span>
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 900, marginTop: '0.5rem' }}>{deck.name}</h3>
+                      </div>
+
+                      <span style={{ 
+                        fontSize: '0.75rem', fontWeight: 800, padding: '4px 10px', borderRadius: '50px', flexShrink: 0,
+                        background: deck.is_published ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                        color: deck.is_published ? 'var(--success)' : 'var(--danger)'
+                      }}>
+                        {deck.is_published ? 'PUBLICADO' : 'OCULTO'}
+                      </span>
+                    </div>
+
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', fontWeight: 500, flex: 1 }}>
+                      {deck.description || 'Sem descrição.'}
+                    </p>
+
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                      🎴 {cardsCount} {cardsCount === 1 ? 'card incluso' : 'cards inclusos'}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem', marginTop: 'auto' }}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleTogglePublish(deck.id)} 
+                        style={{ flex: 1 }}
+                      >
+                        {deck.is_published ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {deck.is_published ? 'Ocultar' : 'Publicar'}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => openEditOfficialDeck(deck)}>
+                        <Pencil size={16} />
+                      </Button>
+                      <Button variant="danger" size="sm" onClick={() => handleDeleteOfficialDeck(deck.id)}>
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
       ) : activeTab === 'words' ? (
         /* Gestão de Palavras do Dia (Com Modos Quadros / Lista e Ordem Alfabética) */

@@ -133,7 +133,10 @@ function getLocalOfficialDecks(): OfficialDeck[] {
     return parsed.map((d: any) => ({
       ...d,
       level: d.level || d.category || 'Todos',
-      cards_count: d.cards?.length || KNOWN_OFFICIAL_DECK_COUNTS[d.id] || 0
+      cards_count:
+        typeof d.cards_count === 'number' && d.cards_count > 0
+          ? d.cards_count
+          : (d.cards?.length || KNOWN_OFFICIAL_DECK_COUNTS[d.id] || 0)
     }))
   } catch {
     return INITIAL_OFFICIAL_DECKS
@@ -141,7 +144,15 @@ function getLocalOfficialDecks(): OfficialDeck[] {
 }
 
 function saveLocalOfficialDecks(decks: OfficialDeck[]) {
-  localStorage.setItem(LS_OFFICIAL_DECKS, JSON.stringify(decks))
+  try {
+    localStorage.setItem(LS_OFFICIAL_DECKS, JSON.stringify(decks))
+  } catch {
+    // Fallback leve caso os cards tenham muitas imagens base64 e excedam o limite do localStorage
+    try {
+      const light = decks.map(d => ({ ...d, cards: [] }))
+      localStorage.setItem(LS_OFFICIAL_DECKS, JSON.stringify(light))
+    } catch { /* ignore */ }
+  }
 }
 
 // ── Public Official Deck API ──────────────────────────────────────────────────
@@ -159,10 +170,11 @@ export const officialDeckService = {
     }
 
     try {
-      // Otimização crucial: na Loja não baixamos a coluna 'cards' com 15.5MB de base64
+      // Otimização crucial: na Loja e na listagem Admin não baixamos a coluna 'cards' com 15.5MB de base64,
+      // mas trazemos 'cards_count' calculado direto pelo PostgreSQL.
       const selectFields = includeCards
         ? '*'
-        : 'id, name, description, category, is_published, created_at'
+        : 'id, name, description, category, is_published, created_at, cards_count'
 
       let query = supabase.from('official_decks').select(selectFields).order('created_at', { ascending: false })
       if (onlyPublished) {
@@ -174,7 +186,10 @@ export const officialDeckService = {
         ...d,
         level: d.category || d.level || 'Todos',
         category: d.category || d.level || 'Todos',
-        cards_count: d.cards ? d.cards.length : (KNOWN_OFFICIAL_DECK_COUNTS[d.id] || 0),
+        cards_count:
+          typeof d.cards_count === 'number'
+            ? d.cards_count
+            : (d.cards ? d.cards.length : (KNOWN_OFFICIAL_DECK_COUNTS[d.id] || 0)),
         cards: d.cards || [],
       }))
     } catch (err) {
@@ -244,7 +259,7 @@ export const officialDeckService = {
       const { data, error } = await supabase
         .from('official_decks')
         .insert(payload)
-        .select()
+        .select('id, name, description, category, is_published, created_at, cards_count')
         .single()
       if (error) throw error
 
@@ -252,7 +267,7 @@ export const officialDeckService = {
         ...data,
         level: data.category || 'Todos',
         category: data.category || 'Todos',
-        cards_count: data.cards?.length || 0,
+        cards_count: typeof data.cards_count === 'number' ? data.cards_count : (newDeck.cards?.length || 0),
       }
 
       const localDecks = getLocalOfficialDecks()
@@ -285,6 +300,7 @@ export const officialDeckService = {
 
     try {
       const payload: any = { ...updates }
+      delete payload.cards_count
       if (effectiveCategory) {
         payload.category = effectiveCategory
         delete payload.level
@@ -294,7 +310,7 @@ export const officialDeckService = {
         .from('official_decks')
         .update(payload)
         .eq('id', id)
-        .select()
+        .select('id, name, description, category, is_published, created_at, cards_count')
         .single()
       if (error) throw error
 
@@ -302,7 +318,7 @@ export const officialDeckService = {
         ...data,
         level: data.category || 'Todos',
         category: data.category || 'Todos',
-        cards_count: data.cards?.length || 0,
+        cards_count: typeof data.cards_count === 'number' ? data.cards_count : (updates.cards?.length || 0),
       }
 
       const localDecks = getLocalOfficialDecks()
