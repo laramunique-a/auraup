@@ -131,8 +131,14 @@ export function AdminPage() {
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState(false)
 
-  // Form Baralho Padrão (2-Step Modal) & Navegação por Pastas
+  // Form Baralho Padrão (2-Step Modal) & Navegação por Pastas / Lista
   const [selectedDeckFolder, setSelectedDeckFolder] = useState<string | null>(null)
+  const [deckViewMode, setDeckViewMode] = useState<'folders' | 'list'>('folders')
+  const [deckSearchQuery, setDeckSearchQuery] = useState('')
+  const [deckLevelFilter, setDeckLevelFilter] = useState<string>('all')
+  const [deckSortBy, setDeckSortBy] = useState<'az' | 'za' | 'cards_desc'>('az')
+  const [openDeckFilterDropdown, setOpenDeckFilterDropdown] = useState<'level' | 'sort' | null>(null)
+  const [expandedDeckFolders, setExpandedDeckFolders] = useState<Record<string, boolean>>({})
   const [deckFormStep, setDeckFormStep] = useState<1 | 2>(1)
   const [officialDecks, setOfficialDecks] = useState<OfficialDeck[]>([])
   const [editingOfficialDeck, setEditingOfficialDeck] = useState<OfficialDeck | null>(null)
@@ -1432,6 +1438,74 @@ function saveLocalAdminLevels(levelsList: any[]) {
     [deckFolders, selectedDeckFolder]
   )
 
+  const sortOfficialDecks = (list: OfficialDeck[]) => {
+    const getDeckCount = (d: OfficialDeck) => d.cards_count ?? d.cards?.length ?? 0
+    return [...list].sort((a, b) => {
+      if (deckSortBy === 'za') {
+        return b.name.localeCompare(a.name, 'pt-BR', { numeric: true, sensitivity: 'base' })
+      }
+      if (deckSortBy === 'cards_desc') {
+        const diff = getDeckCount(b) - getDeckCount(a)
+        if (diff !== 0) return diff
+      }
+      return a.name.localeCompare(b.name, 'pt-BR', { numeric: true, sensitivity: 'base' })
+    })
+  }
+
+  const filteredDeckFolders = useMemo(() => {
+    const query = normalizeSearchText(deckSearchQuery)
+    const getDeckCount = (d: OfficialDeck) => d.cards_count ?? d.cards?.length ?? 0
+
+    return deckFolders
+      .filter(folder => deckLevelFilter === 'all' || folder.id === deckLevelFilter)
+      .map(folder => {
+        const folderMatches =
+          query !== '' &&
+          (normalizeSearchText(folder.name).includes(query) ||
+            normalizeSearchText(folder.subtitle).includes(query))
+
+        const matchingDecks =
+          query === '' || folderMatches
+            ? folder.decks
+            : folder.decks.filter(d => {
+                const nameMatch = normalizeSearchText(d.name).includes(query)
+                const descMatch = normalizeSearchText(d.description).includes(query)
+                const levelMatch = normalizeSearchText(d.level || d.category || 'Todos').includes(query)
+                return nameMatch || descMatch || levelMatch
+              })
+
+        const sortedDecks = sortOfficialDecks(matchingDecks)
+        return {
+          ...folder,
+          decks: sortedDecks,
+          totalCards: sortedDecks.reduce((acc, d) => acc + getDeckCount(d), 0),
+          _folderMatches: folderMatches,
+        }
+      })
+      .filter(folder => {
+        if (query === '') return true
+        return folder._folderMatches || folder.decks.length > 0
+      })
+  }, [deckFolders, deckLevelFilter, deckSearchQuery, deckSortBy])
+
+  const filteredActiveFolderDecks = useMemo(() => {
+    if (!activeFolderData) return []
+    const query = normalizeSearchText(deckSearchQuery)
+    const matching =
+      query === ''
+        ? activeFolderData.decks
+        : activeFolderData.decks.filter(d => {
+            const nameMatch = normalizeSearchText(d.name).includes(query)
+            const descMatch = normalizeSearchText(d.description).includes(query)
+            const levelMatch = normalizeSearchText(d.level || d.category || 'Todos').includes(query)
+            return nameMatch || descMatch || levelMatch
+          })
+    return sortOfficialDecks(matching)
+  }, [activeFolderData, deckSearchQuery, deckSortBy])
+
+  const hasActiveDeckFilters =
+    deckSearchQuery.trim() !== '' || deckLevelFilter !== 'all' || deckSortBy !== 'az'
+
   // Lista de Palavras sempre ordenada alfabeticamente
   const sortedWordsOfTheDay = [...wordsOfTheDay].sort((a, b) => a.word.localeCompare(b.word))
 
@@ -2367,11 +2441,11 @@ function saveLocalAdminLevels(levelsList: any[]) {
           )}
         </section>
       ) : activeTab === 'decks' ? (
-        /* Gestão de Baralhos Padrões (Organização por Pastas de Nível) */
+        /* Gestão de Baralhos Padrões (Organização por Pastas de Nível + Modo Lista) */
         <section className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
             <div className="flex items-center gap-2.5 flex-wrap">
-              {activeFolderData && (
+              {deckViewMode === 'folders' && activeFolderData && (
                 <button
                   type="button"
                   onClick={() => setSelectedDeckFolder(null)}
@@ -2382,7 +2456,7 @@ function saveLocalAdminLevels(levelsList: any[]) {
               )}
 
               <div className="flex items-center gap-2">
-                {activeFolderData ? (
+                {deckViewMode === 'folders' && activeFolderData ? (
                   activeFolderData.isGlobal ? (
                     <Globe size={20} className="text-blue-600 dark:text-blue-400 shrink-0" />
                   ) : (
@@ -2392,24 +2466,56 @@ function saveLocalAdminLevels(levelsList: any[]) {
                   <Folder size={20} className="text-amber-500 shrink-0" />
                 )}
                 <h2 className="text-lg sm:text-xl font-heading font-semibold text-slate-800 dark:text-white">
-                  {activeFolderData ? activeFolderData.name : 'Pastas por Nível (Baralhos Oficiais)'}
+                  {deckViewMode === 'folders' && activeFolderData
+                    ? activeFolderData.name
+                    : 'Pastas por Nível (Baralhos Oficiais)'}
                 </h2>
               </div>
 
               <span className="text-xs font-heading font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-md border border-amber-200/60 dark:border-amber-800 shadow-xs">
                 <span className="font-bold">
-                  {activeFolderData ? activeFolderData.decks.length : officialDecks.length}
+                  {deckViewMode === 'folders' && activeFolderData ? activeFolderData.decks.length : officialDecks.length}
                 </span>{' '}
-                {(activeFolderData ? activeFolderData.decks.length : officialDecks.length) === 1 ? 'baralho' : 'baralhos'}
+                {(deckViewMode === 'folders' && activeFolderData ? activeFolderData.decks.length : officialDecks.length) === 1
+                  ? 'baralho'
+                  : 'baralhos'}
                 {' • '}
                 <span className="font-bold">
-                  {activeFolderData ? activeFolderData.totalCards : totalOfficialCards}
+                  {deckViewMode === 'folders' && activeFolderData ? activeFolderData.totalCards : totalOfficialCards}
                 </span>{' '}
                 cards
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Toggle Pastas / Lista */}
+              <div className="inline-flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setDeckViewMode('folders')}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-heading font-semibold transition-all cursor-pointer ${
+                    deckViewMode === 'folders'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Visualização em Pastas"
+                >
+                  <LayoutGrid size={14} /> Pastas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeckViewMode('list')}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-heading font-semibold transition-all cursor-pointer ${
+                    deckViewMode === 'list'
+                      ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                  title="Visualização em Lista Expansível"
+                >
+                  <List size={14} /> Lista
+                </button>
+              </div>
+
               <input 
                 type="file" 
                 id="anki-admin-import" 
@@ -2431,92 +2537,501 @@ function saveLocalAdminLevels(levelsList: any[]) {
             </div>
           </div>
 
-          {!activeFolderData ? (
-            /* VISÃO 1: GRADE DE PASTAS POR NÍVEL */
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-              {deckFolders.map(folder => (
-                <div
-                  key={folder.id}
-                  onClick={() => setSelectedDeckFolder(folder.id)}
-                  className={`card-3d-interactive p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer flex items-center justify-between gap-3.5 ${
-                    folder.isGlobal ? 'sm:col-span-2 lg:col-span-3' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5 min-w-0">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs"
-                      style={{
-                        backgroundColor: `${folder.color}18`,
-                        border: `1px solid ${folder.color}45`,
-                        color: folder.color,
-                      }}
+          {/* Barra de Pesquisa, Filtro por Nível e Ordenação Alfabética */}
+          <div className="relative">
+            {openDeckFilterDropdown !== null && (
+              <div
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setOpenDeckFilterDropdown(null)}
+              />
+            )}
+
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+              {/* Campo de Pesquisa */}
+              <div className="relative flex-1">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={deckSearchQuery}
+                  onChange={e => setDeckSearchQuery(e.target.value)}
+                  placeholder="Pesquisar baralho por nome ou nível..."
+                  className="w-full pl-9 pr-8 py-2 rounded-xl text-xs sm:text-sm font-medium border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder:text-slate-400 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/30 transition-all shadow-2xs"
+                />
+                {deckSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setDeckSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-full"
+                    title="Limpar busca"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+
+              {/* Controles de Filtros e Ordenação */}
+              <div className="flex flex-wrap items-center gap-2 relative z-40">
+                {/* Filtro: Nível */}
+                {(deckViewMode === 'list' || !activeFolderData) && (
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setOpenDeckFilterDropdown(openDeckFilterDropdown === 'level' ? null : 'level')}
+                      className={`h-9 px-3 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                        deckLevelFilter !== 'all'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700'
+                          : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                      }`}
+                      title="Filtrar por Nível"
                     >
-                      {folder.isGlobal ? <Globe size={24} /> : <Folder size={24} className="fill-current opacity-85" />}
-                    </div>
+                      <GraduationCap size={14} className={deckLevelFilter !== 'all' ? 'text-indigo-600 dark:text-indigo-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                      <span className="truncate max-w-[140px]">
+                        {deckLevelFilter === 'all'
+                          ? 'Nível: Todos'
+                          : deckFolders.find(f => f.id === deckLevelFilter)?.name || deckLevelFilter}
+                      </span>
+                      <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${openDeckFilterDropdown === 'level' ? 'rotate-180' : ''}`} />
+                    </button>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: folder.color }}
-                        />
-                        <h3 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
-                          {folder.name}
-                        </h3>
-                        {folder.isGlobal && (
-                          <span className="text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
-                            Pasta Global
+                    {openDeckFilterDropdown === 'level' && (
+                      <div className="absolute top-full left-0 mt-1.5 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden max-h-64 overflow-y-auto">
+                        <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-700/60">
+                          Filtrar por Nível
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setDeckLevelFilter('all'); setOpenDeckFilterDropdown(null) }}
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors ${
+                            deckLevelFilter === 'all'
+                              ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <GraduationCap size={14} className="text-slate-400" />
+                            <span>Todos os Níveis</span>
                           </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                        {folder.subtitle}
-                      </p>
-                    </div>
-                  </div>
+                          {deckLevelFilter === 'all' && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </button>
 
-                  <div className="text-right shrink-0">
-                    <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-heading font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200/70 dark:border-slate-700">
-                      {folder.decks.length} {folder.decks.length === 1 ? 'baralho' : 'baralhos'}
+                        {deckFolders.map(folder => (
+                          <button
+                            key={folder.id}
+                            type="button"
+                            onClick={() => { setDeckLevelFilter(folder.id); setOpenDeckFilterDropdown(null) }}
+                            className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors border-t border-slate-100 dark:border-slate-700/40 ${
+                              deckLevelFilter === folder.id
+                                ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                                : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                            }`}
+                          >
+                            <span className="flex items-center gap-2 truncate">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: folder.color }} />
+                              <span className="truncate">{folder.name}</span>
+                            </span>
+                            {deckLevelFilter === folder.id && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Filtro: Ordenação */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDeckFilterDropdown(openDeckFilterDropdown === 'sort' ? null : 'sort')}
+                    className={`h-9 px-3 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer ${
+                      deckSortBy !== 'az'
+                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
+                    }`}
+                    title="Ordenar baralhos"
+                  >
+                    <ArrowUpDown size={14} className={deckSortBy !== 'az' ? 'text-blue-600 dark:text-blue-400 shrink-0' : 'text-slate-400 shrink-0'} />
+                    <span>
+                      {deckSortBy === 'az' ? 'Ordem: A → Z' : deckSortBy === 'za' ? 'Ordem: Z → A' : 'Mais cards'}
+                    </span>
+                    <ChevronDown size={13} className={`text-slate-400 transition-transform shrink-0 ${openDeckFilterDropdown === 'sort' ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {openDeckFilterDropdown === 'sort' && (
+                    <div className="absolute top-full right-0 mt-1.5 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 py-1 overflow-hidden">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-700/60">
+                        Ordenação
+                      </div>
+                      {[
+                        { id: 'az' as const, label: 'Alfabética (A → Z)' },
+                        { id: 'za' as const, label: 'Alfabética (Z → A)' },
+                        { id: 'cards_desc' as const, label: 'Mais cards primeiro' },
+                      ].map(opt => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => { setDeckSortBy(opt.id); setOpenDeckFilterDropdown(null) }}
+                          className={`w-full px-3 py-2 text-left text-xs font-medium flex items-center justify-between transition-colors ${
+                            deckSortBy === opt.id
+                              ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 font-semibold'
+                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/60'
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {deckSortBy === opt.id && <Check size={14} className="text-blue-600 dark:text-blue-400 shrink-0" />}
+                        </button>
+                      ))}
                     </div>
-                    <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-end gap-1">
-                      <Layers size={12} className="text-amber-500" />
-                      <span>{folder.totalCards} cards</span>
+                  )}
+                </div>
+
+                {/* Expandir / Recolher todas no modo Lista */}
+                {deckViewMode === 'list' && filteredDeckFolders.length > 0 && (() => {
+                  const allExpanded = filteredDeckFolders.every(f => expandedDeckFolders[f.id] ?? true)
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextState: Record<string, boolean> = {}
+                        filteredDeckFolders.forEach(f => {
+                          nextState[f.id] = !allExpanded
+                        })
+                        setExpandedDeckFolders(prev => ({ ...prev, ...nextState }))
+                      }}
+                      className="h-9 px-3 rounded-xl text-xs font-semibold border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-2xs cursor-pointer"
+                    >
+                      {allExpanded ? 'Recolher todas' : 'Expandir todas'}
+                    </button>
+                  )
+                })()}
+
+                {/* Limpar filtros */}
+                {hasActiveDeckFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeckSearchQuery('')
+                      setDeckLevelFilter('all')
+                      setDeckSortBy('az')
+                    }}
+                    className="h-9 px-2.5 rounded-xl text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-rose-200/80 dark:border-rose-800/60 transition-colors cursor-pointer"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {deckViewMode === 'list' ? (
+            /* MODO LISTA: PASTAS EXPANSÍVEIS COM BARALHOS EM LISTA */
+            filteredDeckFolders.length === 0 ? (
+              <div className="card-3d p-10 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+                <Search size={36} className="mx-auto text-slate-400 opacity-60" />
+                <div>
+                  <h3 className="text-sm sm:text-base font-heading font-semibold text-slate-700 dark:text-slate-200">
+                    Nenhum baralho encontrado para os filtros aplicados
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Tente buscar por outro nome ou limpar os filtros selecionados.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setDeckSearchQuery('')
+                    setDeckLevelFilter('all')
+                    setDeckSortBy('az')
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredDeckFolders.map(folder => {
+                  const isExpanded =
+                    deckSearchQuery.trim() !== '' ? true : (expandedDeckFolders[folder.id] ?? true)
+                  return (
+                    <div
+                      key={folder.id}
+                      className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs"
+                    >
+                      {/* Cabeçalho da Pasta (Clicável para Expandir/Recolher) */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedDeckFolders(prev => ({
+                            ...prev,
+                            [folder.id]: !(prev[folder.id] ?? true),
+                          }))
+                        }
+                        className="w-full px-4 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{
+                              backgroundColor: `${folder.color}18`,
+                              border: `1px solid ${folder.color}45`,
+                              color: folder.color,
+                            }}
+                          >
+                            {folder.isGlobal ? (
+                              <Globe size={18} />
+                            ) : isExpanded ? (
+                              <FolderOpen size={18} />
+                            ) : (
+                              <Folder size={18} className="fill-current opacity-85" />
+                            )}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span
+                                className="w-2 h-2 rounded-full shrink-0"
+                                style={{ backgroundColor: folder.color }}
+                              />
+                              <h3 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
+                                {folder.name}
+                              </h3>
+                              {folder.isGlobal && (
+                                <span className="text-[10px] font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                                  Pasta Global
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              {folder.subtitle}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-heading font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/70 dark:border-slate-700">
+                            {folder.decks.length} {folder.decks.length === 1 ? 'baralho' : 'baralhos'}
+                          </span>
+                          <span className="hidden sm:inline-flex items-center gap-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            <Layers size={13} className="text-amber-500" />
+                            {folder.totalCards} cards
+                          </span>
+                          <ChevronDown
+                            size={18}
+                            className={`text-slate-400 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-0' : '-rotate-90'
+                            }`}
+                          />
+                        </div>
+                      </button>
+
+                      {/* Lista de Baralhos dentro da Pasta */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800/80">
+                          {folder.decks.length === 0 ? (
+                            <div className="px-4 py-5 text-center text-xs text-slate-500 dark:text-slate-400">
+                              Nenhum baralho cadastrado nesta pasta.
+                            </div>
+                          ) : (
+                            folder.decks.map(deck => {
+                              const cardsCount = deck.cards_count ?? deck.cards?.length ?? 0
+                              return (
+                                <div
+                                  key={deck.id}
+                                  className="px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                                >
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <h4 className="text-sm font-heading font-bold text-slate-800 dark:text-white truncate">
+                                        {deck.name}
+                                      </h4>
+                                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200/70 dark:border-slate-700">
+                                        {deck.level || 'Todos'}
+                                      </span>
+                                      <span
+                                        className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                                          deck.is_published
+                                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800'
+                                            : 'bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200/70 dark:border-rose-800'
+                                        }`}
+                                      >
+                                        {deck.is_published ? 'PUBLICADO' : 'OCULTO'}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
+                                      {deck.description || 'Sem descrição.'}
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-100/80 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
+                                      <Layers size={12} className="text-amber-500" />
+                                      {cardsCount} {cardsCount === 1 ? 'card' : 'cards'}
+                                    </span>
+
+                                    <div className="flex items-center gap-1.5">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleTogglePublish(deck.id)}
+                                        title={deck.is_published ? 'Ocultar baralho' : 'Publicar baralho'}
+                                      >
+                                        {deck.is_published ? <EyeOff size={15} /> : <Eye size={15} />}
+                                        <span className="hidden md:inline">
+                                          {deck.is_published ? 'Ocultar' : 'Publicar'}
+                                        </span>
+                                      </Button>
+                                      <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => openEditOfficialDeck(deck)}
+                                        title="Editar baralho"
+                                      >
+                                        <Pencil size={15} />
+                                      </Button>
+                                      <Button
+                                        variant="danger"
+                                        size="sm"
+                                        onClick={() => handleDeleteOfficialDeck(deck.id)}
+                                        title="Excluir baralho"
+                                      >
+                                        <Trash2 size={15} />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          ) : !activeFolderData ? (
+            /* VISÃO 1: GRADE DE PASTAS POR NÍVEL */
+            filteredDeckFolders.length === 0 ? (
+              <div className="card-3d p-10 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
+                <Search size={36} className="mx-auto text-slate-400 opacity-60" />
+                <div>
+                  <h3 className="text-sm sm:text-base font-heading font-semibold text-slate-700 dark:text-slate-200">
+                    Nenhuma pasta ou baralho encontrado
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                    Ajuste a busca ou limpe os filtros para ver todas as pastas.
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setDeckSearchQuery('')
+                    setDeckLevelFilter('all')
+                    setDeckSortBy('az')
+                  }}
+                >
+                  Limpar Filtros
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                {filteredDeckFolders.map(folder => (
+                  <div
+                    key={folder.id}
+                    onClick={() => setSelectedDeckFolder(folder.id)}
+                    className={`card-3d-interactive p-4 sm:p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-blue-400 dark:hover:border-blue-500 transition-all cursor-pointer flex items-center justify-between gap-3.5 ${
+                      folder.isGlobal ? 'sm:col-span-2 lg:col-span-3' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs"
+                        style={{
+                          backgroundColor: `${folder.color}18`,
+                          border: `1px solid ${folder.color}45`,
+                          color: folder.color,
+                        }}
+                      >
+                        {folder.isGlobal ? <Globe size={24} /> : <Folder size={24} className="fill-current opacity-85" />}
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: folder.color }}
+                          />
+                          <h3 className="text-sm sm:text-base font-heading font-bold text-slate-800 dark:text-white truncate">
+                            {folder.name}
+                          </h3>
+                          {folder.isGlobal && (
+                            <span className="text-[11px] font-heading font-semibold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800">
+                              Pasta Global
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                          {folder.subtitle}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-heading font-bold bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white border border-slate-200/70 dark:border-slate-700">
+                        {folder.decks.length} {folder.decks.length === 1 ? 'baralho' : 'baralhos'}
+                      </div>
+                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-end gap-1">
+                        <Layers size={12} className="text-amber-500" />
+                        <span>{folder.totalCards} cards</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : activeFolderData.decks.length === 0 ? (
+                ))}
+              </div>
+            )
+          ) : filteredActiveFolderDecks.length === 0 ? (
             /* PASTA VAZIA */
             <div className="card-3d p-10 text-center rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 space-y-3">
               <FolderOpen size={40} className="mx-auto text-slate-400 opacity-60" />
               <div>
                 <h3 className="text-sm sm:text-base font-heading font-semibold text-slate-700 dark:text-slate-200">
-                  Nenhum baralho cadastrado na pasta "{activeFolderData.name}"
+                  {deckSearchQuery.trim() !== ''
+                    ? `Nenhum baralho encontrado em "${activeFolderData.name}" para "${deckSearchQuery}"`
+                    : `Nenhum baralho cadastrado na pasta "${activeFolderData.name}"`}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                  Clique em <strong>Importar</strong> (para enviar um arquivo .apkg do Anki) ou em <strong>Criar Baralho Padrão</strong> para adicionar a esta pasta.
+                  {deckSearchQuery.trim() !== ''
+                    ? 'Tente outro termo de busca ou limpe o filtro.'
+                    : <>Clique em <strong>Importar</strong> (para enviar um arquivo .apkg do Anki) ou em <strong>Criar Baralho Padrão</strong> para adicionar a esta pasta.</>}
                 </p>
               </div>
               <div className="flex items-center justify-center gap-2 pt-1">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => document.getElementById('anki-admin-import')?.click()}
-                  disabled={importingAdminDeck}
-                >
-                  <FileUp size={15} /> Importar neste Nível
-                </Button>
-                <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
-                  <Plus size={15} /> Criar neste Nível
-                </Button>
+                {deckSearchQuery.trim() !== '' ? (
+                  <Button variant="secondary" size="sm" onClick={() => setDeckSearchQuery('')}>
+                    Limpar Busca
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => document.getElementById('anki-admin-import')?.click()}
+                      disabled={importingAdminDeck}
+                    >
+                      <FileUp size={15} /> Importar neste Nível
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={openCreateOfficialDeck}>
+                      <Plus size={15} /> Criar neste Nível
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           ) : (
             /* VISÃO 2: BARALHOS DENTRO DA PASTA SELECIONADA */
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {activeFolderData.decks.map((deck) => {
+              {filteredActiveFolderDecks.map((deck) => {
                 const cardsCount = deck.cards_count ?? deck.cards?.length ?? 0
                 return (
                   <div key={deck.id} className="card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>

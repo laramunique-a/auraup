@@ -192,6 +192,28 @@
     nível pedagógico ou professor, além de seletor para filtrar por Nível.
 
 
+10. MODO LISTA EXPANSÍVEL, FILTROS E ORDENAÇÃO (ADMIN > BARALHOS)
+--------------------------------------------------------------------------------
+• Alternância de Visualização (Pastas / Lista):
+  - Adicionado seletor no cabeçalho da aba Baralhos para alternar entre o modo
+    clássico em "Pastas" (preservado integralmente) e o novo modo "Lista".
+
+• Pastas Expansíveis em Lista (Acordeão):
+  - No modo Lista, cada pasta de nível aparece como um bloco expansível e
+    recolhível, exibindo cor, contagem de baralhos e total de cards.
+  - Botão "Expandir todas / Recolher todas" para controlar todas as pastas
+    simultaneamente.
+  - Dentro de cada pasta expandida, os baralhos são listados com nível, status
+    (PUBLICADO / OCULTO), quantidade de cards e ações rápidas (Publicar/Ocultar,
+    Editar e Excluir).
+
+• Pesquisa, Filtro por Nível e Ordenação Alfabética:
+  - Barra de pesquisa em tempo real por nome do baralho, descrição ou nível.
+  - Seletor para filtrar por Nível/Pasta específica.
+  - Ordenação com opções: Alfabética (A → Z), Alfabética (Z → A) e Mais cards
+    primeiro, além do botão "Limpar" para redefinir os filtros.
+
+
 ================================================================================
-Status: Todas as alterações foram testadas, compiladas e publicadas na Vercel.
+Status: Todas as alterações foram testadas e compiladas.
 ================================================================================
