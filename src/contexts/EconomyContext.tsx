@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react'
+import { profileService } from '../services/profile.service'
 
 export interface EconomyState {
   xp: number
@@ -150,12 +151,14 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const lastSyncedStreakRef = useRef<string>('')
+
   // Ao abrir o app, registra automaticamente o dia de acesso
   useEffect(() => {
     recordActivity()
   }, [recordActivity])
 
-  // Sincronização offline-first com localStorage
+  // Sincronização offline-first com localStorage e persistência do streak no Supabase
   useEffect(() => {
     try {
       const stateToSave = { xp, coins, streak }
@@ -168,6 +171,14 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
         userObj.coins = coins
         userObj.streak = streak
         localStorage.setItem('uply_user', JSON.stringify(userObj))
+
+        if (userObj.id && streak > 0) {
+          const syncKey = `${userObj.id}:${streak}`
+          if (lastSyncedStreakRef.current !== syncKey) {
+            lastSyncedStreakRef.current = syncKey
+            profileService.syncStreak(userObj.id, streak)
+          }
+        }
       }
     } catch (err) {
       console.error('Erro ao sincronizar economia no localStorage:', err)
@@ -185,6 +196,7 @@ export function EconomyProvider({ children }: { children: ReactNode }) {
           if (typeof parsed.coins === 'number') setCoins(parsed.coins)
           if (typeof parsed.streak === 'number') setStreak(parsed.streak)
         }
+        recordActivity()
       } catch {
         // ignore
       }

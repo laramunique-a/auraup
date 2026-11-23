@@ -58,6 +58,21 @@ export const profileService = {
     }
   },
 
+  async syncStreak(userId: string, streak: number) {
+    if (isLocalMode || !supabase || !userId) return true
+
+    const safeStreak = Math.max(1, Math.floor(Number(streak) || 1))
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ streak: safeStreak })
+        .eq('id', userId)
+      return !error
+    } catch {
+      return false
+    }
+  },
+
   async updateStreak(userId: string) {
     try {
       window.dispatchEvent(new CustomEvent('uply_record_activity'))
@@ -65,15 +80,29 @@ export const profileService = {
       // ignore
     }
 
-    if (isLocalMode || !supabase) return true
+    if (isLocalMode || !supabase || !userId) return true
 
+    let currentStreak = 1
     try {
-      const { error } = await supabase.rpc('update_user_streak', {
-        user_id: userId
-      })
-      return !error
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (typeof parsed.streak === 'number' && parsed.streak > 0) {
+          currentStreak = parsed.streak
+        }
+      } else {
+        const rawUser = localStorage.getItem('uply_user')
+        if (rawUser) {
+          const user = JSON.parse(rawUser)
+          if (typeof user.streak === 'number' && user.streak > 0) {
+            currentStreak = user.streak
+          }
+        }
+      }
     } catch {
-      return true
+      // ignore
     }
+
+    return this.syncStreak(userId, currentStreak)
   }
 }
